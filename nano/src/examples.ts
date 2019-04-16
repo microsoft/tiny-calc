@@ -48,7 +48,7 @@ class Column implements Resource {
     }
 
     private notifyProperty(property: ColumnProperties) {
-        this.consumers[property].forEach(host => host.notify(this, ColumnProperties.Max, this.getValue(property)));
+        this.consumers[property].forEach(host => host.notify(this, property, this.getValue(property)));
     }
 
     private unSubscribeProperty(property: ColumnProperties, host: CalcHost) {
@@ -142,7 +142,8 @@ export class TextFormula implements CalcHost {
         this.withValue(this.formula(this, this.scope));
     }
 
-    notify() {
+    notify(resource: Resource, property: string) {
+        console.log(`Changed: ${(resource as any).name}.${property}`);
         console.time("recalc");
         const value = this.formula(this, this.scope);
         console.timeEnd("recalc");
