@@ -1,4 +1,4 @@
-import { Resource, CalcHost, CalcValue } from "./types";
+import { Producer, Consumer, CalcValue } from "./types";
 import { Formula, compile } from "./compiler";
 
 enum ColumnProperties {
@@ -19,9 +19,9 @@ function initDependencyGraph() {
     };
 }
 
-class Column implements Resource {
+class Column implements Producer {
     private dataCache: Record<Exclude<ColumnProperties, ColumnProperties.Name>, number> | undefined;
-    private consumers: Record<ColumnProperties, Set<CalcHost>>;
+    private consumers: Record<ColumnProperties, Set<Consumer>>;
     constructor(private name: string, private data: number[]) {
         this.consumers = initDependencyGraph();
     }
@@ -51,11 +51,11 @@ class Column implements Resource {
         this.consumers[property].forEach(host => host.notify(this, property, this.getValue(property)));
     }
 
-    private unSubscribeProperty(property: ColumnProperties, host: CalcHost) {
+    private unSubscribeProperty(property: ColumnProperties, host: Consumer) {
         this.consumers[property].delete(host);
     }
 
-    unsubscribe(origin: CalcHost) {
+    unsubscribe(origin: Consumer) {
         this.unSubscribeProperty(ColumnProperties.Sum, origin);
         this.unSubscribeProperty(ColumnProperties.Max, origin);
         this.unSubscribeProperty(ColumnProperties.Min, origin);
@@ -75,7 +75,7 @@ class Column implements Resource {
         return false;
     }
 
-    request<R>(origin: CalcHost, property: string, cont: (v: CalcValue) => R, err: () => R) {
+    request<R>(origin: Consumer, property: string, cont: (v: CalcValue) => R, err: () => R) {
         if (this.isProperty(property)) {
             this.consumers[property].add(origin);
             return cont(this.getValue(property));
@@ -93,16 +93,16 @@ class Column implements Resource {
     }
 }
 
-class Table implements Resource {
-    constructor(private name: string, private columns: Record<string, Column>) {}
+class Table implements Producer {
+    constructor(private name: string, private columns: Record<string, Column>) { }
 
-    unsubscribe(origin: CalcHost) {}
+    unsubscribe(origin: Consumer) { }
 
     isProperty(property: string) {
         return property in this.columns;
     }
 
-    request<R>(origin: CalcHost, property: string, cont: (v: CalcValue) => R, err: () => R) {
+    request<R>(origin: Consumer, property: string, cont: (v: CalcValue) => R, err: () => R) {
         if (this.isProperty(property)) {
             return cont(this.columns[property]);
         }
@@ -118,16 +118,16 @@ class Table implements Resource {
     }
 }
 
-export class Context implements Resource {
-    constructor(private fields: Record<string, Resource>) {}
+export class Context implements Producer {
+    constructor(private fields: Record<string, Producer>) { }
 
-    unsubscribe(origin: CalcHost) {}
+    unsubscribe(origin: Consumer) { }
 
     isProperty(property: string) {
         return property in this.fields;
     }
 
-    request<R>(origin: CalcHost, property: string, cont: (v: CalcValue) => R, err: () => R) {
+    request<R>(origin: Consumer, property: string, cont: (v: CalcValue) => R, err: () => R) {
         if (this.isProperty(property)) {
             return cont(this.fields[property]);
         }
@@ -135,15 +135,16 @@ export class Context implements Resource {
     }
 }
 
-export class TextFormula implements CalcHost {
+
+
+export class TextFormula implements Consumer {
     private formula: Formula;
-    constructor(private scope: Resource, private formulaText: string, private withValue: (v: CalcValue) => void) {
+    constructor(private scope: Producer, private formulaText: string, private withValue: (v: CalcValue) => void) {
         this.formula = compile(this.formulaText);
         this.withValue(this.formula(this, this.scope));
     }
 
-    notify(resource: Resource, property: string) {
-        console.log(`Changed: ${(resource as any).name}.${property}`);
+    notify() {
         console.time("recalc");
         const value = this.formula(this, this.scope);
         console.timeEnd("recalc");
@@ -158,3 +159,66 @@ export const table1 = new Table("Table1", {
 });
 
 export const documentContext = new Context({ Table1: table1 });
+
+export class ListFormula implements Consumer {
+    private formulas: Formula[];
+    constructor(private scope: Producer, private formulaText: string, private withValue: (v: CalcValue[]) => void) {
+        this.formulas = [];
+        for (let i = 0; i < 1000; i += 1) {
+            this.formulas.push(compile(this.formulaText));
+        }
+    }
+
+    notify() {
+        console.time("recalc");
+        const scope = new MemoProducer(this.scope);
+        const values = this.formulas.map(fn => fn(this, scope));
+        console.timeEnd("recalc");
+        this.withValue(values);
+    }
+}
+
+export class MemoProducer implements Producer {
+    private cache: Record<string, CalcValue>;
+    constructor(private readonly source: Producer) {
+        this.cache = {};
+    }
+    unsubscribe() {}
+
+    isProperty(property: string) {
+        return this.source.isProperty(property);
+    }
+
+    request<R>(origin: Consumer, property: string, cont: (v: CalcValue) => R, err: () => R) {
+        if (this.cache[property] !== undefined) {
+            return cont(this.cache[property]);
+        }
+        return this.source.request(origin, property, v => {
+            if (typeof v === "object") {
+                this.cache[property] = new MemoProducer(v);
+                return cont(this.cache[property]);
+            }
+            this.cache[property] = v;
+            return cont(v);
+        }, err);
+    }
+}
+
+export class TimeProducer implements Producer {
+    constructor() {}
+
+    unsubscribe() {}
+
+    isProperty(property: string) {
+        return property === "Now";
+    }
+
+    request<R>(origin: Consumer, property: string, cont: (v: CalcValue) => R, err: () => R) {
+        if (this.isProperty(property)) {
+            return cont(Date.now());
+        }
+        return err();
+    }
+}
+
+export const context = new Context({ Time: new TimeProducer() });

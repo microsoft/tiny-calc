@@ -1,24 +1,24 @@
-import { compile } from "./compiler";
-import * as types from "./types";
-import { TextFormula, documentContext, table1 } from "./examples";
+import { ListFormula, context } from "./examples";
 
-console.time("parse and compile");
-const test = compile("1 + 2 + 3 * 10");
-console.timeEnd("parse and compile");
 
-console.time("eval1");
-const result = test(undefined as any, undefined as any);
-console.timeEnd("eval1");
+// const formula = "Table1.Profit.Length * Table1.Loss.Sum + Table1.Tax.Max";
+// const f1 = new TextFormula(documentContext, formula, v => {
+//     console.log(`${formula} = ${v}`);
+// });
+// 
+// setInterval(() => table1.addRow({ Profit: Math.random(), Loss: Math.random(), Tax: Math.random() }), 100);
 
-console.time("eval2");
-const result2 = test(undefined as any, undefined as any);
-console.timeEnd("eval2");
 
-console.log(result);
+// The list formula contains a list of duplicate formulas. We use a
+// memoizing context to ensure that each evaluation of a formula is
+// time invariant.
 
-const formula = "Table1.Profit.Length * Table1.Loss.Sum + Table1.Tax.Max";
-const f1 = new TextFormula(documentContext, formula, v => {
-    console.log(`${formula} = ${v}`);
+const listFormula = new ListFormula(context, "IF(Time.Now = Time.Now, 'ok', 'not ok')", v => {
+    const invariant = v.every(x => x === 'ok');
+    if (!invariant) {
+        console.log(v);
+    }
+    console.log(`value = ${JSON.stringify(v[0])}; uniform = ${invariant}`);
 });
 
-setInterval(() => table1.addRow({ Profit: Math.random(), Loss: Math.random(), Tax: Math.random() }), 20);
+setInterval(() => listFormula.notify(), 100);

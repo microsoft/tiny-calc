@@ -148,8 +148,15 @@ export enum SyntaxKind {
     PlusToken,
     MinusToken,
     DotToken,
+    LessThanToken,
+    GreaterThanToken,
+    LessThanOrEqualToken,
+    GreaterThanOrEqualToken,
+    EqualsToken,
+    NotEqualsToken,
     OpenParenToken,
     CloseParenToken,
+    CommaToken,
     SlashToken,
     EndOfInputToken
 }
@@ -228,7 +235,7 @@ function createScanner(textInput: string): Scanner {
     function scan(): SyntaxKind {
         while (true) {
             if (pos >= end) {
-                return (token = SyntaxKind.EndOfInputToken);
+                return token = SyntaxKind.EndOfInputToken;
             }
             const ch = text.charCodeAt(pos);
             if (isWhitespaceChar(ch)) {
@@ -254,6 +261,31 @@ function createScanner(textInput: string): Scanner {
                 case CharacterCodes.slash:
                     pos += 1;
                     return (token = SyntaxKind.SlashToken);
+                case CharacterCodes.comma:
+                    pos += 1;
+                    return (token = SyntaxKind.CommaToken);
+                    
+                case CharacterCodes.equals:
+                    pos += 1;
+                    return (token = SyntaxKind.EqualsToken);
+                case CharacterCodes.lessThan:
+                    pos += 1;
+                    if (text.charCodeAt(pos) === CharacterCodes.equals) {
+                        pos += 1;
+                        return (token = SyntaxKind.LessThanOrEqualToken);
+                    }
+                    if (text.charCodeAt(pos) === CharacterCodes.greaterThan) {
+                        pos += 1;
+                        return (token = SyntaxKind.NotEqualsToken);
+                    }
+                    return (token = SyntaxKind.LessThanToken);
+                case CharacterCodes.greaterThan:
+                    pos += 1;
+                    if (text.charCodeAt(pos) === CharacterCodes.equals) {
+                        pos += 1;
+                        return (token = SyntaxKind.GreaterThanOrEqualToken);
+                    }
+                    return (token = SyntaxKind.GreaterThanToken);
                 case CharacterCodes.openParen:
                     pos += 1;
                     return (token = SyntaxKind.OpenParenToken);
@@ -367,13 +399,23 @@ function createScanner(textInput: string): Scanner {
     };
 }
 
-export type Op = SyntaxKind.PlusToken | SyntaxKind.MinusToken | SyntaxKind.AsteriskToken | SyntaxKind.SlashToken;
+export type Op =
+    | SyntaxKind.PlusToken
+    | SyntaxKind.MinusToken
+    | SyntaxKind.AsteriskToken
+    | SyntaxKind.SlashToken
+    | SyntaxKind.EqualsToken
+    | SyntaxKind.LessThanToken
+    | SyntaxKind.GreaterThanToken
+    | SyntaxKind.LessThanOrEqualToken
+    | SyntaxKind.GreaterThanOrEqualToken
+    | SyntaxKind.NotEqualsToken;
 
 export interface ParserSink<R> {
     lit: (value: number | string | boolean) => R;
     ident: (id: string, quoted: boolean) => R;
     fun: (identifer: string[], body: R) => R;
-    app: (head: R, ...args: R[]) => R;
+    app: (head: R, args: R[]) => R;
     dot: (left: R, right: R) => R;
     binOp: (op: Op, left: R, right: R) => R;
 }
@@ -432,38 +474,65 @@ export const runParser: Parser = <R>(input: string, sink: ParserSink<R>) => {
         return sink.lit(JSON.stringify(tokenValue).slice(1, -1));
     }
 
+    // relational
     function parseFormula(): R {
-        let formula = parseFormula1();
+        let formula = parseAddition();
         while (true) {
-            if (parseOptional(SyntaxKind.PlusToken)) {
-                formula = sink.binOp(SyntaxKind.PlusToken, formula, parseFormula());
-            } else if (parseOptional(SyntaxKind.MinusToken)) {
-                formula = sink.binOp(SyntaxKind.MinusToken, formula, parseFormula());
-            } else {
-                break;
+            const token = currentToken;
+            switch (token) {
+                case SyntaxKind.EqualsToken:
+                case SyntaxKind.LessThanToken:
+                case SyntaxKind.GreaterThanToken:
+                case SyntaxKind.LessThanOrEqualToken:
+                case SyntaxKind.GreaterThanOrEqualToken:
+                case SyntaxKind.NotEqualsToken:
+                case SyntaxKind.EqualsToken:
+                    nextToken();
+                    formula = sink.binOp(token, formula, parseAddition());
+                    continue;
+                default:
+                    return formula;
             }
         }
-        return formula;
+    }
+    
+    // + and -
+    function parseAddition(): R {
+        let formula = parseMultiplication();
+        while (true) {
+            const token = currentToken;
+            switch (token) {
+                case SyntaxKind.PlusToken:
+                case SyntaxKind.MinusToken:
+                    nextToken();
+                    formula = sink.binOp(token, formula, parseMultiplication());
+                    continue;
+                default:
+                    return formula;
+            }
+        }
     }
 
     // * and /
-    function parseFormula1(): R {
-        let formula = parseFormula2();
+    function parseMultiplication(): R {
+        let formula = parseDot();
         while (true) {
-            if (parseOptional(SyntaxKind.AsteriskToken)) {
-                formula = sink.binOp(SyntaxKind.AsteriskToken, formula, parseFormula1());
-            } else if (parseOptional(SyntaxKind.SlashToken)) {
-                formula = sink.binOp(SyntaxKind.SlashToken, formula, parseFormula1());
-            } else {
-                break;
+            const token = currentToken;
+            switch (token) {
+                case SyntaxKind.AsteriskToken:
+                case SyntaxKind.SlashToken:
+                    nextToken();
+                    formula = sink.binOp(token, formula, parseDot());
+                    continue;
+                default:
+                    return formula;
             }
         }
-        return formula;
     }
 
     // dot
-    function parseFormula2(): R {
-        let formula = parseFormula3();
+    function parseDot(): R {
+        let formula = parseApplication();
         while (true) {
             if (parseOptional(SyntaxKind.DotToken)) {
                 formula = sink.dot(formula, parseField());
@@ -474,8 +543,29 @@ export const runParser: Parser = <R>(input: string, sink: ParserSink<R>) => {
         return formula;
     }
 
+    function parseApplication(): R {
+        let formula = parsePrimary();
+        while (parseOptional(SyntaxKind.OpenParenToken)) {
+            formula = sink.app(formula, parseArgumentList());
+        }
+        return formula;
+    }
+
+    function parseArgumentList(): R[] {
+        const list: R[] = [];
+        if (currentToken !== SyntaxKind.CloseParenToken) {
+            do {
+                list.push(parseFormula());                
+            } while (parseOptional(SyntaxKind.CommaToken));
+        }
+        if (parseOptional(SyntaxKind.CloseParenToken)) {
+            return list;
+        }
+        return error("Missing Close paren in argument list" + input);
+    }
+  
     // keywords/idents/brackes
-    function parseFormula3(): R {
+    function parsePrimary(): R {
         const token = currentToken;
         switch (token) {
             case SyntaxKind.NumberLiteral:
@@ -497,7 +587,7 @@ export const runParser: Parser = <R>(input: string, sink: ParserSink<R>) => {
                 return parseOptional(SyntaxKind.CloseParenToken) ? m : error("Unclosed paren");
 
             default:
-                return error("Parse Failure" + input);
+                return error("Parse Failure " + input + " " + token);
         }
     }
 };
