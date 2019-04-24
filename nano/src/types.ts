@@ -1,15 +1,15 @@
 export type Primitive = number | string | boolean;
-export type CalcValue = Primitive | Resource;
+export type CalcValue = Primitive | Producer;
 
-export interface CalcHost {
-    notify: (resource: Resource, property: string, value: CalcValue) => void;
+export interface Consumer {
+    notify: (producer: Producer, property: string, value: CalcValue) => void;
 }
 
-export interface Resource<E = unknown> {
-    unsubscribe: (origin: CalcHost) => void;
+export interface Producer<E = unknown> {
+    unsubscribe: (origin: Consumer) => void;
     isProperty: (property: string) => boolean;
     request: <R>(
-        origin: CalcHost,
+        origin: Consumer,
         property: string,
         cont: (v: CalcValue) => R,
         reject: (err?: E) => R,
