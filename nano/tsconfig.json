@@ -10,7 +10,8 @@
         "preserveConstEnums": false,
         "sourceMap": false,
         "strict": true,
-        "outDir": "dist/"
+        "outDir": "dist/",
+        "jsx": "react",
     },
     "include": ["src/**/*"]
 }
