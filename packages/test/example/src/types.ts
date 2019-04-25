@@ -1,5 +1,4 @@
-import { Producer, Consumer, CalcValue } from "./types";
-import { Formula, compile } from "./compiler";
+import { Formula, Producer, Consumer, CalcValue, compile } from "@tiny-calc/nano";
 
 enum ColumnProperties {
     Sum = "Sum",

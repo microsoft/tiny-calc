@@ -1,5 +1,4 @@
-import { ListFormula, context } from "./examples";
-
+import { ListFormula, context } from "./types";
 
 // const formula = "Table1.Profit.Length * Table1.Loss.Sum + Table1.Tax.Max";
 // const f1 = new TextFormula(documentContext, formula, v => {

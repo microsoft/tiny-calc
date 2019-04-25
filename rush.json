@@ -4,18 +4,24 @@
  */
 {
   "$schema": "https://developer.microsoft.com/json-schemas/rush/v5/rush.schema.json",
-  "rushVersion": "5.5.4",
-  "pnpmVersion": "2.15.1",
+  "pnpmVersion": "2.25.7",
+  "rushVersion": "5.7.0",
   "pnpmOptions": {
     "strictPeerDependencies": true
   },
   "nodeSupportedVersionRange": ">=8.9.4",
   "ensureConsistentVersions": true,
+  "projectFolderMaxDepth": 3,
   "projects": [
     {
       "packageName": "@tiny-calc/nano",
-      "projectFolder": "nano",
+      "projectFolder": "packages/core/nano",
       "reviewCategory": "production"
+    },
+    {
+      "packageName": "@tiny-calc-test/example",
+      "projectFolder": "packages/test/example",
+      "reviewCategory": "test"
     }
   ]
 }
