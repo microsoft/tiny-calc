@@ -1,0 +1,22 @@
+{
+  "name": "@tiny-calc/nano",
+  "version": "0.0.0",
+  "main": "dist/index.js",
+  "scripts": {
+    "bench": "ts-node bench/index.ts",
+    "build": "tsc",
+    "clean": "rimraf ./dist *.build.log",
+    "dev": "npm run build -- --watch",
+    "test": "mocha -r ts-node/register test/**/*.spec.ts"
+  },
+  "devDependencies": {
+    "@types/benchmark": "^1.0.31",
+    "@types/mocha": "^5.2.6",
+    "@types/node": "^8.10.46",
+    "benchmark": "^2.1.4",
+    "mocha": "^6.1.4",
+    "rimraf": "^2.6.3",
+    "ts-node": "^8.1.0",
+    "typescript": "^3.4.3"
+  }
+}

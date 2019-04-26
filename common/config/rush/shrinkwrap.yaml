@@ -1,16 +1,32 @@
 dependencies:
+  '@rush-temp/example': 'file:projects/example.tgz'
   '@rush-temp/nano': 'file:projects/nano.tgz'
+  '@types/benchmark': 1.0.31
+  '@types/mocha': 5.2.6
+  '@types/node': 8.10.46
+  benchmark: 2.1.4
   mocha: 6.1.4
   rimraf: 2.6.3
-  ts-mocha: 6.0.0
   ts-node: 8.1.0
-  typescript: 3.4.3
+  typescript: 3.4.5
 packages:
+  /@types/benchmark/1.0.31:
+    dev: false
+    resolution:
+      integrity: sha512-F6fVNOkGEkSdo/19yWYOwVKGvzbTeWkR/XQYBKtGBQ9oGRjBN9f/L4aJI4sDcVPJO58Y1CJZN8va9V2BhrZapA==
   /@types/json5/0.0.29:
     dev: false
     optional: true
     resolution:
       integrity: sha1-7ihweulOEdK4J7y+UnC86n8+ce4=
+  /@types/mocha/5.2.6:
+    dev: false
+    resolution:
+      integrity: sha512-1axi39YdtBI7z957vdqXI4Ac25e7YihYQtJa+Clnxg1zTJEaIRbndt71O3sP4GAMgiAm0pY26/b9BrY4MR/PMw==
+  /@types/node/8.10.46:
+    dev: false
+    resolution:
+      integrity: sha512-PfnRbk836fFs9T9QnZh0G1k9oC6YXCqIK3LX6vU/6oiXtEBSFCiJFj6UnLZtqIIHTsgMn8Dojq3yhmpwY7QWcw==
   /ansi-colors/3.2.3:
     dev: false
     engines:
@@ -63,6 +79,13 @@ packages:
     dev: false
     resolution:
       integrity: sha1-ibTRmasr7kneFk6gK4nORi1xt2c=
+  /benchmark/2.1.4:
+    dependencies:
+      lodash: 4.17.11
+      platform: 1.3.5
+    dev: false
+    resolution:
+      integrity: sha1-CfPeMckWQl1JjMLuVloOvzwqVik=
   /brace-expansion/1.1.11:
     dependencies:
       balanced-match: 1.0.0
@@ -639,6 +662,10 @@ packages:
       node: '>=4'
     resolution:
       integrity: sha1-QRyttXTFoUDTpLGRDUDYDMn0C0A=
+  /platform/1.3.5:
+    dev: false
+    resolution:
+      integrity: sha512-TuvHS8AOIZNAlE77WUDiR4rySV/VMptyMfcfeoMgs4P8apaZM3JrnbzBiixKUv+XR6i+BXrQh8WAnjaSPFO65Q==
   /pump/3.0.0:
     dependencies:
       end-of-stream: 1.4.1
@@ -799,19 +826,6 @@ packages:
       node: '>=6'
     resolution:
       integrity: sha512-on9Kwidc1IUQo+bQdhi8+Tijpo0e1SS6RoGo2guUwn5vdaxw8RXOF9Vb2ws+ihWOmh4JnCJOvaziZWP1VABaLg==
-  /ts-mocha/6.0.0:
-    dependencies:
-      ts-node: 7.0.1
-    dev: false
-    engines:
-      node: '>= 6.X.X'
-    hasBin: true
-    optionalDependencies:
-      tsconfig-paths: 3.8.0
-    peerDependencies:
-      mocha: ^3.X.X || ^4.X.X || ^5.X.X || ^6.X.X
-    resolution:
-      integrity: sha512-ZCtJK8WXxHNbFNjvUKQIXZby/+ybQQkaBcM/3QhBQUfwjpdGFE9F6iWsHhF5ifQNFV/lWiOODi2VMD5AyPcQyg==
   /ts-mocha/6.0.0/mocha@6.1.4:
     dependencies:
       mocha: 6.1.4
@@ -858,13 +872,13 @@ packages:
       typescript: '>=2.0'
     resolution:
       integrity: sha512-34jpuOrxDuf+O6iW1JpgTRDFynUZ1iEqtYruBqh35gICNjN8x+LpVcPAcwzLPi9VU6mdA3ym+x233nZmZp445A==
-  /ts-node/8.1.0/typescript@3.4.3:
+  /ts-node/8.1.0/typescript@3.4.5:
     dependencies:
       arg: 4.1.0
       diff: 3.5.0
       make-error: 1.3.5
       source-map-support: 0.5.12
-      typescript: 3.4.3
+      typescript: 3.4.5
       yn: 3.1.0
     dev: false
     engines:
@@ -886,13 +900,13 @@ packages:
     optional: true
     resolution:
       integrity: sha512-zZEYFo4sjORK8W58ENkRn9s+HmQFkkwydDG7My5s/fnfr2YYCaiyXe/HBUcIgU8epEKOXwiahOO+KZYjiXlWyQ==
-  /typescript/3.4.3:
+  /typescript/3.4.5:
     dev: false
     engines:
       node: '>=4.2.0'
     hasBin: true
     resolution:
-      integrity: sha512-FFgHdPt4T/duxx6Ndf7hwgMZZjZpB+U0nMNGVCYPq0rEzWKjEDobm4J6yb3CS7naZ0yURFqdw9Gwc7UOh/P9oQ==
+      integrity: sha512-YycBxUb49UUhdNMU5aJ7z5Ej2XGmaIBL0x34vZ82fn3hGvD+bgrMrVDpatgz2f7YxUMJxMkbWxJZeAvDxVe7Vw==
   /which-module/2.0.0:
     dev: false
     resolution:
@@ -996,26 +1010,45 @@ packages:
       node: '>=6'
     resolution:
       integrity: sha512-kKfnnYkbTfrAdd0xICNFw7Atm8nKpLcLv9AZGEt+kczL/WQVai4e2V6ZN8U/O+iI6WrNuJjNNOyu4zfhl9D3Hg==
+  'file:projects/example.tgz':
+    dependencies:
+      rimraf: 2.6.3
+      ts-node: /ts-node/8.1.0/typescript@3.4.5
+      typescript: 3.4.5
+    dev: false
+    name: '@rush-temp/example'
+    resolution:
+      integrity: sha512-t9UQS4Q5Z3Qv2TE64ixhMKr+v1PTf13EVCX0K9vUbtYewqgOyK/TJf14Fq/Y3Iw6Enhe6GDje1RylFjPMNcrGA==
+      tarball: 'file:projects/example.tgz'
+    version: 0.0.0
   'file:projects/nano.tgz':
     dependencies:
+      '@types/benchmark': 1.0.31
+      '@types/mocha': 5.2.6
+      '@types/node': 8.10.46
+      benchmark: 2.1.4
       mocha: 6.1.4
       rimraf: 2.6.3
       ts-mocha: /ts-mocha/6.0.0/mocha@6.1.4
-      ts-node: /ts-node/8.1.0/typescript@3.4.3
-      typescript: 3.4.3
+      ts-node: /ts-node/8.1.0/typescript@3.4.5
+      typescript: 3.4.5
     dev: false
     name: '@rush-temp/nano'
     resolution:
-      integrity: sha512-qkUpBli1+kLUQaMIr5nZHjfYnunxfcSZSZeUfSUZYizzOibDDsWBp3Z9kh1YmeHAf7v6ZSs30k3dJyPVG9a1WQ==
+      integrity: sha512-T4uqNz5tTH0hsVQ9mg8VZfoBgb6t2zAdCstks1z9kCbDuS0zMr41ctIBb54SZL2zF5cT7GdIWaAMnPbbRdSoBg==
       tarball: 'file:projects/nano.tgz'
     version: 0.0.0
 registry: 'https://registry.npmjs.org/'
 shrinkwrapMinorVersion: 9
 shrinkwrapVersion: 3
 specifiers:
+  '@rush-temp/example': 'file:./projects/example.tgz'
   '@rush-temp/nano': 'file:./projects/nano.tgz'
+  '@types/benchmark': ^1.0.31
+  '@types/mocha': ^5.2.6
+  '@types/node': ^8.10.46
+  benchmark: ^2.1.4
   mocha: ^6.1.4
   rimraf: ^2.6.3
-  ts-mocha: ^6.0.0
   ts-node: ^8.1.0
   typescript: ^3.4.3

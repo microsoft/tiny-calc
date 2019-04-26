@@ -1,0 +1,17 @@
+{
+    "compilerOptions": {
+        "target": "es6",
+        "module": "commonjs",
+        "incremental": true,
+        "declaration": true,
+        "noImplicitAny": true,
+        "noImplicitReturns": true,
+        "noFallthroughCasesInSwitch": true,
+        "removeComments": true,
+        "preserveConstEnums": false,
+        "sourceMap": false,
+        "strict": true,
+        "outDir": "dist/"
+    },
+    "include": ["src/**/*.ts"]
+}

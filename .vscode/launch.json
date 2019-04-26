@@ -7,13 +7,38 @@
         {
             "type": "node",
             "request": "launch",
-            "name": "Nano",
-            "cwd": "${workspaceFolder}/nano",
-            "program": "${workspaceFolder}/nano/node_modules/ts-node/dist/bin.js",
-            "args": [ "src/nano-calc.ts" ],
+            "name": "Nano Bench",
+            "cwd": "${workspaceFolder}/packages/core/nano",
+            "program": "${workspaceFolder}/packages/core/nano/node_modules/ts-node/dist/bin.js",
+            "args": [ "bench/index.ts" ],
+            "env": { "TS_NODE_PROJECT": "tsconfig.json" },
+            "console": "integratedTerminal"
+        },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "Nano Tests",
+            "cwd": "${workspaceFolder}/packages/core/nano",
+            "program": "${workspaceFolder}/packages/core/nano/node_modules/mocha/bin/_mocha",
+            "args": [
+                "-r",
+                "ts-node/register",
+                "--no-timeouts",
+                "test/**/*.spec.ts"
+            ],
+            "env": { "TS_NODE_PROJECT": "tsconfig.json" },
             "console": "integratedTerminal",
-            "skipFiles": ["<node_internals>/**/*.js"],
-            "env": { "TS_NODE_PROJECT": "tsconfig.json" }
+            "skipFiles": ["<node_internals>/**/*.js"]
+        },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "Example",
+            "cwd": "${workspaceFolder}/packages/test/example",
+            "program": "${workspaceFolder}/packages/test/example/node_modules/ts-node/dist/bin.js",
+            "args": [ "src/index.ts" ],
+            "env": { "TS_NODE_PROJECT": "tsconfig.json" },
+            "console": "integratedTerminal"
         },
     ]
 }
