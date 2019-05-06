@@ -1,23 +1,82 @@
-import { ListFormula, context } from "./types";
-
-// const formula = "Table1.Profit.Length * Table1.Loss.Sum + Table1.Tax.Max";
-// const f1 = new TextFormula(documentContext, formula, v => {
-//     console.log(`${formula} = ${v}`);
-// });
-// 
-// setInterval(() => table1.addRow({ Profit: Math.random(), Loss: Math.random(), Tax: Math.random() }), 100);
+import { EnumerationContext } from "@tiny-calc/nano";
+import { editor, createLogger } from "./tableEditor";
+import { viewer } from "./tableViewer";
+import { toCell, Table } from "./table";
+import { simpleCompany } from "./company";
 
 
-// The list formula contains a list of duplicate formulas. We use a
-// memoizing context to ensure that each evaluation of a formula is
-// time invariant.
-
-const listFormula = new ListFormula(context, "IF(Time.Now = Time.Now, 'ok', 'not ok')", v => {
-    const invariant = v.every(x => x === 'ok');
-    if (!invariant) {
-        console.log(v);
+createLogger(editor);
+const rows = 20;
+const data: any = [];
+for (let i = 0; i < rows; i++) {
+    data.push([toCell(1),toCell(2),toCell(3)]);
+}
+const table = new Table(
+    {
+        company: simpleCompany,
+        columnNames: {
+            Person: 0,
+            LikesTea: 1,
+            Salary: 2            
+        },
+        columnFormulas: {},
+        rows: data,
+        caches: [],
+        formulas: []
     }
-    console.log(`value = ${JSON.stringify(v[0])}; uniform = ${invariant}`);
-});
+);
 
-setInterval(() => listFormula.notify(), 100);
+table.view(viewer);
+editor.addEditConsumer(table);
+
+let counter = 0;
+
+simpleCompany.enumerate(
+    EnumerationContext.Properties,
+    undefined as any,
+    (results: string[]) => {
+        if (counter >= rows) {
+            return false;
+        }
+        results.forEach(s => {
+            if (counter < rows){
+                editor.setCell(counter, 0, s);
+                counter++
+            }
+        })
+        return counter < rows;
+    },
+    () => {}
+);
+
+editor.setColumnFormula(1, "IF(Person.likesTea, Person.email, \"NO\")");
+editor.setColumnFormula(2, "Person.age * 10");
+
+setInterval(
+    () => simpleCompany.map(p => ({ ...p, likesTea: !p.likesTea })),
+    1100
+)
+
+setInterval(
+    () => simpleCompany.map(
+        p => ({ ...p, age: Math.random() })
+    ),
+    2000
+)
+
+setInterval(
+    () => simpleCompany.map(
+        p => p.age > 0.5 ? p : ({ ...p, likesTea: false })
+    ),
+    3000
+)
+
+setInterval(
+    () => editor.setCell(10, 0, "Chelsea"),
+    1450
+)
+
+setInterval(
+    () => editor.setCell(10, 0, "Curtis"),
+    800
+)

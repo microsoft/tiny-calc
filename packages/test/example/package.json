@@ -8,11 +8,13 @@
     "test": "ts-node src/index.ts"
   },
   "dependencies": {
-    "@tiny-calc/nano": "^0.0.0"
+      "@tiny-calc/nano": "^0.0.0",
+      "table": "5.3.0"
   },
   "devDependencies": {
     "rimraf": "^2.6.3",
     "ts-node": "^8.1.0",
-    "typescript": "^3.4.3"
+    "typescript": "^3.4.3",
+    "@types/table": "4.0.5"
   }
 }

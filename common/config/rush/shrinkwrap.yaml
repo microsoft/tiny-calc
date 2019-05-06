@@ -3,10 +3,12 @@ dependencies:
   '@rush-temp/nano': 'file:projects/nano.tgz'
   '@types/benchmark': 1.0.31
   '@types/mocha': 5.2.6
-  '@types/node': 8.10.46
+  '@types/node': 8.10.48
+  '@types/table': 4.0.5
   benchmark: 2.1.4
   mocha: 6.1.4
   rimraf: 2.6.3
+  table: 5.3.0
   ts-node: 8.1.0
   typescript: 3.4.5
 packages:
@@ -23,10 +25,23 @@ packages:
     dev: false
     resolution:
       integrity: sha512-1axi39YdtBI7z957vdqXI4Ac25e7YihYQtJa+Clnxg1zTJEaIRbndt71O3sP4GAMgiAm0pY26/b9BrY4MR/PMw==
-  /@types/node/8.10.46:
+  /@types/node/8.10.48:
     dev: false
     resolution:
-      integrity: sha512-PfnRbk836fFs9T9QnZh0G1k9oC6YXCqIK3LX6vU/6oiXtEBSFCiJFj6UnLZtqIIHTsgMn8Dojq3yhmpwY7QWcw==
+      integrity: sha512-c35YEBTkL4rzXY2ucpSKy+UYHjUBIIkuJbWYbsGIrKLEWU5dgJMmLkkIb3qeC3O3Tpb1ZQCwecscvJTDjDjkRw==
+  /@types/table/4.0.5:
+    dev: false
+    resolution:
+      integrity: sha512-M/e/pWOWjm8X/fu8I9eOhc/ww1RsUG1yOr/G3vgdBwVFmfnMiqCRIiEKpDZdscNNCzr/kAAzuTNqGUH1uAk/qQ==
+  /ajv/6.10.0:
+    dependencies:
+      fast-deep-equal: 2.0.1
+      fast-json-stable-stringify: 2.0.0
+      json-schema-traverse: 0.4.1
+      uri-js: 4.2.2
+    dev: false
+    resolution:
+      integrity: sha512-nffhOpkymDECQyR0mnsUtoCE8RlX38G0rYP+wgLWFyZuUyuuojSSvi/+euOiQBIn63whYwYVIIH1TvE3tu4OEg==
   /ansi-colors/3.2.3:
     dev: false
     engines:
@@ -75,6 +90,16 @@ packages:
       node: '>=0.10.0'
     resolution:
       integrity: sha1-iYUI2iIm84DfkEcoRWhJwVAaSw0=
+  /ascii-table/0.0.9:
+    dev: false
+    resolution:
+      integrity: sha1-BqZgTWpV1L9BqaR9mHLXp42jHnM=
+  /astral-regex/1.0.0:
+    dev: false
+    engines:
+      node: '>=4'
+    resolution:
+      integrity: sha512-+Ryf6g3BKoRc7jfp7ad8tM4TtMiaWvbF/1/sQcZPkkS7ag3D5nMBCe2UfOTONtAkaG0tO0ij3C5Lwmf1EiyjHg==
   /balanced-match/1.0.0:
     dev: false
     resolution:
@@ -250,6 +275,14 @@ packages:
       node: '>=6'
     resolution:
       integrity: sha512-adbxcyWV46qiHyvSp50TKt05tB4tK3HcmF7/nxfAdhnox83seTDbwnaqKO4sXRy7roHAIFqJP/Rw/AuEbX61LA==
+  /fast-deep-equal/2.0.1:
+    dev: false
+    resolution:
+      integrity: sha1-ewUhjd+WZ79/Nwv3/bLLFf3Qqkk=
+  /fast-json-stable-stringify/2.0.0:
+    dev: false
+    resolution:
+      integrity: sha1-1RQsDK7msRifh9OnYREGT4bIu/I=
   /find-up/3.0.0:
     dependencies:
       locate-path: 3.0.0
@@ -302,6 +335,17 @@ packages:
     dev: false
     resolution:
       integrity: sha512-vcfuiIxogLV4DlGBHIUOwI0IbrJ8HWPc4MU7HzviGeNho/UJDfi6B5p3sHeWIQ0KGIU0Jpxi5ZHxemQfLkkAwQ==
+  /glob/7.1.4:
+    dependencies:
+      fs.realpath: 1.0.0
+      inflight: 1.0.6
+      inherits: 2.0.3
+      minimatch: 3.0.4
+      once: 1.4.0
+      path-is-absolute: 1.0.1
+    dev: false
+    resolution:
+      integrity: sha512-hkLPepehmnKk41pUGm3sYxoFs/umurYfYJCerbXEyFIWcAzvpipAgVkBqqT9RBKMGjnq6kMuyYwha6csxbiM1A==
   /growl/1.10.5:
     dev: false
     engines:
@@ -416,6 +460,10 @@ packages:
     hasBin: true
     resolution:
       integrity: sha512-YfbcO7jXDdyj0DGxYVSlSeQNHbD7XPWvrVWeVUujrQEoZzWJIRrCPoyk6kL6IAjAG2IolMK4T0hNUe0HOUs5Jw==
+  /json-schema-traverse/0.4.1:
+    dev: false
+    resolution:
+      integrity: sha512-xbbCH5dCYU5T8LcEhhuh7HJ88HXuW3qsI3Y0zOZFKfZEHcpWiHU/Jxzk629Brsab/mMiHQti9wMP+845RPe3Vg==
   /json5/1.0.1:
     dependencies:
       minimist: 1.2.0
@@ -673,6 +721,12 @@ packages:
     dev: false
     resolution:
       integrity: sha512-LwZy+p3SFs1Pytd/jYct4wpv49HiYCqd9Rlc5ZVdk0V+8Yzv6jR5Blk3TRmPL1ft69TxP0IMZGJ+WPFU2BFhww==
+  /punycode/2.1.1:
+    dev: false
+    engines:
+      node: '>=6'
+    resolution:
+      integrity: sha512-XRsRjdf+j5ml+y/6GKHPZbrF/8p2Yga0JPtdqTIY2Xe5ohJPD9saDJJLPvp9+NSBprVvevdXZybnj2cv8OEd0A==
   /require-directory/2.1.1:
     dev: false
     engines:
@@ -689,7 +743,7 @@ packages:
       integrity: sha512-NKN5kMDylKuldxYLSUfrbo5Tuzh4hd+2E8NPPX02mZtn1VuREQToYe/ZdlJy+J3uCpfaiGF05e7B8W0iXbQHmg==
   /rimraf/2.6.3:
     dependencies:
-      glob: 7.1.3
+      glob: 7.1.4
     dev: false
     hasBin: true
     resolution:
@@ -721,6 +775,16 @@ packages:
     dev: false
     resolution:
       integrity: sha1-tf3AjxKH6hF4Yo5BXiUTK3NkbG0=
+  /slice-ansi/2.1.0:
+    dependencies:
+      ansi-styles: 3.2.1
+      astral-regex: 1.0.0
+      is-fullwidth-code-point: 2.0.0
+    dev: false
+    engines:
+      node: '>=6'
+    resolution:
+      integrity: sha512-Qu+VC3EwYLldKa1fCxuuvULvSJOKEgk9pi8dZeCVK7TqBfUNTH4sFkk4joj8afVSfAYgJoSOetjx9QWOJ5mYoQ==
   /source-map-support/0.5.12:
     dependencies:
       buffer-from: 1.1.1
@@ -826,6 +890,17 @@ packages:
       node: '>=6'
     resolution:
       integrity: sha512-on9Kwidc1IUQo+bQdhi8+Tijpo0e1SS6RoGo2guUwn5vdaxw8RXOF9Vb2ws+ihWOmh4JnCJOvaziZWP1VABaLg==
+  /table/5.3.0:
+    dependencies:
+      ajv: 6.10.0
+      lodash: 4.17.11
+      slice-ansi: 2.1.0
+      string-width: 3.1.0
+    dev: false
+    engines:
+      node: '>=6.0.0'
+    resolution:
+      integrity: sha512-6V2qlZHIbbZQGzoP3Ghcj/IQDPhBvQYjZE4W4JEyFMkbzHziIzG6jxmAD87BZ1ZXgwPwgu3MzvCUGMOFRN7wlw==
   /ts-mocha/6.0.0/mocha@6.1.4:
     dependencies:
       mocha: 6.1.4
@@ -907,6 +982,12 @@ packages:
     hasBin: true
     resolution:
       integrity: sha512-YycBxUb49UUhdNMU5aJ7z5Ej2XGmaIBL0x34vZ82fn3hGvD+bgrMrVDpatgz2f7YxUMJxMkbWxJZeAvDxVe7Vw==
+  /uri-js/4.2.2:
+    dependencies:
+      punycode: 2.1.1
+    dev: false
+    resolution:
+      integrity: sha512-KY9Frmirql91X2Qgjry0Wd4Y+YTdrdZheS8TFwvkbLWf/G5KNJDCh6pKL5OZctEW4+0Baa5idK2ZQuELRwPznQ==
   /which-module/2.0.0:
     dev: false
     resolution:
@@ -955,6 +1036,13 @@ packages:
     dev: false
     resolution:
       integrity: sha512-w2LXjoL8oRdRQN+hOyppuXs+V/fVAYtpcrRxZuF7Kt/Oc+Jr2uAcVntaUTNT6w5ihoWfFDpNY8CPx1QskxZ/pw==
+  /yargs-parser/13.1.0:
+    dependencies:
+      camelcase: 5.3.1
+      decamelize: 1.2.0
+    dev: false
+    resolution:
+      integrity: sha512-Yq+32PrijHRri0vVKQEm+ys8mbqWjLiwQkMFNXEENutzLPP0bE4Lcd4iA3OQY5HF+GD3xXxf0MEHb8E4/SA3AA==
   /yargs-unparser/1.5.0:
     dependencies:
       flat: 4.1.0
@@ -994,7 +1082,7 @@ packages:
       string-width: 3.1.0
       which-module: 2.0.0
       y18n: 4.0.0
-      yargs-parser: 13.0.0
+      yargs-parser: 13.1.0
     dev: false
     resolution:
       integrity: sha512-WyEoxgyTD3w5XRpAQNYUB9ycVH/PQrToaTXdYXRdOXvEy1l19br+VJsc0vcO8PTGg5ro/l/GY7F/JMEBmI0BxA==
@@ -1012,20 +1100,23 @@ packages:
       integrity: sha512-kKfnnYkbTfrAdd0xICNFw7Atm8nKpLcLv9AZGEt+kczL/WQVai4e2V6ZN8U/O+iI6WrNuJjNNOyu4zfhl9D3Hg==
   'file:projects/example.tgz':
     dependencies:
+      '@types/table': 4.0.5
+      ascii-table: 0.0.9
       rimraf: 2.6.3
+      table: 5.3.0
       ts-node: /ts-node/8.1.0/typescript@3.4.5
       typescript: 3.4.5
     dev: false
     name: '@rush-temp/example'
     resolution:
-      integrity: sha512-t9UQS4Q5Z3Qv2TE64ixhMKr+v1PTf13EVCX0K9vUbtYewqgOyK/TJf14Fq/Y3Iw6Enhe6GDje1RylFjPMNcrGA==
+      integrity: sha512-Opm25nKmDdE8GymskUQjntx0jBxF6GCboSQjLQIO3SiOV87K/HxxvbGxUVIE87q3CHS4Ms85f4QlRnpObbGKqw==
       tarball: 'file:projects/example.tgz'
     version: 0.0.0
   'file:projects/nano.tgz':
     dependencies:
       '@types/benchmark': 1.0.31
       '@types/mocha': 5.2.6
-      '@types/node': 8.10.46
+      '@types/node': 8.10.48
       benchmark: 2.1.4
       mocha: 6.1.4
       rimraf: 2.6.3
@@ -1035,7 +1126,7 @@ packages:
     dev: false
     name: '@rush-temp/nano'
     resolution:
-      integrity: sha512-T4uqNz5tTH0hsVQ9mg8VZfoBgb6t2zAdCstks1z9kCbDuS0zMr41ctIBb54SZL2zF5cT7GdIWaAMnPbbRdSoBg==
+      integrity: sha512-BAEfQiW/FrRZYRdt4mw+mQvi3B6fWCbpjY7xLshroSAjlzmCoQF9H6V1qucF2CyJlQPnILeQedbcC0lZagk/nQ==
       tarball: 'file:projects/nano.tgz'
     version: 0.0.0
 registry: 'https://registry.npmjs.org/'
@@ -1047,8 +1138,10 @@ specifiers:
   '@types/benchmark': ^1.0.31
   '@types/mocha': ^5.2.6
   '@types/node': ^8.10.46
+  '@types/table': 4.0.5
   benchmark: ^2.1.4
   mocha: ^6.1.4
   rimraf: ^2.6.3
+  table: 5.3.0
   ts-node: ^8.1.0
   typescript: ^3.4.3

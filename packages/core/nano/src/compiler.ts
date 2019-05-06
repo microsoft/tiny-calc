@@ -1,4 +1,3 @@
-import { Producer, Primitive, Consumer, CalcValue } from "./types";
 import { error } from "./debug";
 import { ParserSink, Op, runParser, SyntaxKind } from "./parser";
 
@@ -24,7 +23,7 @@ const operationsMap = {
 type OperationsMap = typeof operationsMap;
 type Operations = OperationsMap[keyof OperationsMap];
 
-function outputConditional(args: string[]): string  {
+function outputConditional(args: string[]): string {
     if (args.length === 3) {
         return `${args[0]}?${args[1]}:${args[2]}`
     }
@@ -71,6 +70,17 @@ const parse = (input: string) => runParser(input, simpleSink);
 /**
  * Runtime logic
  */
+export type Primitive = number | string | boolean;
+export interface CalcObject<O> {
+    request: <R>(
+        origin: O,
+        property: string,
+        cont: (v: CalcValue<O>) => R,
+        reject: (err?: unknown) => R,
+        ...args: any[]
+    ) => R;
+}
+export type CalcValue<O> = Primitive | CalcObject<O>
 
 interface ContContext {
     then: <X>(x: X) => X;
@@ -84,22 +94,18 @@ const cont: ContContext = {
     }
 };
 
-type TinyCalcBinOp = (host: Consumer, k: ContContext, l: CalcValue, r: CalcValue) => CalcValue;
-function liftBinOp(fn: (l: Primitive, r: Primitive) => CalcValue): TinyCalcBinOp {
+type TinyCalcBinOp = <O>(host: O, k: ContContext, l: CalcValue<O>, r: CalcValue<O>) => CalcValue<O>;
+function liftBinOp(fn: (l: Primitive, r: Primitive) => Primitive): TinyCalcBinOp {
     return (host, k, l, r) => {
-        // Assumes that asValue returns a primitive value. We should work this out.
         if (typeof l === "object") {
-            const unboxedL = l.request(host, "asValue", k.then as (v: CalcValue) => Primitive, k.catch);
+            const unboxedL = l.request(host, "value", k.then, k.catch) as Primitive;
             if (typeof r === "object") {
-                return fn(
-                    unboxedL,
-                    r.request(host, "asValue", k.then as (v: CalcValue) => Primitive, k.catch)
-                );
+                return fn(unboxedL, r.request(host, "value", k.then, k.catch) as Primitive);
             }
             return fn(unboxedL, r);
         }
         if (typeof r === "object") {
-            return fn(l, r.request(host, "asValue", k.then as (v: CalcValue) => Primitive, k.catch));
+            return fn(l, r.request(host, "value", k.then, k.catch) as Primitive);
         }
         return fn(l, r);
     };
@@ -122,12 +128,12 @@ const ops: OpContext = {
 
 
 /**
- * Compilation
+ * Compilation and Evaluation
  */
+type RawFormula = <O>(host: O, context: CalcObject<O>, k: ContContext, math: OpContext) => CalcValue<O>;
+export type Formula = <O>(host: O, context: CalcObject<O>) => CalcValue<O>;
+const formula = (raw: RawFormula): Formula => <O>(host: O, context: CalcObject<O>) => raw(host, context, cont, ops);
 
-type RawFormula = (host: Consumer, context: Producer, k: ContContext, math: OpContext) => CalcValue;
-export type Formula = (host: Consumer, context: Producer) => CalcValue;
-const formula = (raw: RawFormula): Formula => (host: Consumer, context: Producer) => raw(host, context, cont, ops);
 export const compile = (text: string) => {
     const parsed = parse(text);
     return formula(new Function("host", "context", "cont", "ops", `return ${parsed};`) as RawFormula);
