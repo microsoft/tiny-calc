@@ -1,6 +1,6 @@
 import { Producer, Primitive, Consumer, CalcValue } from "./types";
-import { error } from "./debug";
-import { ParserSink, Op, runParser, SyntaxKind } from "./parser";
+import { assert, error } from "./debug";
+import { ParserSink, createParser, SyntaxKind } from "./parser";
 
 
 
@@ -16,22 +16,20 @@ const operationsMap = {
     [SyntaxKind.EqualsToken]: "eq",
     [SyntaxKind.LessThanToken]: "lt",
     [SyntaxKind.GreaterThanToken]: "gt",
-    [SyntaxKind.LessThanOrEqualToken]: "lte",
-    [SyntaxKind.GreaterThanOrEqualToken]: "gte",
+    [SyntaxKind.LessThanEqualsToken]: "lte",
+    [SyntaxKind.GreaterThanEqualsToken]: "gte",
     [SyntaxKind.NotEqualsToken]: "ne",
 } as const;
 
 type OperationsMap = typeof operationsMap;
 type Operations = OperationsMap[keyof OperationsMap];
 
-function outputConditional(args: string[]): string  {
-    if (args.length === 3) {
-        return `${args[0]}?${args[1]}:${args[2]}`
+function outputConditional(args: string[]): string {
+    switch (args.length) {
+        case 2: return `${args[0]}?${args[1]}:${false}`
+        case 3: return `${args[0]}?${args[1]}:${args[2]}`
+        default: return error("Unable to compile IF");
     }
-    if (args.length === 2) {
-        return `${args[0]}?${args[1]}:${false}`
-    }
-    return error("Unable to compile IF");
 }
 
 const simpleSink: ParserSink<string> = {
@@ -44,8 +42,11 @@ const simpleSink: ParserSink<string> = {
         }
         return `context.request(host,${JSON.stringify(id)},cont.then,cont.catch)`;
     },
-    fun(identifer: string[], body: string) {
-        return error("Not implemented -- fun");
+    field(label: string) {
+        return label;
+    },
+    paren(expr: string) {
+        return `(${expr})`;
     },
     app(head: string, args: string[]) {
         switch (head) {
@@ -58,15 +59,14 @@ const simpleSink: ParserSink<string> = {
     dot(left: string, right: string) {
         return `${left}.request(host,${right},cont.then,cont.catch)`;
     },
-    binOp(op: Op, left: string, right: string) {
-        const opStr = "ops." + operationsMap[op];
-        return `${opStr}(host,cont,${left},${right})`;
+    binOp(op: SyntaxKind, left: string, right: string) {
+        const opStr = "ops." + (operationsMap as Record<SyntaxKind, string>)[op];
+        return opStr === undefined ? error(`Cannot compile op: ${op}`) : `${opStr}(host,cont,${left},${right})`;
+    },
+    missing() {
+        return `undefined`;
     }
 };
-
-const parse = (input: string) => runParser(input, simpleSink);
-
-
 
 /**
  * Runtime logic
@@ -128,7 +128,10 @@ const ops: OpContext = {
 type RawFormula = (host: Consumer, context: Producer, k: ContContext, math: OpContext) => CalcValue;
 export type Formula = (host: Consumer, context: Producer) => CalcValue;
 const formula = (raw: RawFormula): Formula => (host: Consumer, context: Producer) => raw(host, context, cont, ops);
+export const parse = createParser(simpleSink);
 export const compile = (text: string) => {
-    const parsed = parse(text);
-    return formula(new Function("host", "context", "cont", "ops", `return ${parsed};`) as RawFormula);
+    const [errors, parsed] = parse(text);
+    assert(errors.length === 0);
+    const f = formula(new Function("host", "context", "cont", "ops", `return ${parsed};`) as RawFormula);
+    return f;
 };
