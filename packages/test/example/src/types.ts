@@ -1,223 +1,171 @@
-import { Formula, Producer, Consumer, CalcValue, compile } from "@tiny-calc/nano";
+import { Formula, Producer, Consumer, Primitive, CalcFun, compile } from "@tiny-calc/nano";
 
-enum ColumnProperties {
-    Sum = "Sum",
-    Max = "Max",
-    Min = "Min",
-    Length = "Length",
-    Name = "Name"
-}
+/**
+ * CalcValues as Producers
+ *
+ * Obj is morally equivalent to CalcObj<Consumer<CalcRecord>>.
+ */
 
-function initDependencyGraph() {
-    return {
-        [ColumnProperties.Sum]: new Set(),
-        [ColumnProperties.Max]: new Set(),
-        [ColumnProperties.Min]: new Set(),
-        [ColumnProperties.Length]: new Set(),
-        [ColumnProperties.Name]: new Set()
-    };
-}
+interface Obj extends Producer<CalcRecord> { }
+interface Fun extends CalcFun<Consumer<CalcRecord>> { }
+type Value = Fun | Obj | Primitive;
+type CalcRecord = Record<string, Value>;
 
-class Column implements Producer {
-    private dataCache: Record<Exclude<ColumnProperties, ColumnProperties.Name>, number> | undefined;
-    private consumers: Record<ColumnProperties, Set<Consumer>>;
-    constructor(private name: string, private data: number[]) {
-        this.consumers = initDependencyGraph();
+export class Context implements Producer<CalcRecord> {
+    constructor(private fields: CalcRecord) { }
+
+    id = "context";
+    
+    unsubscribe() { }
+
+    now(property: string) {
+        return this.fields[property];
     }
 
-    private computeCache() {
-        this.dataCache = {
-            [ColumnProperties.Sum]: this.data.reduce((x, y) => x + y, 0),
-            [ColumnProperties.Max]: Math.max(...this.data),
-            [ColumnProperties.Min]: Math.min(...this.data),
-            [ColumnProperties.Length]: this.data.length
-        };
-    }
-
-    private getValue(property: ColumnProperties) {
-        switch (property) {
-            case ColumnProperties.Name:
-                return this.name;
-            default:
-                if (this.dataCache === undefined) {
-                    this.computeCache();
-                }
-                return this.dataCache![property];
+    nowMany<K extends string>(properties: Record<K, unknown>) {
+        const result: Partial<Pick<CalcRecord, K>> = {} as any;
+        for (const p in properties) {
+            result[p] = this.now(p);
         }
+        return result;
     }
 
-    private notifyProperty(property: ColumnProperties) {
-        this.consumers[property].forEach(host => host.notify(this, property, this.getValue(property)));
+    request(origin: Consumer<CalcRecord>, property: string) {
+        const v = this.now(property);
+        return v === undefined ? { kind: "Pending" } as const : v;
     }
 
-    private unSubscribeProperty(property: ColumnProperties, host: Consumer) {
-        this.consumers[property].delete(host);
-    }
-
-    unsubscribe(origin: Consumer) {
-        this.unSubscribeProperty(ColumnProperties.Sum, origin);
-        this.unSubscribeProperty(ColumnProperties.Max, origin);
-        this.unSubscribeProperty(ColumnProperties.Min, origin);
-        this.unSubscribeProperty(ColumnProperties.Length, origin);
-        this.unSubscribeProperty(ColumnProperties.Name, origin);
-    }
-
-    isProperty(prop: string): prop is ColumnProperties {
-        switch (prop) {
-            case ColumnProperties.Sum:
-            case ColumnProperties.Max:
-            case ColumnProperties.Min:
-            case ColumnProperties.Length:
-            case ColumnProperties.Name:
-                return true;
+    requestMany<K extends string>(origin: Consumer<CalcRecord>, properties: Record<K, unknown>) {
+        const result: Pick<CalcRecord, K> = {} as any;
+        for (const p in properties) {
+            // TODO: export pick pending
+            result[p] = this.request(origin, p) as any;
         }
-        return false;
-    }
-
-    request<R>(origin: Consumer, property: string, cont: (v: CalcValue) => R, err: () => R) {
-        if (this.isProperty(property)) {
-            this.consumers[property].add(origin);
-            return cont(this.getValue(property));
-        }
-        return err();
-    }
-
-    appendValue(value: number) {
-        this.data.push(value);
-        this.dataCache = undefined;
-        this.notifyProperty(ColumnProperties.Sum);
-        this.notifyProperty(ColumnProperties.Max);
-        this.notifyProperty(ColumnProperties.Min);
-        this.notifyProperty(ColumnProperties.Length);
+        return result;
     }
 }
 
-class Table implements Producer {
-    constructor(private name: string, private columns: Record<string, Column>) { }
-
-    unsubscribe(origin: Consumer) { }
-
-    isProperty(property: string) {
-        return property in this.columns;
-    }
-
-    request<R>(origin: Consumer, property: string, cont: (v: CalcValue) => R, err: () => R) {
-        if (this.isProperty(property)) {
-            return cont(this.columns[property]);
-        }
-        return err();
-    }
-
-    addRow(row: Record<string, number>) {
-        for (const col in row) {
-            if (this.isProperty(col)) {
-                this.columns[col].appendValue(row[col]);
-            }
-        }
-    }
-}
-
-export class Context implements Producer {
-    constructor(private fields: Record<string, Producer>) { }
-
-    unsubscribe(origin: Consumer) { }
-
-    isProperty(property: string) {
-        return property in this.fields;
-    }
-
-    request<R>(origin: Consumer, property: string, cont: (v: CalcValue) => R, err: () => R) {
-        if (this.isProperty(property)) {
-            return cont(this.fields[property]);
-        }
-        return err();
-    }
-}
-
-
-
-export class TextFormula implements Consumer {
-    private formula: Formula;
-    constructor(private scope: Producer, private formulaText: string, private withValue: (v: CalcValue) => void) {
-        this.formula = compile(this.formulaText);
-        this.withValue(this.formula(this, this.scope));
-    }
-
-    notify() {
-        console.time("recalc");
-        const value = this.formula(this, this.scope);
-        console.timeEnd("recalc");
-        this.withValue(value);
-    }
-}
-
-export const table1 = new Table("Table1", {
-    Profit: new Column("Profit", [1, 2, 3, 4, 5]),
-    Loss: new Column("Loss", [10, 20, 30, 40, 50]),
-    Tax: new Column("Tax", [100, 200, 300, 400, 500])
-});
-
-export const documentContext = new Context({ Table1: table1 });
-
-export class ListFormula implements Consumer {
+export class ListFormula implements Consumer<CalcRecord> {
     private formulas: Formula[];
-    constructor(private scope: Producer, private formulaText: string, private withValue: (v: CalcValue[]) => void) {
+    constructor(private scope: Producer<CalcRecord>, private formulaText: string, private withValue: (v: any[]) => void) {
         this.formulas = [];
-        for (let i = 0; i < 1000; i += 1) {
-            this.formulas.push(compile(this.formulaText));
+        const f = compile(this.formulaText);
+        for (let i = 0; i < 1000000; i += 1) {
+            this.formulas.push(f);
         }
     }
 
     notify() {
         console.time("recalc");
         const scope = new MemoProducer(this.scope);
-        const values = this.formulas.map(fn => fn(this, scope));
+        const values = [];
+        for (let i = 0; i < 1000000; i += 1) {
+            values.push(this.formulas[i](this, scope));
+        }
         console.timeEnd("recalc");
-        this.withValue(values);
+        // TODO: export delayed type
+        this.withValue(values.map(([_, v]) => v));
+    }
+
+    notifyMany() {
+        this.notifyMany();
     }
 }
 
-export class MemoProducer implements Producer {
-    private cache: Record<string, CalcValue>;
-    constructor(private readonly source: Producer) {
+export class MemoProducer implements Producer<CalcRecord> {
+    private cache: CalcRecord
+    constructor(private readonly source: Producer<CalcRecord>) {
         this.cache = {};
     }
-    unsubscribe() {}
 
-    isProperty(property: string) {
-        return this.source.isProperty(property);
-    }
+    id = "memo"
+    
+    unsubscribe() { }
 
-    request<R>(origin: Consumer, property: string, cont: (v: CalcValue) => R, err: () => R) {
+    now(property: string) {
         if (this.cache[property] !== undefined) {
-            return cont(this.cache[property]);
+            return this.cache[property];
         }
-        return this.source.request(origin, property, v => {
-            if (typeof v === "object") {
-                this.cache[property] = new MemoProducer(v);
-                return cont(this.cache[property]);
-            }
-            this.cache[property] = v;
-            return cont(v);
-        }, err);
+        const v = this.source.now(property);
+        if (v === undefined) return v;
+        if (typeof v === "object") {
+            this.cache[property] = new MemoProducer(v);
+            return this.cache[property];
+        }
+        this.cache[property] = v;
+        return v;
+    }
+
+    nowMany<K extends string>(properties: Record<K, unknown>) {
+        const result: Partial<Pick<CalcRecord, K>> = {} as any;
+        for (const p in properties) {            
+            result[p] = this.now(p);
+        }
+        return result;
+    }
+
+    request(origin: Consumer<CalcRecord>, property: string) {
+        const v = this.now(property);
+        return v === undefined ? { kind: "Pending" } as const : v;
+    }
+
+    requestMany<K extends string>(origin: Consumer<CalcRecord>, properties: Record<K, unknown>) {
+        const result: Pick<CalcRecord, K> = {} as any;
+        for (const p in properties) {
+            // TODO: export pick pending
+            result[p] = this.request(origin, p) as any;
+        }
+        return result;
     }
 }
 
-export class TimeProducer implements Producer {
-    constructor() {}
+export class TimeProducer implements Producer<CalcRecord> {
+    constructor() { }
 
-    unsubscribe() {}
+    id = "Time"
+    
+    unsubscribe() { }
 
-    isProperty(property: string) {
-        return property === "Now";
+    now() { return Date.now(); }
+
+    nowMany() { return { Now: this.now() } as any }
+
+    request(origin: Consumer<CalcRecord>, property: string) {
+        return this.now();
     }
 
-    request<R>(origin: Consumer, property: string, cont: (v: CalcValue) => R, err: () => R) {
-        if (this.isProperty(property)) {
-            return cont(Date.now());
-        }
-        return err();
+    requestMany(origin: Consumer<CalcRecord>, properties: Record<string, unknown>) {
+        return { Now: this.now() } as any;
     }
 }
 
-export const context = new Context({ Time: new TimeProducer() });
+export class MathProducer implements Producer<CalcRecord> {
+    constructor() { }
+
+    id = "Math"
+    
+    unsubscribe() { }
+
+    static max: CalcFun<Consumer<CalcRecord>> = (_t: any, _o: any, [x, y]: any[]) => y > x ? y : x;
+    static min: CalcFun<Consumer<CalcRecord>> = (_t: any, _o: any, [x, y]: any[]) => y < x ? y : x;
+    
+    now(property: string) {
+        switch (property) {
+            case "Max": return MathProducer.max;
+            case "Min": return MathProducer.min;
+            default: return undefined;
+        }
+    }
+
+    nowMany() { return { Max: MathProducer.max, Min: MathProducer.min } as any }
+
+    request(origin: Consumer<CalcRecord>, property: string) {
+        return this.now(property)!;
+    }
+
+    requestMany() {
+        return this.nowMany()
+    }
+}
+
+export const context = new Context({ Time: new TimeProducer(), Math: new MathProducer() });
