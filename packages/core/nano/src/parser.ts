@@ -640,7 +640,7 @@ export const createParser = <R>(sink: ParserSink<R>) => {
             }
             nextToken();
         }
-        if (freshArgument) {
+        if (freshArgument && list.length > 0) {
             list.push(sink.missing(nextArgPos));
         }
         parseExpected(SyntaxKind.CloseParenToken);
