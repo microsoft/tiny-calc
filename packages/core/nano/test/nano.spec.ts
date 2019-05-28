@@ -1,6 +1,5 @@
 import { SyntaxKind, ParserSink, createParser } from "../src/parser";
-import { compile } from "../src/compiler";
-import * as types from "../src/types";
+import { compile, CalcValue, CalcObj, CalcFun } from "../src/compiler";
 import * as assert from "assert";
 import "mocha";
 
@@ -30,7 +29,25 @@ const astSink: ParserSink<object> = {
         return { pos }
     }
 };
+
 export const astParse = createParser(astSink);
+
+const sum: CalcFun<undefined> = (_trace: any, _host: undefined, args: any[]) => args.reduce((prev, now) => prev + now, 0);
+const prod: CalcFun<undefined> = (_trace: any, _host: undefined, args: any[]) => args.reduce((prev, now) => prev * now, 1);
+
+const testContext: CalcObj<undefined> = {
+    request: (_origin: undefined, property: string) => {
+        switch (property) {
+            case "Foo": return 3;
+            case "Bar": return 5;
+            case "Baz": return { kind: "Pending" };
+            case "Qux": return { kind: "Pending" };
+            case "Sum": return sum;
+            case "Product": return prod;
+            default: return 0;
+        }
+    }
+}
 
 describe("nano", () => {
     function parseTest(expression: string, expected: object, errorCount: number) {
@@ -41,10 +58,11 @@ describe("nano", () => {
         });
     }
 
-    function evalTest(expression: string, expected: types.CalcValue) {
+    function evalTest(expression: string, expected: CalcValue<any>) {
         it(`Eval: ${expression}`, () => {
             const f = compile(expression);
-            const actual = f(undefined as any, undefined as any);
+            const [pending, actual] = f(undefined, testContext);
+            assert.deepEqual(pending, []);
             assert.strictEqual(actual, expected);
         });
     }
@@ -522,6 +540,15 @@ describe("nano", () => {
     ]
 
     const evalCases = [
+        { expression: "Sum(Foo + Bar, Bar * Foo, 3, IF(Foo < 0, 10, 100))", expected: 126 },
+        { expression: `Sum(1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1)+
+Sum(1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1)+
+Product(1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1)+
+Sum(1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1)+
+Product(1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1)+
+Sum(1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1)+
+Product(1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1)`, expected: 259 },
+        { expression: "IF(Foo > 2, Foo + Bar, Bar * Foo)", expected: 8 },
         { expression: "1.3333 + 2.2222", expected: 3.5555 },
         { expression: "1 + 2    + 3 + 4 =   10 - 10 + 10", expected: true },
         { expression: "IF(1*2*3*4<>8, 'hello' + 'world', 10 / 2)", expected: "helloworld" },
@@ -530,15 +557,8 @@ describe("nano", () => {
         { expression: "1*2+3*4", expected: 14 },
         { expression: "4*1*2+3*4", expected: 20 },
         { expression: "4*1*(2+3)*4", expected: 80 },
-        {
-            expression: `1+1*1+1*1/1+1+1*1+1*1/1+1*1+1*1/1+1*1+1*1/1+1*1+1*1/1+1*1+1
-*1/1+1*1+1*1/1+1+1*1+1*1/1+1+1*1+1*1/1+1*1+1*1/1+1*1+1*1/1+1*1+1*1/1+1*1+1*1/1+
-1*1+1*1/1+1+1*1+1*1/1+1+1*1+1*1/1+1*1+1*1/1+1*1+1*1/1+1*1+1*1/1+1*1+1*1/1+1*1+1
-*1/1+1+1*1+1*1/1+1+1*1+1*1/1+1*1+1*1/1+1*1+1*1/1+1*1+1*1/1+1*1+1*1/1+1*1+1*1/1+
-1+1*1+1*1/1+1+1*1+1*1/1+1*1+1*1/1+1*1+1*1/1+1*1+1*1/1+1*1+1*1/1+1*1+1*1/1+1+1*1
-+1*1/1+1+1*1+1*1/1+1*1+1*1/1+1*1+1*1/1+1*1+1*1/1+1*1+1*1/1+1*1+1*1/1+1+1*1+1*1/
-1+1+1*1+1*1/1+1*1+1*1/1+1*1+1*1/1+1*1+1*1/1+1*1+1*1/1+1*1+1*1/1`, expected: 112
-        }
+        { expression: "Foo + Bar", expected: 8 },
+        { expression: "IF(Foo * Bar > 10000, 'left', 'right')", expected: "right" },
     ]
 
     for (const { expression, expected, errorCount } of parseCases) {
