@@ -1,6 +1,3 @@
-// export type Primitive = number | string | boolean;
-// export type CalcValue = Primitive | Producer;
-
 export interface Consumer<T> {
     notify: <K extends keyof T>(property: K, value: T[K]) => void;
     notifyMany: <K extends keyof T>(values: Pick<T, K>) => void;
