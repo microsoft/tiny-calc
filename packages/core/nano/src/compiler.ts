@@ -128,8 +128,9 @@ function liftBinOp(fn: (l: Primitive, r: Primitive) => Primitive): TinyCalcBinOp
     return (trace, host, l, r) => {
         const lAsValue = typeof l === "object" ? trace(l.request(host, "value")) : l;
         const rAsValue = typeof r === "object" ? trace(r.request(host, "value")) : r;
-        if (typeof lAsValue === "function") { return functionAsOpArgumentError; }
         if (typeof lAsValue === "object") { return lAsValue; }
+        if (isDelayed(rAsValue)) { return delay; }
+        if (typeof lAsValue === "function") { return functionAsOpArgumentError; }
         if (typeof rAsValue === "function") { return functionAsOpArgumentError; }
         if (typeof rAsValue === "object") { return rAsValue; }
         return fn(lAsValue, rAsValue);
