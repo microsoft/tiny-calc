@@ -413,12 +413,12 @@ function createScanner(onError: (message: string, pos: number) => void, initialT
         const start = pos;
         scanNumberFragment();
         let decimalFragment: string | undefined;
-        if (text.charCodeAt(pos) === CharacterCodes.dot) {
+        if (text.charCodeAt(pos) === CharacterCodes.dot && pos < end && !isIdentifierStart(text.charCodeAt(pos + 1))) {
             pos += 1;
             decimalFragment = scanNumberFragment();
         }
         const textPart = text.substring(start, pos);
-        const result: string = decimalFragment !== undefined ? "" + +textPart : textPart;
+        const result = decimalFragment !== undefined ? "" + +textPart : textPart;
         return {
             type: SyntaxKind.NumberLiteral,
             value: result

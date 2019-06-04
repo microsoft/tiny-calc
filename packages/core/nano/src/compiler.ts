@@ -5,6 +5,36 @@ import { ParserSink, createParser, SyntaxKind } from "./parser";
 
 
 /**
+ * Calc Values
+ */
+
+export type Primitive = number | string | boolean;
+
+// TODO: Support Completions
+export interface CalcObj<O> {
+    request(origin: O, property: string, ...args: any[]): CalcValue<O> | Pending<CalcValue<O>>;
+}
+
+export interface CalcFun<O> {
+    (trace: Trace, origin: O, args: CalcValue<O>[]): Delayed<CalcValue<O>>;
+}
+
+export type CalcValue<O> = Primitive | CalcObj<O> | CalcFun<O>;
+
+function makeError(message: string): CalcObj<any> {
+    return {
+        request(_, property) {
+            if (property === "message") { return message };
+            return this;
+        }
+    };
+}
+
+const requestOnNonObjectError = makeError("The target of a dot-operation must be a calc object.");
+const appOnNonFunctionError = makeError("The target of an application must be a calc function.");
+const functionAsOpArgumentError = makeError("Operator argument must be a primitive.");
+
+/**
  * Delay Effects
  */
 
@@ -42,14 +72,14 @@ function makeTracer(): [Pending<unknown>[], Trace] {
 
 /** Lifting of core operations into the `Delayed` S.A.F. */
 interface LiftedCore {
-    req: <O>(trace: Trace, host: O, context: Delayed<CalcObj<O>>, prop: string) => Delayed<CalcValue<O>>;
+    req: <O>(trace: Trace, host: O, context: Delayed<CalcValue<O>>, prop: string) => Delayed<CalcValue<O>>;
     select: <L, R>(cond: Delayed<boolean>, l: () => Delayed<L>, r: () => Delayed<R>) => Delayed<L | R>;
     app2: <O, A, B, C>(trace: Trace, host: O, op: <O>(trace: Trace, host: O, l: A, r: B) => C, l: Delayed<A>, r: Delayed<B>) => Delayed<C>;
-    app: <O>(trace: Trace, host: O, fn: Delayed<CalcFun<O>>, args: Delayed<CalcValue<O>>[]) => Delayed<CalcValue<O>>;
+    app: <O>(trace: Trace, host: O, fn: Delayed<CalcValue<O>>, args: Delayed<CalcValue<O>>[]) => Delayed<CalcValue<O>>;
 }
 
-function req<O>(trace: Trace, host: O, context: Delayed<CalcObj<O>>, prop: string): Delayed<CalcValue<O>> {
-    return isDelayed(context) ? delay : trace(context.request(host, prop));
+function req<O>(trace: Trace, host: O, context: Delayed<CalcValue<O>>, prop: string): Delayed<CalcValue<O>> {
+    return isDelayed(context) ? delay : typeof context === "object" ? trace(context.request(host, prop)) : requestOnNonObjectError;
 }
 
 function select<L, R>(cond: Delayed<boolean>, l: () => Delayed<L>, r: () => Delayed<R>): Delayed<L | R> {
@@ -60,34 +90,16 @@ function app2<O, A, B, C>(trace: Trace, host: O, op: <O>(trace: Trace, host: O, 
     return isDelayed(l) || isDelayed(r) ? delay : op(trace, host, l, r);
 }
 
-function app<O, A, B>(trace: Trace, host: O, fn: Delayed<(trace: Trace, origin: O, args: A[]) => Delayed<B>>, args: Delayed<A>[]): Delayed<B> {
+function app<O>(trace: Trace, host: O, fn: Delayed<CalcValue<O>>, args: Delayed<CalcValue<O>>[]): Delayed<CalcValue<O>> {
     if (isDelayed(fn)) { return delay };
+    if (typeof fn !== "function") { return appOnNonFunctionError; }
     for (let i = 0; i < args.length; i += 1) {
         if (isDelayed(args[i])) { return delay };
     }
-    return fn(trace, host, args as A[]);
+    return fn(trace, host, args as CalcValue<O>[]);
 }
 
 const ef: LiftedCore = { req, select, app2, app };
-
-
-
-/**
- * Calc Values
- */
-
-export type Primitive = number | string | boolean;
-
-// TODO: Support Completions
-export interface CalcObj<O> {
-    request(origin: O, property: string, ...args: any[]): CalcValue<O> | Pending<CalcValue<O>>;
-}
-
-export interface CalcFun<O> {
-    (trace: Trace, origin: O, args: CalcValue<O>[]): Delayed<CalcValue<O>>;
-}
-
-export type CalcValue<O> = Primitive | CalcObj<O> | CalcFun<O>;
 
 
 
@@ -113,40 +125,15 @@ type Operations = OperationsMap[keyof OperationsMap];
 type TinyCalcBinOp = <O>(trace: Trace, host: O, l: CalcValue<O>, r: CalcValue<O>) => Delayed<CalcValue<O>>;
 
 function liftBinOp(fn: (l: Primitive, r: Primitive) => Primitive): TinyCalcBinOp {
-    // TODO: Assertions on request.value
     return (trace, host, l, r) => {
-        if (typeof l === "object") {
-            const unboxedL = trace(l.request(host, "value")) as Delayed<Primitive>;
-            if (typeof r === "object") {
-                const unboxedR = trace(r.request(host, "value")) as Delayed<Primitive>;
-                /* 
-                 * Equivalent to:
-                 * app2(
-                 *   trace, 
-                 *   host, 
-                 *   (_trace, _host, l, r) => fn(l, r), 
-                 *   trace(l.request(host, "value")),
-                 *   trace(r.request(host, "value"))
-                 *  ); 
-                 */
-                return isDelayed(unboxedL) || isDelayed(unboxedR) ? delay : fn(unboxedL, unboxedR);
-            }
-            if (typeof r === "function") {
-                return error("TODO: function fallback");
-            }
-            return isDelayed(unboxedL) ? delay : fn(unboxedL, r);
-        }
-        if (typeof l === "function") {
-            return error("TODO: function fallback");
-        }
-        if (typeof r === "object") {
-            const unboxedR = trace(r.request(host, "value")) as Delayed<Primitive>;
-            return isDelayed(unboxedR) ? delay : fn(l, unboxedR);
-        }
-        if (typeof r === "function") {
-            return error("TODO: function fallback");
-        }
-        return fn(l, r);
+        const lAsValue = typeof l === "object" ? trace(l.request(host, "value")) : l;
+        const rAsValue = typeof r === "object" ? trace(r.request(host, "value")) : r;
+        if (typeof lAsValue === "object") { return lAsValue; }
+        if (isDelayed(rAsValue)) { return delay; }
+        if (typeof lAsValue === "function") { return functionAsOpArgumentError; }
+        if (typeof rAsValue === "function") { return functionAsOpArgumentError; }
+        if (typeof rAsValue === "object") { return rAsValue; }
+        return fn(lAsValue, rAsValue);
     };
 }
 
