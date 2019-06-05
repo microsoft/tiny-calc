@@ -21,6 +21,7 @@
     {
       "packageName": "@tiny-calc-test/example",
       "projectFolder": "packages/test/example",
+      "shouldPublish": false,
       "reviewCategory": "test"
     }
   ]
