@@ -8,4 +8,6 @@ const listFormula = new ListFormula(context, "IF(Time.Now = Time.Now, Math.Max(T
     console.log(`value = ${JSON.stringify(v[0])}; uniform = ${invariant}`);
 });
 
-setInterval(() => listFormula.notify(), 100);
+for (let i = 0; i < 10; i++) {
+    listFormula.notify();
+}

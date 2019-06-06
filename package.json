@@ -1,0 +1,9 @@
+{
+    "scripts": {
+        "rush": "node common/scripts/install-run-rush.js",
+        "postinstall": "npm run rush -- install",
+        "build": "npm run rush -- build",
+        "test": "npm run rush -- test",
+        "prepublish": "npm run build && npm run test"
+    }
+}
