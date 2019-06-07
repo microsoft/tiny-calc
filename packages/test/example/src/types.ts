@@ -50,8 +50,10 @@ export class ListFormula implements Consumer<CalcRecord> {
     constructor(private scope: Producer<CalcRecord>, private formulaText: string, private withValue: (v: any[]) => void) {
         this.formulas = [];
         const f = compile(this.formulaText);
-        for (let i = 0; i < 1000000; i += 1) {
-            this.formulas.push(f);
+        if (f !== undefined) {
+            for (let i = 0; i < 1000000; i += 1) {
+                this.formulas.push(f);
+            }
         }
     }
 

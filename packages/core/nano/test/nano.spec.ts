@@ -61,7 +61,8 @@ describe("nano", () => {
     function evalTest(expression: string, expected: CalcValue<any>) {
         it(`Eval: ${expression}`, () => {
             const f = compile(expression);
-            const [pending, actual] = f(undefined, testContext);
+            assert.notEqual(f, undefined);
+            const [pending, actual] = f!(undefined, testContext);
             assert.deepEqual(pending, []);
             assert.strictEqual(actual, expected);
         });
