@@ -209,7 +209,7 @@ const keywords: Record<string, SyntaxKind> = {
 };
 
 interface Scanner {
-    freshenContext: (onError: (message: string, pos: number) => void, text: string) => void;
+    freshenContext: (onError: (message: string, start: number, end: number) => void, text: string) => void;
     getToken: () => SyntaxKind;
     getTokenValue: () => string;
     getWSTokenPos: () => number;
@@ -218,7 +218,7 @@ interface Scanner {
     scan: () => SyntaxKind;
 }
 
-function createScanner(onError: (message: string, pos: number) => void, initialText: string): Scanner {
+function createScanner(onError: (message: string, start: number, end: number) => void, initialText: string): Scanner {
     let text = initialText;
     let token: SyntaxKind = SyntaxKind.Unknown;
     let tokenValue: string = "";
@@ -228,7 +228,7 @@ function createScanner(onError: (message: string, pos: number) => void, initialT
     let end = text.length;
     let onScanError = onError;
 
-    function freshenContext(onError: (message: string, pos: number) => void, newText: string) {
+    function freshenContext(onError: (message: string, start: number, end: number) => void, newText: string) {
         text = newText;
         token = SyntaxKind.Unknown;
         tokenValue = "";
@@ -330,7 +330,7 @@ function createScanner(onError: (message: string, pos: number) => void, initialT
                         ({ type: token, value: tokenValue } = scanIdentifier());
                         return token;
                     }
-                    onScanError("Unknown Character", pos);
+                    onScanError("Unknown Character", pos, pos);
                     pos += 1;
                     return (token = SyntaxKind.Unknown);
             }
@@ -360,7 +360,7 @@ function createScanner(onError: (message: string, pos: number) => void, initialT
         // `pos` points to backslash
         pos += 1;
         if (pos >= end) {
-            onScanError("Unterminated string literal", pos);
+            onScanError("Unterminated string literal", pos, pos);
             return "";
         }
         const ch = text.charCodeAt(pos);
@@ -377,7 +377,7 @@ function createScanner(onError: (message: string, pos: number) => void, initialT
             case CharacterCodes.doubleQuote:
                 return "\"";
             default:
-                onScanError("Unterminated string literal", pos);
+                onScanError("Unterminated string literal", pos, pos);
                 return String.fromCharCode(ch);
         }
     }
@@ -389,7 +389,7 @@ function createScanner(onError: (message: string, pos: number) => void, initialT
         let start = pos;
         while (true) {
             if (pos >= end) {
-                onScanError("Unterminated string literal", pos);
+                onScanError("Unterminated string literal", pos, pos);
                 return "";
             }
             const ch = text.charCodeAt(pos);
@@ -413,7 +413,7 @@ function createScanner(onError: (message: string, pos: number) => void, initialT
         const start = pos;
         scanNumberFragment();
         let decimalFragment: string | undefined;
-        if (text.charCodeAt(pos) === CharacterCodes.dot && pos < end && !isIdentifierStart(text.charCodeAt(pos + 1))) {
+        if (text.charCodeAt(pos) === CharacterCodes.dot) {
             pos += 1;
             decimalFragment = scanNumberFragment();
         }
@@ -509,7 +509,7 @@ export interface ParserSink<R> {
     missing: (position: number) => R;
 }
 
-export type Diagnostic = [string, number];
+export type Diagnostic = [string, number, number];
 
 export interface Parser<R> {
     (input: string): [readonly Diagnostic[], R];
@@ -545,7 +545,9 @@ export const createParser = <R>(sink: ParserSink<R>) => {
     const parse = (input: string): [readonly Diagnostic[], R] => {
         freshenContext(input);
         nextToken();
-        return [errors, parseExpression()];
+        const exp = parseExpression();
+        parseExpected(SyntaxKind.EndOfInputToken);
+        return [errors, exp];
     };
 
     return parse;
@@ -556,8 +558,8 @@ export const createParser = <R>(sink: ParserSink<R>) => {
         currentToken = SyntaxKind.Unknown;
     }
 
-    function onError(message: string, position: number) {
-        errors.push([message, position]);
+    function onError(message: string, start: number, end: number) {
+        errors.push([message, start, end]);
     }
 
     function nextToken() {
@@ -569,7 +571,7 @@ export const createParser = <R>(sink: ParserSink<R>) => {
             nextToken();
             return true;
         }
-        onError(`Expected: ${kind}`, scanner.getTextPos());
+        onError(`Expected: ${kind}`, scanner.getTokenPos(), scanner.getTextPos());
         return false;
     }
 
@@ -620,6 +622,14 @@ export const createParser = <R>(sink: ParserSink<R>) => {
         let freshArgument = true;
         while (true) {
             if (isStartOfExpression(currentToken)) {
+                // Only parse out an expected comma when we have
+                // already parsed an expression for this argument
+                // position and we come across another expression.
+                // This assumes that a comma is not a valid start of
+                // expression.
+                if(!freshArgument) {
+                    parseExpected(SyntaxKind.CommaToken);
+                }
                 list.push(parseExpression());
                 freshArgument = parseOptional(SyntaxKind.CommaToken);
                 if (freshArgument) {
@@ -663,7 +673,7 @@ export const createParser = <R>(sink: ParserSink<R>) => {
         }
         return expression;
     }
-    
+
     function parsePrimary(): R {
         switch (currentToken) {
             case SyntaxKind.NumberLiteral:

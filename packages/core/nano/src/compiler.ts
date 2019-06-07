@@ -222,7 +222,8 @@ const formula = (raw: RawFormula): Formula => <O>(host: O, context: CalcValue<O>
 
 export const compile = (text: string) => {
     const [errors, parsed] = parse(text);
-    // TODO: Error handling.
-    assert(errors.length === 0);
+    if (errors.length > 0) {
+        return undefined;
+    }
     return formula(new Function("trace", "host", "context", "ops", "ef", `return ${parsed};`) as RawFormula);
 };

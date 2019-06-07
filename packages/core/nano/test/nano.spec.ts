@@ -61,7 +61,8 @@ describe("nano", () => {
     function evalTest(expression: string, expected: CalcValue<any>) {
         it(`Eval: ${expression}`, () => {
             const f = compile(expression);
-            const [pending, actual] = f(undefined, testContext);
+            assert.notEqual(f, undefined);
+            const [pending, actual] = f!(undefined, testContext);
             assert.deepEqual(pending, []);
             assert.strictEqual(actual, expected);
         });
@@ -248,7 +249,7 @@ describe("nano", () => {
                     }
                 ]
             },
-            errorCount: 1
+            errorCount: 2
         },
         {
             expression: "FOO(  ,  ,     ,)",
@@ -278,7 +279,7 @@ describe("nano", () => {
             errorCount: 0
         },
         {
-            expression: "FOO(#  ,  # , ##  3  ##, # ##",
+            expression: "FOO(#  ,  # , ##  3  ##, # ##     ",
             expected: {
                 "start": 0,
                 "end": 29,
@@ -537,17 +538,73 @@ describe("nano", () => {
             },
             errorCount: 0
         },
+        {
+            expression: "10 + 42.Foobar + 3",
+            expected: {
+                "start": 0,
+                "end": 8,
+                "op": 9,
+                "left": {
+                    "start": 0,
+                    "end": 2,
+                    "value": 10
+                },
+                "right": {
+                    "start": 4,
+                    "end": 8,
+                    "value": 42
+                }
+            },
+            errorCount: 1
+        },
+        {
+            expression: "Function(10, 42.Foobar, 5)",
+            expected: {
+                "start": 0,
+                "end": 26,
+                "head": {
+                    "start": 0,
+                    "end": 8,
+                    "id": "Function"
+                },
+                "args": [
+                    {
+                        "start": 9,
+                        "end": 11,
+                        "value": 10
+                    },
+                    {
+                        "start": 12,
+                        "end": 16,
+                        "value": 42
+                    },
+                    {
+                        "start": 16,
+                        "end": 22,
+                        "id": "Foobar"
+                    },
+                    {
+                        "start": 23,
+                        "end": 25,
+                        "value": 5
+                    }
+                ]
+            },
+            errorCount: 1
+        }
     ]
 
     const evalCases = [
         { expression: "Sum(Foo + Bar, Bar * Foo, 3, IF(Foo < 0, 10, 100))", expected: 126 },
-        { expression: `Sum(1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1)+
+        {
+            expression: `Sum(1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1)+
 Sum(1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1)+
 Product(1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1)+
 Sum(1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1)+
 Product(1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1)+
 Sum(1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1)+
-Product(1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1)`, expected: 259 },
+Product(1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1)`, expected: 259
+        },
         { expression: "IF(Foo > 2, Foo + Bar, Bar * Foo)", expected: 8 },
         { expression: "1.3333 + 2.2222", expected: 3.5555 },
         { expression: "1 + 2    + 3 + 4 =   10 - 10 + 10", expected: true },
@@ -562,8 +619,7 @@ Product(1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
         { expression: "4(3,2).message", expected: "The target of an application must be a calc function." },
         { expression: "(Sum + 3).message", expected: "Operator argument must be a primitive." },
         { expression: "42.", expected: 42 },
-        { expression: "42.01", expected: 42.01 },
-        { expression: "(10 + 42.Foobar + 3).message", expected: "The target of a dot-operation must be a calc object." },
+        { expression: "42.01", expected: 42.01 }
     ]
 
     for (const { expression, expected, errorCount } of parseCases) {
