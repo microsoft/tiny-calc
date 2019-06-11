@@ -180,6 +180,7 @@ function isIdentifierPart(ch: number): boolean {
         (ch >= CharacterCodes._0 && ch <= CharacterCodes._9) ||
         ch === CharacterCodes.$ ||
         ch === CharacterCodes._ ||
+        ch === CharacterCodes.colon ||
         ch > CharacterCodes.maxAsciiCharacter
     );
 }
@@ -627,7 +628,7 @@ export const createParser = <R>(sink: ParserSink<R>) => {
                 // position and we come across another expression.
                 // This assumes that a comma is not a valid start of
                 // expression.
-                if(!freshArgument) {
+                if (!freshArgument) {
                     parseExpected(SyntaxKind.CommaToken);
                 }
                 list.push(parseExpression());
