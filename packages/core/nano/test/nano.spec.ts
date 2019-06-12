@@ -32,8 +32,8 @@ const astSink: ParserSink<object> = {
 
 export const astParse = createParser(astSink);
 
-const sum: CalcFun<undefined> = (_trace: any, _host: undefined, args: any[]) => args.reduce((prev, now) => prev + now, 0);
-const prod: CalcFun<undefined> = (_trace: any, _host: undefined, args: any[]) => args.reduce((prev, now) => prev * now, 1);
+const sum: CalcFun = <O>(_trace: any, _host: O, args: any[]) => args.reduce((prev, now) => prev + now, 0);
+const prod: CalcFun = <O>(_trace: any, _host: O, args: any[]) => args.reduce((prev, now) => prev * now, 1);
 
 const testContext: CalcObj<undefined> = {
     request: (_origin: undefined, property: string) => {
