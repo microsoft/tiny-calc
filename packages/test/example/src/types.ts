@@ -7,15 +7,14 @@ import { Formula, Producer, Consumer, Primitive, CalcFun, compile } from "@tiny-
  */
 
 interface Obj extends Producer<CalcRecord> { }
-interface Fun extends CalcFun<Consumer<CalcRecord>> { }
-type Value = Fun | Obj | Primitive;
+type Value = CalcFun | Obj | Primitive;
 type CalcRecord = Record<string, Value>;
 
 export class Context implements Producer<CalcRecord> {
     constructor(private fields: CalcRecord) { }
 
     id = "context";
-    
+
     unsubscribe() { }
 
     now(property: string) {
@@ -81,7 +80,7 @@ export class MemoProducer implements Producer<CalcRecord> {
     }
 
     id = "memo"
-    
+
     unsubscribe() { }
 
     now(property: string) {
@@ -100,7 +99,7 @@ export class MemoProducer implements Producer<CalcRecord> {
 
     nowMany<K extends string>(properties: Record<K, unknown>) {
         const result: Partial<Pick<CalcRecord, K>> = {} as any;
-        for (const p in properties) {            
+        for (const p in properties) {
             result[p] = this.now(p);
         }
         return result;
@@ -125,7 +124,7 @@ export class TimeProducer implements Producer<CalcRecord> {
     constructor() { }
 
     id = "Time"
-    
+
     unsubscribe() { }
 
     now() { return Date.now(); }
@@ -145,12 +144,12 @@ export class MathProducer implements Producer<CalcRecord> {
     constructor() { }
 
     id = "Math"
-    
+
     unsubscribe() { }
 
-    static max: CalcFun<Consumer<CalcRecord>> = (_t: any, _o: any, [x, y]: any[]) => y > x ? y : x;
-    static min: CalcFun<Consumer<CalcRecord>> = (_t: any, _o: any, [x, y]: any[]) => y < x ? y : x;
-    
+    static max = <O>(_t: any, _o: O, [x, y]: any[]) => y > x ? y : x;
+    static min = <O>(_t: any, _o: O, [x, y]: any[]) => y < x ? y : x;
+
     now(property: string) {
         switch (property) {
             case "Max": return MathProducer.max;

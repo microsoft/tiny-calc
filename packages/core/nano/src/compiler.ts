@@ -15,11 +15,11 @@ export interface CalcObj<O> {
     request(origin: O, property: string, ...args: any[]): CalcValue<O> | Pending<CalcValue<O>>;
 }
 
-export interface CalcFun<O> {
-    (trace: Trace, origin: O, args: CalcValue<O>[]): Delayed<CalcValue<O>>;
+export interface CalcFun {
+    <O>(trace: Trace, origin: O, args: CalcValue<O>[]): Delayed<CalcValue<O>>;
 }
 
-export type CalcValue<O> = Primitive | CalcObj<O> | CalcFun<O>;
+export type CalcValue<O> = Primitive | CalcObj<O> | CalcFun;
 
 function makeError(message: string): CalcObj<any> {
     return {
