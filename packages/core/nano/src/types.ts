@@ -1,5 +1,5 @@
 export interface Pending<T> {
-  kind: 'Pending';
+  kind: "Pending";
   estimate?: T;
 }
 
@@ -132,7 +132,7 @@ export interface ICustomData {
 // TODO: Consider changing ICollection and ITable to classes instead of interfaces?
 export interface ICollection extends ICustomData {
   // TODO: Move this type into an enum
-  type: 'ICollection';
+  type: "ICollection";
 
   data: (string | number)[];
 }
@@ -142,7 +142,7 @@ export interface ICollection extends ICustomData {
  */
 export interface ITable extends ICustomData {
   // TODO: Move this type into an enum
-  type: 'ITable';
+  type: "ITable";
 
   data: ICollection[];
 }
