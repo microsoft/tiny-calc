@@ -109,12 +109,12 @@ export interface IDataResult {
    * Get the list of properties of this dataResult.
    * @returns a list of dataResults representing the next level objects.
    */
-  getProperties: () => IDataResult[];
+  getProperties: (query: string) => Promise<IDataResult[]>;
 
   /**
    * Return the raw value of this object.
    */
-  getValue: () => IData | undefined;
+  getValue: () => Pending<IData | undefined>;
 
   /**
    * Return the hint text of this object.
@@ -161,7 +161,6 @@ export interface ICollection extends ICustomData {
   // TODO: Move this type into an enum
   type: "ICollection";
 
-  // tslint:disable-next-line:array-type
   data: (string | number)[];
 }
 
