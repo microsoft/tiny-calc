@@ -66,40 +66,6 @@ export interface IDataObserver {
 }
 
 /**
- * A service provided for the app to enable components to discover one another and to register data binding.
- */
-export interface IDataBindingService {
-  /**
-   * Register a dataProvider against a given component identifier.
-   * @param componentIdentifier - the component identifier for which a dataProvider will be registered.
-   * @param dataProvider - dataProvider associated with the componentIdentifier
-   */
-  registerDataProvider: (componentIdentifier: string, dataProvider: IDataProvider) => void;
-
-  /**
-   * Unregister the data provider entry corresponding to the given component identifier.
-   * @param componentIdentifier - the component identifier of the provider to be unregistered
-   */
-  unregisterDataProvider: (componentIdentifier: string) => void;
-
-  /**
-   * Resolve the DataProvider corresponding to the given component id.
-   * @param componentIdentifier - Identifier of the data providing component.
-   */
-  getDataProvider: (componentIdentifier: string) => Promise<IDataProvider | undefined>;
-
-  /**
-   * Returns Ids of components for all data-bindable components.
-   */
-  getComponentIds: () => string[];
-
-  /**
-   * Returns whether a provider with the given component identifier is registered in the data binding service.
-   */
-  isRegistered: (componentIdentifier: string) => boolean;
-}
-
-/**
  * IDataResult represents the result object passed through data binding between two components.
  * It provides query functions for retrieving values, hints, friendly names, and provides
  * basic traverse APIs to move to previous or next level results.
