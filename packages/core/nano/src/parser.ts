@@ -451,6 +451,30 @@ function createScanner(onError: (message: string, start: number, end: number) =>
     };
 }
 
+export interface ParserErrorHandler<E> {
+    errors: () => E;
+    reset: () => void;
+    onError: (message: string, start: number, end: number) => void;
+}
+
+export interface ParserSink<R> {
+    lit: (value: boolean | number | string, start: number, end: number) => R;
+    ident: (id: string, start: number, end: number) => R;
+    field: (label: string, start: number, end: number) => R;
+    paren: (expr: R, start: number, end: number) => R;
+    app: (head: R, args: R[], start: number, end: number) => R;
+    dot: (left: R, right: R, start: number, end: number) => R;
+    binOp: (op: SyntaxKind, left: R, right: R, start: number, end: number) => R;
+    unaryOp: (op: SyntaxKind, expr: R, start: number, end: number) => R;
+    missing: (position: number) => R;
+}
+
+export type Diagnostic = [string, number, number];
+
+export interface Parser<R, E> {
+    (input: string): [E, R];
+}
+
 function operatorPrecedence(kind: SyntaxKind): number {
     switch (kind) {
         case SyntaxKind.EqualsToken:
@@ -499,27 +523,18 @@ function isStartOfExpression(kind: SyntaxKind): boolean {
     }
 }
 
-export interface ParserSink<R> {
-    lit: (value: boolean | number | string, start: number, end: number) => R;
-    ident: (id: string, start: number, end: number) => R;
-    field: (label: string, start: number, end: number) => R;
-    paren: (expr: R, start: number, end: number) => R;
-    app: (head: R, args: R[], start: number, end: number) => R;
-    dot: (left: R, right: R, start: number, end: number) => R;
-    binOp: (op: SyntaxKind, left: R, right: R, start: number, end: number) => R;
-    missing: (position: number) => R;
+export const createDiagnosticHandler: () => ParserErrorHandler<Diagnostic[]> = () => {
+    let errors: Diagnostic[] = [];
+    return {
+        errors: () => errors,
+        reset: () => { errors = []; return },
+        onError: (message, start, end) => { errors.push([message, start, end]); return }
+    }
 }
 
-export type Diagnostic = [string, number, number];
-
-export interface Parser<R> {
-    (input: string): [readonly Diagnostic[], R];
-}
-
-export const createParser = <R>(sink: ParserSink<R>) => {
-    const scanner = createScanner(onError, "");
+export const createParser = <R, E>(sink: ParserSink<R>, handler: ParserErrorHandler<E>) => {
+    const scanner = createScanner(handler.onError, "");
     let currentToken: SyntaxKind;
-    let errors: Diagnostic[];
 
     type ExpressionConstructor = (lhs: R, start: number, token: SyntaxKind, precedence: number) => R;
     const termMap: Partial<Record<SyntaxKind, ExpressionConstructor>> = {
@@ -543,24 +558,20 @@ export const createParser = <R>(sink: ParserSink<R>) => {
 
     const parseExpression = () => parseExpr(0);
 
-    const parse = (input: string): [readonly Diagnostic[], R] => {
+    const parse = (input: string): [E, R] => {
         freshenContext(input);
         nextToken();
         const exp = parseExpression();
         parseExpected(SyntaxKind.EndOfInputToken);
-        return [errors, exp];
+        return [handler.errors(), exp];
     };
 
     return parse;
 
     function freshenContext(input: string) {
-        scanner.freshenContext(onError, input);
-        errors = [];
+        scanner.freshenContext(handler.onError, input);
+        handler.reset();
         currentToken = SyntaxKind.Unknown;
-    }
-
-    function onError(message: string, start: number, end: number) {
-        errors.push([message, start, end]);
     }
 
     function nextToken() {
@@ -572,7 +583,7 @@ export const createParser = <R>(sink: ParserSink<R>) => {
             nextToken();
             return true;
         }
-        onError(`Expected: ${kind}`, scanner.getTokenPos(), scanner.getTextPos());
+        handler.onError(`Expected: ${kind}`, scanner.getTokenPos(), scanner.getTextPos());
         return false;
     }
 
@@ -660,7 +671,7 @@ export const createParser = <R>(sink: ParserSink<R>) => {
 
     function parseExpr(precedence: number): R {
         const start = scanner.getWSTokenPos();
-        let expression = parsePrimary();
+        let expression = parsePrefixUnary();
         while (true) {
             const token = currentToken;
             const newPrecedence = operatorPrecedence(token);
@@ -673,6 +684,19 @@ export const createParser = <R>(sink: ParserSink<R>) => {
             expression = makeTerm!(expression, start, token, newPrecedence);
         }
         return expression;
+    }
+
+    function parsePrefixUnary(): R {
+        const token = currentToken;
+        switch (token) {
+            case SyntaxKind.PlusToken:
+            case SyntaxKind.MinusToken:
+                const start = scanner.getWSTokenPos();
+                nextToken();
+                return sink.unaryOp(token, parsePrefixUnary(), start, scanner.getWSTokenPos());
+            default:
+                return parsePrimary();
+        }
     }
 
     function parsePrimary(): R {

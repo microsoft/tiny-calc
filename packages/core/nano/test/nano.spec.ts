@@ -1,4 +1,4 @@
-import { SyntaxKind, ParserSink, createParser } from "../src/parser";
+import { createDiagnosticHandler, createParser, SyntaxKind, ParserSink } from "../src/parser";
 import { compile, CalcValue, CalcObj, CalcFun } from "../src/compiler";
 import * as assert from "assert";
 import "mocha";
@@ -25,15 +25,18 @@ const astSink: ParserSink<object> = {
     binOp(op: SyntaxKind, left: object, right: object, start: number, end: number) {
         return { start, end, op, left, right }
     },
+    unaryOp(op: SyntaxKind, expr: object, start: number, end: number) {
+        return { start, end, op, expr }
+    },
     missing(pos: number) {
         return { pos }
     }
 };
 
-export const astParse = createParser(astSink);
+export const astParse = createParser(astSink, createDiagnosticHandler());
 
-const sum: CalcFun<undefined> = (_trace: any, _host: undefined, args: any[]) => args.reduce((prev, now) => prev + now, 0);
-const prod: CalcFun<undefined> = (_trace: any, _host: undefined, args: any[]) => args.reduce((prev, now) => prev * now, 1);
+const sum: CalcFun = <O>(_trace: any, _host: O, args: any[]) => args.reduce((prev, now) => prev + now, 0);
+const prod: CalcFun = <O>(_trace: any, _host: O, args: any[]) => args.reduce((prev, now) => prev * now, 1);
 
 const testContext: CalcObj<undefined> = {
     request: (_origin: undefined, property: string) => {
@@ -117,10 +120,7 @@ describe("nano", () => {
                         "start": 4,
                         "end": 6,
                         "op": 9,
-                        "left": {
-                            "pos": 4
-                        },
-                        "right": {
+                        "expr": {
                             "pos": 6
                         }
                     },
@@ -591,10 +591,80 @@ describe("nano", () => {
                 ]
             },
             errorCount: 1
-        }
+        },
+        {
+            expression: "----4",
+            expected: {
+                "start": 0,
+                "end": 5,
+                "op": 10,
+                "expr": {
+                    "start": 1,
+                    "end": 5,
+                    "op": 10,
+                    "expr": {
+                        "start": 2,
+                        "end": 5,
+                        "op": 10,
+                        "expr": {
+                            "start": 3,
+                            "end": 5,
+                            "op": 10,
+                            "expr": {
+                                "start": 4,
+                                "end": 5,
+                                "value": 4
+                            }
+                        }
+                    }
+                }
+            },
+            errorCount: 0
+        },
+        {
+            expression: "-4+-4+",
+            expected: {
+                "start": 0,
+                "end": 6,
+                "op": 9,
+                "left": {
+                    "start": 0,
+                    "end": 5,
+                    "op": 9,
+                    "left": {
+                        "start": 0,
+                        "end": 2,
+                        "op": 10,
+                        "expr": {
+                            "start": 1,
+                            "end": 2,
+                            "value": 4
+                        }
+                    },
+                    "right": {
+                        "start": 3,
+                        "end": 5,
+                        "op": 10,
+                        "expr": {
+                            "start": 4,
+                            "end": 5,
+                            "value": 4
+                        }
+                    }
+                },
+                "right": {
+                    "pos": 6
+                }
+            },
+            errorCount: 0
+        },
     ]
 
     const evalCases = [
+        { expression: "----4", expected: 4 },
+        { expression: "-4+-4", expected: -8 },
+        { expression: "-4++-4", expected: -8 },
+        { expression: "-4--4", expected: 0 },
         { expression: "Sum(Foo + Bar, Bar * Foo, 3, IF(Foo < 0, 10, 100))", expected: 126 },
         {
             expression: `Sum(1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1)+
