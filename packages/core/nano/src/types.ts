@@ -28,12 +28,13 @@ export interface IProducer<T> {
   removeConsumer(consumer: IConsumer<T>): void;
 
   /**
-   * Return IDataResult for the given dataBindingReference, containing the data value
-   * and some additional metadata.
-   * @param dataBindingReference - An instance of dataBindingReference, a reference
-   * to some data in the bound component.
+   * Return the value associated with `property` and subscribe the provided consumer.
+   * The implied subscription must include `property`, but may also provide notifications 
+   * for other properties.
+   * @param consumer - The consumer to subscribe to the Producer
+   * @param property - The property of the Producer to read.
    */
-  read<K extends keyof T>(consumer: IConsumer<T>, property: K, ...args: any[]): T[K] | Pending<T[K]>;
+  read<K extends keyof T>(consumer: IConsumer<T>, property: K): T[K] | Pending<T[K]>;
 
   /**
    * Invoked when this data provider is deleted.
@@ -55,7 +56,7 @@ export interface IConsumer<T> {
   /**
    * Invoked whenever the data this object is bound to is changed.
    */
-  notify: <K extends keyof T>(property: K, value: T[K]) => void;
+  notify<U extends T, K extends keyof U>(producer: IProducer<U>, property: K, value: U[K]): void;
 
   /**
    * Invoked whenever the provider this is bound to is deleted.
