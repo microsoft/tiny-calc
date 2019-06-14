@@ -1,7 +1,6 @@
 import { Pending } from "./types";
-import { assert, error } from "./debug";
+import { assert } from "./debug";
 import {
-    createDiagnosticHandler,
     createParser,
     ParserErrorHandler,
     ParserSink,
