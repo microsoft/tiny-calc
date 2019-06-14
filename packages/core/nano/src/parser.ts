@@ -471,7 +471,7 @@ export interface ParserSink<R> {
 
 export type Diagnostic = [string, number, number];
 
-export interface Parser<R, E> {
+export interface Parser<E, R> {
     (input: string): [E, R];
 }
 
