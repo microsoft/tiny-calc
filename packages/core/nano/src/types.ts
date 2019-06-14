@@ -6,10 +6,6 @@ export interface Pending<T> {
 /**
  * The interface for an object whose data can be bound to. We use this contract for
  * components that want to expose their data and its changes to other components.
- * An example of this would be Formula binding to a Tablero. In this scenario,
- * Tablero is expected to implement IProducer and expose some of its data, given
- * a reference, through getDataResult. Formula is expected to implement IConsumer
- * and register itself as an observer to Tablero.
  *
  * Any component that implements IProducer is expected to provide some registration
  * functionality and to notify observers whenever the data they are bound to changes.
@@ -29,24 +25,16 @@ export interface IProducer<T> {
 
   /**
    * Return the value associated with `property` and subscribe the provided consumer.
-   * The implied subscription must include `property`, but may also provide notifications 
+   * The implied subscription must include `property`, but may also provide notifications
    * for other properties.
    * @param consumer - The consumer to subscribe to the Producer
    * @param property - The property of the Producer to read.
    */
   read<K extends keyof T>(consumer: IConsumer<T>, property: K): T[K] | Pending<T[K]>;
-
-  /**
-   * Invoked when this data provider is deleted.
-   */
-  onDeleted(): void;
 }
 
 /**
  * The interface for an object that can bind to an IProducer.
- * One example of this provider-observer relationship is a Formula binding
- * to Tablero. In this scenario, Formula is an IConsumer listening to changes
- * in the IProducer, Tablero.
  *
  * Any object that implements IConsumer is expected to provide a
  * callback whenever the component it is bound to changes in value and a reference
@@ -57,11 +45,6 @@ export interface IConsumer<T> {
    * Invoked whenever the data this object is bound to is changed.
    */
   notify<U extends T, K extends keyof U>(producer: IProducer<U>, property: K, value: U[K]): void;
-
-  /**
-   * Invoked whenever the provider this is bound to is deleted.
-   */
-  onProducerDeleted: () => void;
 }
 
 /**
@@ -79,7 +62,7 @@ export interface IDataResult {
   /**
    * Return the raw value of this object.
    */
-  getValue: () => Pending<IData | undefined>;
+  getValue: () => IData | Pending<IData>
 
   /**
    * Return the hint text of this object.

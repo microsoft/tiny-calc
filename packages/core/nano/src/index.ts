@@ -1,2 +1,2 @@
 export { compile, Formula, CalcValue, CalcObj, CalcFun, Primitive } from "./compiler";
-export { IDataProvider, IDataObserver, IDataResult, IData } from "./types";
+export { IProducer, IConsumer, IDataResult, IData } from "./types";
