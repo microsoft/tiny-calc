@@ -3,31 +3,29 @@ export interface Pending<T> {
   estimate?: T;
 }
 
-export type PickPending<T, K extends keyof T> = { [Key in K]: T[K] | Pending<T[K]> };
-
 /**
  * The interface for an object whose data can be bound to. We use this contract for
  * components that want to expose their data and its changes to other components.
  * An example of this would be Formula binding to a Tablero. In this scenario,
- * Tablero is expected to implement IDataProvider and expose some of its data, given
- * a reference, through getDataResult. Formula is expected to implement IDataObserver
+ * Tablero is expected to implement IProducer and expose some of its data, given
+ * a reference, through getDataResult. Formula is expected to implement IConsumer
  * and register itself as an observer to Tablero.
  *
- * Any component that implements IDataProvider is expected to provide some registration
+ * Any component that implements IProducer is expected to provide some registration
  * functionality and to notify observers whenever the data they are bound to changes.
  */
-export interface IDataProvider {
+export interface IProducer<T> {
   /**
-   * Binds the given observer to the component associated with this DataProvider.
-   * @param dataObserver - The object to start listening to any changes in the bound data.
+   * Binds the given observer to the component associated with this Producer.
+   * @param consumer - The object to start listening to any changes in the bound data.
    */
-  registerDataObserver(dataObserver: IDataObserver): void;
+  addConsumer(consumer: IConsumer<T>): void;
 
   /**
-   * Unbinds the given observer from the component associated with this DataProvider.
-   * @param dataObserver - The observer to unregister from the DataProvider.
+   * Unbinds the given observer from the component associated with this Producer.
+   * @param consumer - The observer to unregister from the Producer.
    */
-  unregisterDataObserver(dataObserver: IDataObserver): void;
+  removeConsumer(consumer: IConsumer<T>): void;
 
   /**
    * Return IDataResult for the given dataBindingReference, containing the data value
@@ -35,7 +33,7 @@ export interface IDataProvider {
    * @param dataBindingReference - An instance of dataBindingReference, a reference
    * to some data in the bound component.
    */
-  getDataResult(dataBindingReference: any): IDataResult | undefined;
+  read<K extends keyof T>(consumer: IConsumer<T>, property: K, ...args: any[]): T[K] | Pending<T[K]>;
 
   /**
    * Invoked when this data provider is deleted.
@@ -44,32 +42,25 @@ export interface IDataProvider {
 }
 
 /**
- * The interface for an object that can bind to an IDataProvider.
+ * The interface for an object that can bind to an IProducer.
  * One example of this provider-observer relationship is a Formula binding
- * to Tablero. In this scenario, Formula is an IDataObserver listening to changes
- * in the IDataProvider, Tablero.
+ * to Tablero. In this scenario, Formula is an IConsumer listening to changes
+ * in the IProducer, Tablero.
  *
- * Any object that implements IDataObserver is expected to provide a
+ * Any object that implements IConsumer is expected to provide a
  * callback whenever the component it is bound to changes in value and a reference
  * to the data that the observer is bound to.
  */
-export interface IDataObserver {
+export interface IConsumer<T> {
   /**
    * Invoked whenever the data this object is bound to is changed.
    */
-  onBoundDataChanged: (result: IDataResult) => void;
-
-  /**
-   * The reference to the data that this observer is bound to.
-   * TODO:DATABINDING: Get rid of this method. Data binding reference should
-   * be passed on data registration.
-   */
-  getDataBindingReference: () => any;
+  notify: <K extends keyof T>(property: K, value: T[K]) => void;
 
   /**
    * Invoked whenever the provider this is bound to is deleted.
    */
-  onDataProviderDeleted: () => void;
+  onProducerDeleted: () => void;
 }
 
 /**
@@ -100,7 +91,7 @@ export interface IDataResult {
   getFriendlyName: () => string;
 
   /**
-   * Return The dataBindingReference for this instance of DataProvider.
+   * Return The dataBindingReference for this instance of Producer.
    */
   getBindingReference: () => any;
 
