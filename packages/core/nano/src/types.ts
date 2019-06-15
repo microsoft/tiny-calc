@@ -12,25 +12,24 @@ export interface Pending<T> {
  */
 export interface IProducer<T> {
   /**
-   * Binds the given observer to the component associated with this Producer.
-   * @param consumer - The object to start listening to any changes in the bound data.
-   */
-  addConsumer(consumer: IConsumer<T>): void;
-
-  /**
    * Unbinds the given observer from the component associated with this Producer.
    * @param consumer - The observer to unregister from the Producer.
    */
   removeConsumer(consumer: IConsumer<T>): void;
 
   /**
-   * Return the value associated with `property` and subscribe the provided consumer.
-   * The implied subscription must include `property`, but may also provide notifications
-   * for other properties.
-   * @param consumer - The consumer to subscribe to the Producer
-   * @param property - The property of the Producer to read.
+   * Returns a reader for this producer's values and implicitly subscribes the given
+   * consumer to change notifications from this producer (if it isn't already).
+   * 
+   * @param consumer - The object to be notified of value changes.
    */
-  read<K extends keyof T>(consumer: IConsumer<T>, property: K): T[K] | Pending<T[K]>;
+  open(consumer: IConsumer<T>): {
+    /**
+     * Return the value associated with `property`.
+     * @param property - The property of the Producer to read.
+     */
+    read<K extends keyof T>(property: K): T[K] | Pending<T[K]>;
+  }
 }
 
 /**
@@ -44,80 +43,38 @@ export interface IConsumer<T> {
   /**
    * Invoked whenever the data this object is bound to is changed.
    */
-  notify<U extends T, K extends keyof U>(producer: IProducer<U>, property: K, value: U[K]): void;
+  valueChanged<U extends T, K extends keyof U>(producer: IProducer<U>, property: K, value: U[K]): void;
 }
 
-/**
- * IDataResult represents the result object passed through data binding between two components.
- * It provides query functions for retrieving values, hints, friendly names, and provides
- * basic traverse APIs to move to previous or next level results.
- */
-export interface IDataResult {
-  /**
-   * Get the list of properties of this dataResult.
-   * @returns a list of dataResults representing the next level objects.
-   */
-  getProperties: (query: string) => Promise<IDataResult[]>;
-
-  /**
-   * Return the raw value of this object.
-   */
-  getValue: () => IData | Pending<IData>
-
-  /**
-   * Return the hint text of this object.
-   */
-  getHint: () => string | undefined;
-
-  /**
-   * Return the friendlyName of this object.
-   */
-  getFriendlyName: () => string;
-
-  /**
-   * Return The dataBindingReference for this instance of Producer.
-   */
-  getBindingReference: () => any;
-
-  /**
-   * Get the parent DataResult object.
-   * @returns an instance of IDataResult that represent the previous level (parent) of this object,
-   * or undefined if this is the top level object.
-   */
-  getParent: () => IDataResult | undefined;
+export interface IVectorConsumer<T> {
+  /** Notification that a range of items have been inserted, removed, and/or replaced in the given vector. */
+  itemsChanged(producer: IVectorProducer<T>, index: number, numRemoved: number, itemInserted: T[]): void;
 }
 
-/**
- * Interface representing any data that can be bound to via Data Binding infrastructure.
- */
-export type IData = string | number | ICustomData;
-
-/**
- * Generic interface for custom defined data types.
- */
-export interface ICustomData {
-  type: string;
-
-  data: any;
+/** Provides more efficient access to 1D data for vector-aware consumers. */
+export interface IVectorProducer<T> {
+  openVector(consumer: IVectorConsumer<T>): {
+    readonly length: T;    
+    read(index: number): T;
+  }
 }
 
-/**
- * Represents a linear (1D) collection of primitive values.
- */
-// TODO: Consider changing ICollection and ITable to classes instead of interfaces?
-export interface ICollection extends ICustomData {
-  // TODO: Move this type into an enum
-  type: "ICollection";
+export interface IMatrixConsumer<T> {
+  /** Notification that rows have been inserted, removed, and/or replaced in the given matrix. */
+  rowsChanged(producer: IMatrixProducer<T>, row: number, numRemoved: number, rowsInserted: T[]): void;
 
-  data: (string | number)[];
+  /** Notification that cols have been inserted, removed, and/or replaced in the given matrix. */
+  colsChanged(producer: IMatrixProducer<T>, col: number, numRemoved: number, colsInserted: T[]): void;
+
+  /** Notification that a range of cells have been replaced in the given matrix. */
+  cellsReplaced(producer: IMatrixProducer<T>, row: number, col: number, numRows: number, numCols: number, values: T[]): void;
 }
 
-/**
- * Represents a tabular (2D) set of of primitive values.
- */
-export interface ITable extends ICustomData {
-  // TODO: Move this type into an enum
-  type: "ITable";
-
-  data: ICollection[];
+/** Provides more efficient access to 2D data for vector-aware consumers. */
+export interface IMatrixProducer<T> {
+  openMatrix(consumer: IMatrixConsumer<T>): {
+    readonly numRows: number;
+    readonly numCols: number;
+    read(row: number, col: number): T;
+  }
 }
