@@ -8,12 +8,12 @@ export interface Pending<T> {
  * components that want to expose their data and its changes to other components.
  *
  * Any component that implements IProducer is expected to provide some registration
- * functionality and to notify observers whenever the data they are bound to changes.
+ * functionality and to notify consumers whenever the data they are bound to changes.
  */
 export interface IProducer<T> {
   /**
-   * Unbinds the given observer from the component associated with this Producer.
-   * @param consumer - The observer to unregister from the Producer.
+   * Unsubscribes a consumer from this producer.
+   * @param consumer - The consumer to unregister from the Producer.
    */
   removeConsumer(consumer: IConsumer<T>): void;
 
@@ -37,7 +37,7 @@ export interface IProducer<T> {
  *
  * Any object that implements IConsumer is expected to provide a
  * callback whenever the component it is bound to changes in value and a reference
- * to the data that the observer is bound to.
+ * to the data that the consumer is bound to.
  */
 export interface IConsumer<T> {
   /**
@@ -53,6 +53,12 @@ export interface IVectorConsumer<T> {
 
 /** Provides more efficient access to 1D data for vector-aware consumers. */
 export interface IVectorProducer<T> {
+  /**
+   * Unsubscribes a consumer from this producer.
+   * @param consumer - The consumer to unregister from the Producer.
+   */
+  removeVectorConsumer(consumer: IConsumer<T>): void;
+
   openVector(consumer: IVectorConsumer<T>): {
     readonly length: T;    
     read(index: number): T;
@@ -72,6 +78,12 @@ export interface IMatrixConsumer<T> {
 
 /** Provides more efficient access to 2D data for vector-aware consumers. */
 export interface IMatrixProducer<T> {
+  /**
+   * Unsubscribes a consumer from this producer.
+   * @param consumer - The consumer to unregister from the Producer.
+   */
+  removeMatrixConsumer(consumer: IMatrixConsumer<T>): void;
+
   openMatrix(consumer: IMatrixConsumer<T>): {
     readonly numRows: number;
     readonly numCols: number;
