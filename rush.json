@@ -12,11 +12,15 @@
   "nodeSupportedVersionRange": ">=8.9.4",
   "ensureConsistentVersions": true,
   "projectFolderMaxDepth": 3,
+  "repository": {
+    "url": "https://github.com/Microsoft/tiny-calc"
+  },
   "projects": [
     {
       "packageName": "@tiny-calc/nano",
       "projectFolder": "packages/core/nano",
-      "reviewCategory": "production"
+      "reviewCategory": "production",
+      "versionPolicyName": "public"
     },
     {
       "packageName": "@tiny-calc-test/example",
