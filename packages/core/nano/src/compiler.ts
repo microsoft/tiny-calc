@@ -1,6 +1,11 @@
 import { Pending } from "./types";
-import { assert, error } from "./debug";
-import { ParserSink, createParser, SyntaxKind } from "./parser";
+import { assert } from "./debug";
+import {
+    createParser,
+    ParserErrorHandler,
+    ParserSink,
+    SyntaxKind
+} from "./parser";
 
 
 
@@ -74,8 +79,9 @@ function makeTracer(): [Pending<unknown>[], Trace] {
 interface LiftedCore {
     req: <O>(trace: Trace, host: O, context: Delayed<CalcValue<O>>, prop: string) => Delayed<CalcValue<O>>;
     select: <L, R>(cond: Delayed<boolean>, l: () => Delayed<L>, r: () => Delayed<R>) => Delayed<L | R>;
+    app1: <O, A, B>(trace: Trace, host: O, op: <O>(trace: Trace, host: O, expr: A) => B, expr: Delayed<A>) => Delayed<B>;
     app2: <O, A, B, C>(trace: Trace, host: O, op: <O>(trace: Trace, host: O, l: A, r: B) => C, l: Delayed<A>, r: Delayed<B>) => Delayed<C>;
-    app: <O>(trace: Trace, host: O, fn: Delayed<CalcValue<O>>, args: Delayed<CalcValue<O>>[]) => Delayed<CalcValue<O>>;
+    appN: <O>(trace: Trace, host: O, fn: Delayed<CalcValue<O>>, args: Delayed<CalcValue<O>>[]) => Delayed<CalcValue<O>>;
 }
 
 function req<O>(trace: Trace, host: O, context: Delayed<CalcValue<O>>, prop: string): Delayed<CalcValue<O>> {
@@ -86,11 +92,15 @@ function select<L, R>(cond: Delayed<boolean>, l: () => Delayed<L>, r: () => Dela
     return isDelayed(cond) ? cond : cond ? l() : r();
 }
 
+function app1<O, A, B>(trace: Trace, host: O, op: <O>(trace: Trace, host: O, expr: A) => B, expr: Delayed<A>): Delayed<B> {
+    return isDelayed(expr) ? delay : op(trace, host, expr);
+}
+
 function app2<O, A, B, C>(trace: Trace, host: O, op: <O>(trace: Trace, host: O, l: A, r: B) => C, l: Delayed<A>, r: Delayed<B>): Delayed<C> {
     return isDelayed(l) || isDelayed(r) ? delay : op(trace, host, l, r);
 }
 
-function app<O>(trace: Trace, host: O, fn: Delayed<CalcValue<O>>, args: Delayed<CalcValue<O>>[]): Delayed<CalcValue<O>> {
+function appN<O>(trace: Trace, host: O, fn: Delayed<CalcValue<O>>, args: Delayed<CalcValue<O>>[]): Delayed<CalcValue<O>> {
     if (isDelayed(fn)) { return delay };
     if (typeof fn !== "function") { return appOnNonFunctionError; }
     for (let i = 0; i < args.length; i += 1) {
@@ -99,7 +109,7 @@ function app<O>(trace: Trace, host: O, fn: Delayed<CalcValue<O>>, args: Delayed<
     return fn(trace, host, args as CalcValue<O>[]);
 }
 
-const ef: LiftedCore = { req, select, app2, app };
+const ef: LiftedCore = { req, select, app1, app2, appN };
 
 
 
@@ -107,7 +117,7 @@ const ef: LiftedCore = { req, select, app2, app };
  * Operations
  */
 
-const operationsMap = {
+const binaryOperationsMap = {
     [SyntaxKind.PlusToken]: "plus",
     [SyntaxKind.MinusToken]: "minus",
     [SyntaxKind.AsteriskToken]: "mult",
@@ -120,9 +130,15 @@ const operationsMap = {
     [SyntaxKind.NotEqualsToken]: "ne",
 } as const;
 
-type OperationsMap = typeof operationsMap;
-type Operations = OperationsMap[keyof OperationsMap];
+const unaryOperationsMap = {
+    [SyntaxKind.MinusToken]: "negate",
+} as const;
+
+type BinaryOperations = typeof binaryOperationsMap;
+type UnaryOperations = typeof unaryOperationsMap;
+type Operations = BinaryOperations[keyof BinaryOperations] | UnaryOperations[keyof UnaryOperations];
 type TinyCalcBinOp = <O>(trace: Trace, host: O, l: CalcValue<O>, r: CalcValue<O>) => Delayed<CalcValue<O>>;
+type TinyCalcUnaryOp = <O>(trace: Trace, host: O, expr: CalcValue<O>) => Delayed<CalcValue<O>>;
 
 function liftBinOp(fn: (l: Primitive, r: Primitive) => Primitive): TinyCalcBinOp {
     return (trace, host, l, r) => {
@@ -137,7 +153,16 @@ function liftBinOp(fn: (l: Primitive, r: Primitive) => Primitive): TinyCalcBinOp
     };
 }
 
-type OpContext = Record<Operations, TinyCalcBinOp>;
+function liftUnaryOp(fn: (expr: Primitive) => Primitive): TinyCalcUnaryOp {
+    return (trace, host, expr) => {
+        const exprAsValue = typeof expr === "object" ? trace(expr.request(host, "value")) : expr;
+        if (typeof exprAsValue === "object") { return exprAsValue; }
+        if (typeof exprAsValue === "function") { return functionAsOpArgumentError; }
+        return fn(exprAsValue);
+    };
+}
+
+type OpContext = Record<Operations, TinyCalcBinOp | TinyCalcUnaryOp>;
 const ops: OpContext = {
     plus: liftBinOp((x: any, y: any) => x + y),
     minus: liftBinOp((x: any, y: any) => x - y),
@@ -148,7 +173,8 @@ const ops: OpContext = {
     gt: liftBinOp((x: any, y: any) => x > y),
     lte: liftBinOp((x: any, y: any) => x <= y),
     gte: liftBinOp((x: any, y: any) => x >= y),
-    ne: liftBinOp((x: any, y: any) => x !== y)
+    ne: liftBinOp((x: any, y: any) => x !== y),
+    negate: liftUnaryOp((x: any) => -x),
 };
 
 
@@ -157,12 +183,25 @@ const ops: OpContext = {
  * Code-gen
  */
 
-function outputConditional(args: string[]): string {
-    if (args.length < 2) {
-        return error("Unable to compile conditional");
+export const createErrorHandler: () => ParserErrorHandler<boolean> = () => {
+    let errors = false;
+    return {
+        errors: () => errors,
+        reset: () => { errors = false; return },
+        onError: () => { errors = true; return }
     }
-    const rightExpr = args[2] === undefined ? "false" : args[2];
-    return `ef.select(${args[0]},function(){return ${args[1]};},function(){return ${rightExpr};})`
+}
+
+const errorHandler = createErrorHandler();
+
+function outputConditional(args: string[], start: number, end: number): string {
+    if (args.length === 0) {
+        errorHandler.onError("missing conditional arguments", start, end);
+        return "";
+    }
+    const trueExpr = args[1] === undefined ? "true" : args[1];
+    const falseExpr = args[2] === undefined ? "false" : args[2];
+    return `ef.select(${args[0]},function(){return ${trueExpr};},function(){return ${falseExpr};})`
 }
 
 const simpleSink: ParserSink<string> = {
@@ -181,24 +220,33 @@ const simpleSink: ParserSink<string> = {
     paren(expr: string) {
         return `(${expr})`;
     },
-    app(head: string, args: string[]) {
+    app(head: string, args: string[], start: number, end: number) {
         switch (head) {
             case "IF":
-                return outputConditional(args);
+                return outputConditional(args, start, end);
             default:
-                return `ef.app(trace,host,${head},[${args}])`;
+                return `ef.appN(trace,host,${head},[${args}])`;
         }
     },
     dot(left: string, right: string) {
         return `ef.req(trace,host,${left},${right})`;
     },
     binOp(op: SyntaxKind, left: string, right: string) {
-        const opStr = "ops." + (operationsMap as Record<SyntaxKind, string>)[op];
+        const opStr = "ops." + (binaryOperationsMap as Record<SyntaxKind, string>)[op];
         assert(opStr !== undefined);
         return `ef.app2(trace,host,${opStr},${left},${right})`;
     },
-    missing() {
-        return error("Cannot compile missing");
+    unaryOp(op: SyntaxKind, expr: string) {
+        if (op === SyntaxKind.MinusToken) {
+            const opStr = "ops." + (unaryOperationsMap as Record<SyntaxKind, string>)[op];
+            assert(opStr !== undefined);
+            return `ef.app1(trace,host,${opStr},${expr})`;
+        }
+        return expr
+    },
+    missing(position: number) {
+        errorHandler.onError("missing", position, position);
+        return "";
     }
 };
 
@@ -212,7 +260,7 @@ type RawFormula = <O>(trace: Trace, host: O, context: CalcValue<O>, ops: OpConte
 
 export type Formula = <O>(host: O, context: CalcValue<O>) => [Pending<unknown>[], Delayed<CalcValue<O>>];
 
-const parse = createParser(simpleSink);
+const parse = createParser(simpleSink, errorHandler);
 
 const formula = (raw: RawFormula): Formula => <O>(host: O, context: CalcValue<O>) => {
     const [data, trace] = makeTracer();
@@ -222,7 +270,7 @@ const formula = (raw: RawFormula): Formula => <O>(host: O, context: CalcValue<O>
 
 export const compile = (text: string) => {
     const [errors, parsed] = parse(text);
-    if (errors.length > 0) {
+    if (errors) {
         return undefined;
     }
     return formula(new Function("trace", "host", "context", "ops", "ef", `return ${parsed};`) as RawFormula);
