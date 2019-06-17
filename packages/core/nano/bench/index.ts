@@ -20,7 +20,7 @@ const formulas = [
     const suite = new Suite("Evaluation Only");
     for (const formula of formulas) {
         const compiled = compile(formula);
-        suite.add(`'${formula}'`, () => { consume(compiled(undefined as any, undefined as any)); });
+        suite.add(`'${formula}'`, () => { consume(compiled!(undefined, undefined as any)); });
     }
     runSuite(suite);
 }
