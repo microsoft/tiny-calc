@@ -1,5 +1,4 @@
 import { Suite } from "benchmark";
-import { Formula } from "../src/compiler";
 const process = require("process");
 
 let count = 0;
