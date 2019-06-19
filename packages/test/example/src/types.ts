@@ -1,7 +1,6 @@
 import {
     Pending,
     IConsumer,
-    IReader,
     IProducer,
     Formula,
     Primitive,
