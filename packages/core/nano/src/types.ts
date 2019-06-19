@@ -17,6 +17,14 @@ export interface IConsumer<T> {
   valueChanged<U extends T, K extends keyof U>(property: K, value: U[K], producer: IProducer<U>): void;
 }
 
+export interface IReader<T> {
+  /**
+   * Return the value associated with `property`.
+   * @param property - The property of the Producer to read.
+   */
+  read<K extends keyof T>(property: K): T[K] | Pending<T[K]>;
+}
+
 /**
  * The interface for an object whose data can be bound to. We use this contract for
  * components that want to expose their data and its changes to other components.
@@ -37,13 +45,7 @@ export interface IProducer<T> {
    * 
    * @param consumer - The object to be notified of value changes.
    */
-  open(consumer: IConsumer<T>): {
-    /**
-     * Return the value associated with `property`.
-     * @param property - The property of the Producer to read.
-     */
-    read<K extends keyof T>(property: K): T[K] | Pending<T[K]>;
-  }
+  open(consumer: IConsumer<T>): IReader<T>;
 }
 
 export interface IVectorConsumer<T> {
@@ -57,7 +59,7 @@ export interface IVectorProducer<T> {
    * Unsubscribes a consumer from this producer.
    * @param consumer - The consumer to unregister from the Producer.
    */
-  removeVectorConsumer(consumer: IConsumer<T>): void;
+  removeVectorConsumer(consumer: IVectorConsumer<T>): void;
 
   openVector(consumer: IVectorConsumer<T>): {
     readonly length: T;    

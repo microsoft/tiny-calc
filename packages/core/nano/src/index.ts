@@ -2,6 +2,7 @@ export { compile, Formula, CalcValue, CalcObj, CalcFun, Primitive } from "./comp
 export {
     Pending,
     IConsumer,
+    IReader,
     IProducer,
     IVectorConsumer,
     IVectorProducer,
