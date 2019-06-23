@@ -73,6 +73,158 @@ describe("nano", () => {
 
     const parseCases = [
         {
+            expression: "+foo.hello(world)",
+            expected: {
+                "start": 0,
+                "end": 17,
+                "op": 9,
+                "expr": {
+                    "start": 1,
+                    "end": 17,
+                    "head": {
+                        "start": 1,
+                        "end": 10,
+                        "left": {
+                            "start": 1,
+                            "end": 4,
+                            "id": "foo"
+                        },
+                        "right": {
+                            "start": 5,
+                            "end": 10,
+                            "label": "hello"
+                        }
+                    },
+                    "args": [
+                        {
+                            "start": 11,
+                            "end": 16,
+                            "id": "world"
+                        }
+                    ]
+                }
+            },
+            errorCount: 0,
+        },
+        {
+            expression: "+foo(hello).world",
+            expected: {
+                "start": 0,
+                "end": 17,
+                "op": 9,
+                "expr": {
+                    "start": 1,
+                    "end": 17,
+                    "left": {
+                        "start": 1,
+                        "end": 11,
+                        "head": {
+                            "start": 1,
+                            "end": 4,
+                            "id": "foo"
+                        },
+                        "args": [
+                            {
+                                "start": 5,
+                                "end": 10,
+                                "id": "hello"
+                            }
+                        ]
+                    },
+                    "right": {
+                        "start": 12,
+                        "end": 17,
+                        "label": "world"
+                    }
+                }
+            },
+            errorCount: 0,
+        },
+        {
+            expression: "+foo.hello",
+            expected: {
+                "start": 0,
+                "end": 10,
+                "op": 9,
+                "expr": {
+                    "start": 1,
+                    "end": 10,
+                    "left": {
+                        "start": 1,
+                        "end": 4,
+                        "id": "foo"
+                    },
+                    "right": {
+                        "start": 5,
+                        "end": 10,
+                        "label": "hello"
+                    }
+                }
+            },
+            errorCount: 0
+        },
+        {
+            expression: "+.",
+            expected: {
+                "start": 0,
+                "end": 2,
+                "op": 9,
+                "expr": {
+                    "start": 1,
+                    "end": 2,
+                    "left": {
+                        "pos": 1
+                    },
+                    "right": {
+                        "pos": 2
+                    }
+                }
+            },
+            errorCount: 0
+        },
+        {
+            expression: "+.hello",
+            expected: {
+                "start": 0,
+                "end": 7,
+                "op": 9,
+                "expr": {
+                    "start": 1,
+                    "end": 7,
+                    "left": {
+                        "pos": 1
+                    },
+                    "right": {
+                        "start": 2,
+                        "end": 7,
+                        "label": "hello"
+                    }
+                }
+            },
+            errorCount: 0
+        },
+        {
+            expression: "+foo.",
+            expected: {
+                "start": 0,
+                "end": 5,
+                "op": 9,
+                "expr": {
+                    "start": 1,
+                    "end": 5,
+                    "left": {
+                        "start": 1,
+                        "end": 4,
+                        "id": "foo"
+                    },
+                    "right": {
+                        "pos": 5
+                    }
+                }
+            },
+            errorCount: 0
+        },
+        {
             expression: "FOO(A.    , , ###)",
             expected: {
                 "start": 0,

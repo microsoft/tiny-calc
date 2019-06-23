@@ -490,9 +490,6 @@ function operatorPrecedence(kind: SyntaxKind): number {
         case SyntaxKind.AsteriskToken:
         case SyntaxKind.SlashToken:
             return 3;
-        case SyntaxKind.OpenParenToken:
-        case SyntaxKind.DotToken:
-            return 4;
     }
     return -1;
 }
@@ -695,7 +692,26 @@ export const createParser = <R, E>(sink: ParserSink<R>, handler: ParserErrorHand
                 nextToken();
                 return sink.unaryOp(token, parsePrefixUnary(), start, scanner.getWSTokenPos());
             default:
-                return parsePrimary();
+                return parseDotOrApp();
+        }
+    }
+
+    function parseDotOrApp(): R {
+        const start = scanner.getWSTokenPos();
+        let expression = parsePrimary();
+        while (true) {
+            const token = currentToken;
+            switch (token) {
+                case SyntaxKind.OpenParenToken:
+                case SyntaxKind.DotToken:
+                    nextToken();
+                    const makeTerm = termMap[token];
+                    assert(makeTerm !== undefined);
+                    expression = makeTerm!(expression, start, token, 0);
+                    continue;
+                default:
+                    return expression;
+            }
         }
     }
 
