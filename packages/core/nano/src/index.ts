@@ -1,4 +1,17 @@
-export { compile, Formula, CalcValue, CalcObj, CalcFun, Primitive } from "./compiler";
+export {
+    CalcFun,
+    CalcObj,
+    CalcValue,
+    compile,
+    Delay,
+    Delayed,
+    Formula,
+    isDelayed,
+    makeError,
+    Primitive,
+    Trace
+} from "./compiler";
+
 export {
     Pending,
     IConsumer,
