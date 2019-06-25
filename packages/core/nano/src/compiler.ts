@@ -26,10 +26,10 @@ export interface CalcFun {
 
 export type CalcValue<O> = Primitive | CalcObj<O> | CalcFun;
 
-function makeError(message: string): CalcObj<any> {
+export function makeError(message: string): CalcObj<unknown> {
     return {
         request(_, property) {
-            if (property === "message") { return message };
+            if (property === "toString") { return message };
             return this;
         }
     };
@@ -57,7 +57,7 @@ export function isDelayed<T>(x: Delayed<T>): x is Delay {
  * A `Trace` function lifts possibly pending values into `Delayed` and
  * records any pending value.
  */
-type Trace = <T>(value: T | Pending<T>) => Delayed<T>;
+export type Trace = <T>(value: T | Pending<T>) => Delayed<T>;
 
 function makeTracer(): [Pending<unknown>[], Trace] {
     // The trace function is used to catch pending values early and

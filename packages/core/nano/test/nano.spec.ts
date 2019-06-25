@@ -838,8 +838,8 @@ Product(1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
         { expression: "4*1*(2+3)*4", expected: 80 },
         { expression: "Foo + Bar", expected: 8 },
         { expression: "IF(Foo * Bar > 10000, 'left', 'right')", expected: "right" },
-        { expression: "4(3,2).message", expected: "The target of an application must be a calc function." },
-        { expression: "(Sum + 3).message", expected: "Operator argument must be a primitive." },
+        { expression: "4(3,2).toString", expected: "The target of an application must be a calc function." },
+        { expression: "(Sum + 3).toString", expected: "Operator argument must be a primitive." },
         { expression: "42.", expected: 42 },
         { expression: "42.01", expected: 42.01 }
     ]

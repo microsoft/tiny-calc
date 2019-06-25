@@ -349,9 +349,8 @@ function createScanner(onError: (message: string, start: number, end: number) =>
             break;
         }
         const value = text.substring(start, pos);
-        const asKeyword = keywords[value];
-        if (asKeyword !== undefined) {
-            return { type: asKeyword, value };
+        if (keywords.hasOwnProperty(value)) {
+            return { type: keywords[value], value };
         }
         const type = SyntaxKind.Identifier;
         return { type, value };
