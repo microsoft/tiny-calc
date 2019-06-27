@@ -29,7 +29,7 @@ export type CalcValue<O> = Primitive | CalcObj<O> | CalcFun;
 export function makeError(message: string): CalcObj<unknown> {
     return {
         request(_, property) {
-            if (property === "toString") { return message };
+            if (property === "stringify") { return message };
             return this;
         }
     };
@@ -38,6 +38,14 @@ export function makeError(message: string): CalcObj<unknown> {
 const requestOnNonObjectError = makeError("The target of a dot-operation must be a calc object.");
 const appOnNonFunctionError = makeError("The target of an application must be a calc function.");
 const functionAsOpArgumentError = makeError("Operator argument must be a primitive.");
+const div0 = makeError("#DIV/0!");
+
+export const errors = {
+    requestOnNonObjectError,
+    appOnNonFunctionError,
+    functionAsOpArgumentError,
+    div0,
+} as const;
 
 /**
  * Delay Effects
@@ -140,7 +148,7 @@ type Operations = BinaryOperations[keyof BinaryOperations] | UnaryOperations[key
 type TinyCalcBinOp = <O>(trace: Trace, host: O, l: CalcValue<O>, r: CalcValue<O>) => Delayed<CalcValue<O>>;
 type TinyCalcUnaryOp = <O>(trace: Trace, host: O, expr: CalcValue<O>) => Delayed<CalcValue<O>>;
 
-function liftBinOp(fn: (l: Primitive, r: Primitive) => Primitive): TinyCalcBinOp {
+function liftBinOp(fn: (l: Primitive, r: Primitive) => Primitive | CalcValue<unknown>): TinyCalcBinOp {
     return (trace, host, l, r) => {
         const lAsValue = typeof l === "object" ? trace(l.request(host, "value")) : l;
         const rAsValue = typeof r === "object" ? trace(r.request(host, "value")) : r;
@@ -167,7 +175,7 @@ const ops: OpContext = {
     plus: liftBinOp((x: any, y: any) => x + y),
     minus: liftBinOp((x: any, y: any) => x - y),
     mult: liftBinOp((x: any, y: any) => x * y),
-    div: liftBinOp((x: any, y: any) => x / y),
+    div: liftBinOp((x: any, y: any) => y === 0 ? errors.div0 : x / y),
     eq: liftBinOp((x: any, y: any) => x === y),
     lt: liftBinOp((x: any, y: any) => x < y),
     gt: liftBinOp((x: any, y: any) => x > y),

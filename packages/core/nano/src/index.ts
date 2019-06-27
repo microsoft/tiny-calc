@@ -5,6 +5,7 @@ export {
     compile,
     Delay,
     Delayed,
+    errors,
     Formula,
     isDelayed,
     makeError,
