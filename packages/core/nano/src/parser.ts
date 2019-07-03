@@ -463,8 +463,8 @@ export interface ParserSink<R> {
     paren: (expr: R, start: number, end: number) => R;
     app: (head: R, args: R[], start: number, end: number) => R;
     dot: (left: R, right: R, start: number, end: number) => R;
-    binOp: (op: SyntaxKind, left: R, right: R, start: number, end: number) => R;
-    unaryOp: (op: SyntaxKind, expr: R, start: number, end: number) => R;
+    binOp: (op: BinaryOperatorToken, left: R, right: R, start: number, end: number) => R;
+    unaryOp: (op: UnaryOperatorToken, expr: R, start: number, end: number) => R;
     missing: (position: number) => R;
 }
 
@@ -519,7 +519,21 @@ function isStartOfExpression(kind: SyntaxKind): boolean {
     }
 }
 
-export const createDiagnosticHandler: () => ParserErrorHandler<Diagnostic[]> = () => {
+export type BinaryOperatorToken =
+    | SyntaxKind.EqualsToken
+    | SyntaxKind.LessThanToken
+    | SyntaxKind.GreaterThanToken
+    | SyntaxKind.LessThanEqualsToken
+    | SyntaxKind.GreaterThanEqualsToken
+    | SyntaxKind.NotEqualsToken
+    | SyntaxKind.PlusToken
+    | SyntaxKind.MinusToken
+    | SyntaxKind.AsteriskToken
+    | SyntaxKind.SlashToken;
+
+export type UnaryOperatorToken = SyntaxKind.PlusToken | SyntaxKind.MinusToken;
+
+export const createDiagnosticErrorHandler: () => ParserErrorHandler<Diagnostic[]> = () => {
     let errors: Diagnostic[] = [];
     return {
         errors: () => errors,
@@ -528,12 +542,21 @@ export const createDiagnosticHandler: () => ParserErrorHandler<Diagnostic[]> = (
     }
 }
 
+export const createBooleanErrorHandler: () => ParserErrorHandler<boolean> = () => {
+    let errors = false;
+    return {
+        errors: () => errors,
+        reset: () => { errors = false; return },
+        onError: () => { errors = true; return }
+    }
+}
+
 export const createParser = <R, E>(sink: ParserSink<R>, handler: ParserErrorHandler<E>) => {
     const scanner = createScanner(handler.onError, "");
     let currentToken: SyntaxKind;
 
-    type ExpressionConstructor = (lhs: R, start: number, token: SyntaxKind, precedence: number) => R;
-    const termMap: Partial<Record<SyntaxKind, ExpressionConstructor>> = {
+    type ExpressionConstructor = (lhs: R, start: number, token: BinaryOperatorToken, precedence: number) => R;
+    const binOpMap: Partial<Record<BinaryOperatorToken, ExpressionConstructor>> = {
         [SyntaxKind.EqualsToken]: parseBinOp,
         [SyntaxKind.LessThanToken]: parseBinOp,
         [SyntaxKind.GreaterThanToken]: parseBinOp,
@@ -544,13 +567,16 @@ export const createParser = <R, E>(sink: ParserSink<R>, handler: ParserErrorHand
         [SyntaxKind.MinusToken]: parseBinOp,
         [SyntaxKind.AsteriskToken]: parseBinOp,
         [SyntaxKind.SlashToken]: parseBinOp,
+    };
+
+    const dotAppMap = {
         [SyntaxKind.OpenParenToken]: (lhs: R, start: number) => {
             return sink.app(lhs, parseArgumentList(), start, scanner.getWSTokenPos());
         },
         [SyntaxKind.DotToken]: (lhs: R, start: number) => {
             return sink.dot(lhs, parseField(), start, scanner.getWSTokenPos());
         }
-    };
+    } as const;
 
     const parseExpression = () => parseExpr(0);
 
@@ -616,7 +642,7 @@ export const createParser = <R, E>(sink: ParserSink<R>, handler: ParserErrorHand
         return sink.missing(start);
     }
 
-    function parseBinOp(lhs: R, start: number, token: SyntaxKind, precedence: number) {
+    function parseBinOp(lhs: R, start: number, token: BinaryOperatorToken, precedence: number) {
         return sink.binOp(token, lhs, parseExpr(precedence), start, scanner.getWSTokenPos());
     }
 
@@ -675,9 +701,9 @@ export const createParser = <R, E>(sink: ParserSink<R>, handler: ParserErrorHand
                 break;
             }
             nextToken();
-            const makeTerm = termMap[token];
+            const makeTerm = binOpMap[token as BinaryOperatorToken];
             assert(makeTerm !== undefined);
-            expression = makeTerm!(expression, start, token, newPrecedence);
+            expression = makeTerm!(expression, start, token as BinaryOperatorToken, newPrecedence);
         }
         return expression;
     }
@@ -704,9 +730,7 @@ export const createParser = <R, E>(sink: ParserSink<R>, handler: ParserErrorHand
                 case SyntaxKind.OpenParenToken:
                 case SyntaxKind.DotToken:
                     nextToken();
-                    const makeTerm = termMap[token];
-                    assert(makeTerm !== undefined);
-                    expression = makeTerm!(expression, start, token, 0);
+                    expression = dotAppMap[token](expression, start);
                     continue;
                 default:
                     return expression;
