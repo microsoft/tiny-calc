@@ -73,7 +73,7 @@ describe("nano", () => {
     }
 
     function compilationFailureTest(expression: string) {
-        it(`Eval: ${expression}`, () => {
+        it(`Compilation Failure: ${expression}`, () => {
             const f = compile(expression);
             assert.strictEqual(f, undefined);
         });
