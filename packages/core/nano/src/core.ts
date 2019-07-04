@@ -100,11 +100,16 @@ function app2<O, A, B, C>(trace: Trace, host: O, op: <O>(trace: Trace, host: O, 
 
 function appN<O>(trace: Trace, host: O, fn: Delayed<CalcValue<O>>, args: Delayed<CalcValue<O>>[]): Delayed<CalcValue<O>> {
     if (isDelayed(fn)) { return delay };
-    if (typeof fn !== "function") { return appOnNonFunctionError; }
+    let target: Delayed<CalcValue<O>> = fn;
+    if (typeof target === "object") {
+        target = trace(target.request(host, "value"));
+    }
+    if (isDelayed(target)) { return delay; }
+    if (typeof target !== "function") { return appOnNonFunctionError; }
     for (let i = 0; i < args.length; i += 1) {
         if (isDelayed(args[i])) { return delay };
     }
-    return fn(trace, host, args as CalcValue<O>[]);
+    return target(trace, host, args as CalcValue<O>[]);
 }
 
 export const ef: LiftedCore = { req, select, app1, app2, appN };

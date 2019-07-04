@@ -46,6 +46,7 @@ const testContext: CalcObj<undefined> = {
             case "Bar": return 5;
             case "Baz": return { kind: "Pending" };
             case "Qux": return { kind: "Pending" };
+            case "A1": return { request(_, prop) { return prop === "value" ? sum : 0 } };
             case "Sum": return sum;
             case "Product": return prod;
             default: return 0;
@@ -857,6 +858,7 @@ Product(1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
         { expression: "1/0", expected: errors.div0 },
         { expression: "(1/0).stringify", expected: "#DIV/0!" },
         { expression: "FUN(42)()", expected: 42 },
+        { expression: "A1(1, 2, 3, FUN(42)())", expected: 48 },
         { expression: "FUN(x, y, x + y)(1)", expected: "#ARITY!" },
         { expression: "FUN(x, y, z, x + y + z)(1, 2, 3) + FUN(x, y, z, x + y + z)(4, 5, 6) + FUN(x, y, z, x + y + z)(7, 8, 9) + FUN(x, y, z, x + y + z)(10, 11, 12)", expected: 78 },
         { expression: "FUN(f, f(1, 2, 3) + f(4, 5, 6) + f(7, 8, 9) + f(10, 11, 12))(FUN(x, y, z, x + y + z))", expected: 78 },
