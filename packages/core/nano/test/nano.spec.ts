@@ -1,5 +1,6 @@
-import { createDiagnosticHandler, createParser, SyntaxKind, ParserSink } from "../src/parser";
-import { compile, CalcValue, CalcObj, CalcFun, errors } from "../src/compiler";
+import { createDiagnosticErrorHandler, createParser, SyntaxKind, ParserSink } from "../src/parser";
+import { compile } from "../src/compiler";
+import { CalcValue, CalcObj, CalcFun, errors } from "../src/core";
 import * as assert from "assert";
 import "mocha";
 
@@ -33,7 +34,7 @@ const astSink: ParserSink<object> = {
     }
 };
 
-export const astParse = createParser(astSink, createDiagnosticHandler());
+export const astParse = createParser(astSink, createDiagnosticErrorHandler());
 
 const sum: CalcFun = <O>(_trace: any, _host: O, args: any[]) => args.reduce((prev, now) => prev + now, 0);
 const prod: CalcFun = <O>(_trace: any, _host: O, args: any[]) => args.reduce((prev, now) => prev * now, 1);
@@ -45,6 +46,7 @@ const testContext: CalcObj<undefined> = {
             case "Bar": return 5;
             case "Baz": return { kind: "Pending" };
             case "Qux": return { kind: "Pending" };
+            case "A1": return { request(_, prop) { return prop === "value" ? sum : 0 } };
             case "Sum": return sum;
             case "Product": return prod;
             default: return 0;
@@ -68,6 +70,13 @@ describe("nano", () => {
             const [pending, actual] = f!(undefined, testContext);
             assert.deepEqual(pending, []);
             assert.strictEqual(actual, expected);
+        });
+    }
+
+    function compilationFailureTest(expression: string) {
+        it(`Compilation Failure: ${expression}`, () => {
+            const f = compile(expression);
+            assert.strictEqual(f, undefined);
         });
     }
 
@@ -810,7 +819,7 @@ describe("nano", () => {
             },
             errorCount: 0
         },
-    ]
+    ];
 
     const evalCases = [
         { expression: "----4", expected: 4 },
@@ -827,6 +836,9 @@ Product(1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
 Sum(1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1)+
 Product(1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1)`, expected: 259
         },
+        { expression: "IF", expected: 0 },
+        { expression: "FUN", expected: 0 },
+        { expression: "IF(true)", expected: true },
         { expression: "IF(Foo > 2, Foo + Bar, Bar * Foo)", expected: 8 },
         { expression: "1.3333 + 2.2222", expected: 3.5555 },
         { expression: "1 + 2    + 3 + 4 =   10 - 10 + 10", expected: true },
@@ -844,8 +856,23 @@ Product(1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
         { expression: "42.01", expected: 42.01 },
         { expression: "1/1", expected: 1 },
         { expression: "1/0", expected: errors.div0 },
-        { expression: "(1/0).stringify", expected: "#DIV/0!" }
-    ]
+        { expression: "(1/0).stringify", expected: "#DIV/0!" },
+        { expression: "FUN(42)()", expected: 42 },
+        { expression: "A1(1, 2, 3, FUN(42)())", expected: 48 },
+        { expression: "FUN(x, y, x + y)(1)", expected: "#ARITY!" },
+        { expression: "FUN(x, y, z, x + y + z)(1, 2, 3) + FUN(x, y, z, x + y + z)(4, 5, 6) + FUN(x, y, z, x + y + z)(7, 8, 9) + FUN(x, y, z, x + y + z)(10, 11, 12)", expected: 78 },
+        { expression: "FUN(f, f(1, 2, 3) + f(4, 5, 6) + f(7, 8, 9) + f(10, 11, 12))(FUN(x, y, z, x + y + z))", expected: 78 },
+        { expression: "FUN(x, y, z, x + FUN(x, x*x)(y) + z)(2, 3, 4)", expected: 15 },
+        { expression: "FUN(g, f, FUN(x, g(f(x))))(FUN(x, x + 1), FUN(x, x - 1))(10)=10", expected: true }
+    ];
+
+    const compilationFailureCases = [
+        { expression: "4+" },
+        { expression: "+" },
+        { expression: "FUN()" },
+        { expression: "FUN(4,4,4+4)" },
+        { expression: "IF()" },
+    ];
 
     for (const { expression, expected, errorCount } of parseCases) {
         parseTest(expression, expected, errorCount);
@@ -853,5 +880,9 @@ Product(1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
 
     for (const { expression, expected } of evalCases) {
         evalTest(expression, expected);
+    }
+
+    for (const { expression } of compilationFailureCases) {
+        compilationFailureTest(expression);
     }
 });

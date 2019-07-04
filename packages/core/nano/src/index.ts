@@ -2,7 +2,6 @@ export {
     CalcFun,
     CalcObj,
     CalcValue,
-    compile,
     Delay,
     Delayed,
     errors,
@@ -11,6 +10,10 @@ export {
     makeError,
     Primitive,
     Trace
+} from "./core";
+
+export {
+    compile,
 } from "./compiler";
 
 export {
