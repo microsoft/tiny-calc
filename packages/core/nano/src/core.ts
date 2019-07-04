@@ -8,11 +8,11 @@ export interface CalcObj<O> {
     request(origin: O, property: string, ...args: any[]): CalcValue<O> | Pending<CalcValue<O>>;
 }
 
-export interface CalcFun {
-    <O>(trace: Trace, origin: O, args: CalcValue<O>[]): Delayed<CalcValue<O>>;
+export interface CalcFun<O = unknown> {
+    <T extends O>(trace: Trace, origin: T, args: CalcValue<T>[]): Delayed<CalcValue<T>>;
 }
 
-export type CalcValue<O> = Primitive | CalcObj<O> | CalcFun;
+export type CalcValue<O> = Primitive | CalcObj<O> | CalcFun<O>;
 
 export function makeError(message: string): CalcObj<unknown> {
     return {
