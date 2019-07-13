@@ -5,7 +5,7 @@ export type Primitive = number | string | boolean;
 
 // TODO: Support Completions
 export interface CalcObj<O> {
-    request(origin: O, property: string, ...args: any[]): CalcValue<O> | Pending<CalcValue<O>>;
+    read(property: string, origin: O, ...args: any[]): CalcValue<O> | Pending<CalcValue<O>>;
 }
 
 export interface CalcFun<O = unknown> {
@@ -16,21 +16,21 @@ export type CalcValue<O> = Primitive | CalcObj<O> | CalcFun<O>;
 
 export function makeError(message: string): CalcObj<unknown> {
     return {
-        request(_, property) {
+        read(property) {
             if (property === "stringify") { return message };
             return this;
         }
     };
 }
 
-const requestOnNonObjectError = makeError("The target of a dot-operation must be a calc object.");
+const readOnNonObjectError = makeError("The target of a dot-operation must be a calc object.");
 const appOnNonFunctionError = makeError("The target of an application must be a calc function.");
 const functionAsOpArgumentError = makeError("Operator argument must be a primitive.");
 const functionArityError = makeError("#ARITY!");
 const div0 = makeError("#DIV/0!");
 
 export const errors = {
-    requestOnNonObjectError,
+    readOnNonObjectError,
     appOnNonFunctionError,
     functionAsOpArgumentError,
     functionArityError,
@@ -62,7 +62,7 @@ export function makeTracer(): [Pending<unknown>[], Trace] {
     // replace them with a sentinel so that we can use pointer
     // equality throughout the rest of a calculation. The
     // side-effecting here, as opposed to in app/app2, is justified by
-    // pretending that all requests are written in ANF.
+    // pretending that all reads are written in ANF.
     const data: Pending<unknown>[] = [];
     const fn: Trace = <T>(value: T | Pending<T>) => {
         if (typeof value === "object" && (value as any).kind === "Pending") {
@@ -75,15 +75,15 @@ export function makeTracer(): [Pending<unknown>[], Trace] {
 
 /** Lifting of core operations into the `Delayed` S.A.F. */
 export interface LiftedCore {
-    req: <O>(trace: Trace, host: O, context: Delayed<CalcValue<O>>, prop: string) => Delayed<CalcValue<O>>;
+    read: <O>(trace: Trace, host: O, context: Delayed<CalcValue<O>>, prop: string) => Delayed<CalcValue<O>>;
     select: <L, R>(cond: Delayed<boolean>, l: () => Delayed<L>, r: () => Delayed<R>) => Delayed<L | R>;
     app1: <O, A, B>(trace: Trace, host: O, op: <O>(trace: Trace, host: O, expr: A) => B, expr: Delayed<A>) => Delayed<B>;
     app2: <O, A, B, C>(trace: Trace, host: O, op: <O>(trace: Trace, host: O, l: A, r: B) => C, l: Delayed<A>, r: Delayed<B>) => Delayed<C>;
     appN: <O>(trace: Trace, host: O, fn: Delayed<CalcValue<O>>, args: Delayed<CalcValue<O>>[]) => Delayed<CalcValue<O>>;
 }
 
-function req<O>(trace: Trace, host: O, context: Delayed<CalcValue<O>>, prop: string): Delayed<CalcValue<O>> {
-    return isDelayed(context) ? delay : typeof context === "object" ? trace(context.request(host, prop)) : requestOnNonObjectError;
+function read<O>(trace: Trace, host: O, context: Delayed<CalcValue<O>>, prop: string): Delayed<CalcValue<O>> {
+    return isDelayed(context) ? delay : typeof context === "object" ? trace(context.read(prop, host)) : readOnNonObjectError;
 }
 
 function select<L, R>(cond: Delayed<boolean>, l: () => Delayed<L>, r: () => Delayed<R>): Delayed<L | R> {
@@ -102,7 +102,7 @@ function appN<O>(trace: Trace, host: O, fn: Delayed<CalcValue<O>>, args: Delayed
     if (isDelayed(fn)) { return delay };
     let target: Delayed<CalcValue<O>> = fn;
     if (typeof target === "object") {
-        target = trace(target.request(host, "value"));
+        target = trace(target.read("value", host));
     }
     if (isDelayed(target)) { return delay; }
     if (typeof target !== "function") { return appOnNonFunctionError; }
@@ -112,7 +112,7 @@ function appN<O>(trace: Trace, host: O, fn: Delayed<CalcValue<O>>, args: Delayed
     return target(trace, host, args as CalcValue<O>[]);
 }
 
-export const ef: LiftedCore = { req, select, app1, app2, appN };
+export const ef: LiftedCore = { read, select, app1, app2, appN };
 
 export const binaryOperationsMap = {
     [SyntaxKind.PlusToken]: "plus",
@@ -139,8 +139,8 @@ type TinyCalcUnaryOp = <O>(trace: Trace, host: O, expr: CalcValue<O>) => Delayed
 
 function liftBinOp(fn: (l: Primitive, r: Primitive) => CalcValue<unknown>): TinyCalcBinOp {
     return (trace, host, l, r) => {
-        const lAsValue = typeof l === "object" ? trace(l.request(host, "value")) : l;
-        const rAsValue = typeof r === "object" ? trace(r.request(host, "value")) : r;
+        const lAsValue = typeof l === "object" ? trace(l.read("value", host)) : l;
+        const rAsValue = typeof r === "object" ? trace(r.read("value", host)) : r;
         if (typeof lAsValue === "object") { return lAsValue; }
         if (isDelayed(rAsValue)) { return delay; }
         if (typeof lAsValue === "function") { return functionAsOpArgumentError; }
@@ -152,7 +152,7 @@ function liftBinOp(fn: (l: Primitive, r: Primitive) => CalcValue<unknown>): Tiny
 
 function liftUnaryOp(fn: (expr: Primitive) => Primitive): TinyCalcUnaryOp {
     return (trace, host, expr) => {
-        const exprAsValue = typeof expr === "object" ? trace(expr.request(host, "value")) : expr;
+        const exprAsValue = typeof expr === "object" ? trace(expr.read("value", host)) : expr;
         if (typeof exprAsValue === "object") { return exprAsValue; }
         if (typeof exprAsValue === "function") { return functionAsOpArgumentError; }
         return fn(exprAsValue);
