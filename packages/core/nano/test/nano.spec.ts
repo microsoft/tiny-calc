@@ -40,13 +40,13 @@ const sum: CalcFun = <O>(_trace: any, _host: O, args: any[]) => args.reduce((pre
 const prod: CalcFun = <O>(_trace: any, _host: O, args: any[]) => args.reduce((prev, now) => prev * now, 1);
 
 const testContext: CalcObj<undefined> = {
-    request: (_origin: undefined, property: string) => {
+    read: (property: string) => {
         switch (property) {
             case "Foo": return 3;
             case "Bar": return 5;
             case "Baz": return { kind: "Pending" };
             case "Qux": return { kind: "Pending" };
-            case "A1": return { request(_, prop) { return prop === "value" ? sum : 0 } };
+            case "A1": return { read(prop) { return prop === "value" ? sum : 0 } };
             case "Sum": return sum;
             case "Product": return prod;
             default: return 0;

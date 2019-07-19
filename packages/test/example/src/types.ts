@@ -56,7 +56,7 @@ function createPending(v: Pending<Value>): Pending<CalcValue<FormulaHost>> {
 function createCalcValue(v: Producer): CalcObj<FormulaHost> {
     const cache: Record<string, CalcValue<FormulaHost>> = {};
     return {
-        request: (consumer: IConsumer<Record<string, Value>>, prop: string) => {
+        read: (prop: string, consumer: IConsumer<Record<string, Value>>) => {
             if (cache[prop] !== undefined) {
                 return cache[prop];
             }

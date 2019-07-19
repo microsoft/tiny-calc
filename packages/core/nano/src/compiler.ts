@@ -25,8 +25,8 @@ import {
 import { FormulaNode, NodeKind, parseFormula } from "./ast";
 
 const needsASTCompilation = {};
-const ifIdent = "trace(context.request(host,\"if\"))";
-const funIdent = "trace(context.request(host,\"fun\"))";
+const ifIdent = "trace(context.read(\"if\", host))";
+const funIdent = "trace(context.read(\"fun\", host))";
 const errorHandler = createBooleanErrorHandler();
 
 function outputConditional(args: string[]): string {
@@ -52,7 +52,7 @@ const simpleSink = {
             case "FUN":
                 return funIdent;
             default:
-                return `trace(context.request(host,${JSON.stringify(id)}))`;
+                return `trace(context.read(${JSON.stringify(id)},host))`;
         }
     },
     field(label: string) {
@@ -72,7 +72,7 @@ const simpleSink = {
         }
     },
     dot(left: string, right: string) {
-        return `ef.req(trace,host,${left},${right})`;
+        return `ef.read(trace,host,${left},${right})`;
     },
     binOp(op: BinaryOperatorToken, left: string, right: string) {
         const opStr = "ops." + binaryOperationsMap[op];
