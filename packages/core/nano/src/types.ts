@@ -1,6 +1,6 @@
 export interface Pending<T> {
-  kind: "Pending";
-  estimate?: T;
+    kind: "Pending";
+    estimate?: T;
 }
 
 /**
@@ -11,18 +11,18 @@ export interface Pending<T> {
  * to the data that the consumer is bound to.
  */
 export interface IConsumer<T> {
-  /**
-   * Invoked whenever the data this object is bound to is changed.
-   */
-  valueChanged<U extends T, K extends keyof U>(property: K, value: U[K], producer: IProducer<U>): void;
+    /**
+     * Invoked whenever the data this object is bound to is changed.
+     */
+    valueChanged<U extends T, K extends keyof U>(property: K, value: U[K], producer: IProducer<U>): void;
 }
 
 export interface IReader<T> {
-  /**
-   * Return the value associated with `property`.
-   * @param property - The property of the Producer to read.
-   */
-  read<K extends keyof T>(property: K): T[K] | Pending<T[K]>;
+    /**
+     * Return the value associated with `property`.
+     * @param property - The property of the Producer to read.
+     */
+    read<K extends keyof T>(property: K): T[K] | Pending<T[K]>;
 }
 
 /**
@@ -33,62 +33,62 @@ export interface IReader<T> {
  * functionality and to notify consumers whenever the data they are bound to changes.
  */
 export interface IProducer<T> {
-  /**
-   * Unsubscribes a consumer from this producer.
-   * @param consumer - The consumer to unregister from the Producer.
-   */
-  removeConsumer(consumer: IConsumer<T>): void;
+    /**
+     * Unsubscribes a consumer from this producer.
+     * @param consumer - The consumer to unregister from the Producer.
+     */
+    removeConsumer(consumer: IConsumer<T>): void;
 
-  /**
-   * Returns a reader for this producer's values and implicitly subscribes the given
-   * consumer to change notifications from this producer (if it isn't already).
-   * 
-   * @param consumer - The object to be notified of value changes.
-   */
-  open(consumer: IConsumer<T>): IReader<T>;
+    /**
+     * Returns a reader for this producer's values and implicitly subscribes the given
+     * consumer to change notifications from this producer (if it isn't already).
+     * 
+     * @param consumer - The object to be notified of value changes.
+     */
+    open(consumer: IConsumer<T>): IReader<T>;
 }
 
 export interface IVectorConsumer<T> {
-  /** Notification that a range of items have been inserted, removed, and/or replaced in the given vector. */
-  itemsChanged(index: number, numRemoved: number, itemInserted: T[], producer: IVectorProducer<T>): void;
+    /** Notification that a range of items have been inserted, removed, and/or replaced in the given vector. */
+    itemsChanged(index: number, numRemoved: number, itemInserted: T[], producer: IVectorProducer<T>): void;
 }
 
 /** Provides more efficient access to 1D data for vector-aware consumers. */
 export interface IVectorProducer<T> {
-  /**
-   * Unsubscribes a consumer from this producer.
-   * @param consumer - The consumer to unregister from the Producer.
-   */
-  removeVectorConsumer(consumer: IVectorConsumer<T>): void;
+    /**
+     * Unsubscribes a consumer from this producer.
+     * @param consumer - The consumer to unregister from the Producer.
+     */
+    removeVectorConsumer(consumer: IVectorConsumer<T>): void;
 
-  openVector(consumer: IVectorConsumer<T>): {
-    readonly length: T;    
-    read(index: number): T;
-  }
+    openVector(consumer: IVectorConsumer<T>): {
+        readonly length: T;
+        read(index: number): T;
+    }
 }
 
 export interface IMatrixConsumer<T> {
-  /** Notification that rows have been inserted, removed, and/or replaced in the given matrix. */
-  rowsChanged(row: number, numRemoved: number, rowsInserted: T[], producer: IMatrixProducer<T>): void;
+    /** Notification that rows have been inserted, removed, and/or replaced in the given matrix. */
+    rowsChanged(row: number, numRemoved: number, rowsInserted: T[], producer: IMatrixProducer<T>): void;
 
-  /** Notification that cols have been inserted, removed, and/or replaced in the given matrix. */
-  colsChanged(col: number, numRemoved: number, colsInserted: T[], producer: IMatrixProducer<T>): void;
+    /** Notification that cols have been inserted, removed, and/or replaced in the given matrix. */
+    colsChanged(col: number, numRemoved: number, colsInserted: T[], producer: IMatrixProducer<T>): void;
 
-  /** Notification that a range of cells have been replaced in the given matrix. */
-  cellsReplaced(row: number, col: number, numRows: number, numCols: number, values: T[], producer: IMatrixProducer<T>): void;
+    /** Notification that a range of cells have been replaced in the given matrix. */
+    cellsReplaced(row: number, col: number, numRows: number, numCols: number, values: T[], producer: IMatrixProducer<T>): void;
 }
 
 /** Provides more efficient access to 2D data for vector-aware consumers. */
 export interface IMatrixProducer<T> {
-  /**
-   * Unsubscribes a consumer from this producer.
-   * @param consumer - The consumer to unregister from the Producer.
-   */
-  removeMatrixConsumer(consumer: IMatrixConsumer<T>): void;
+    /**
+     * Unsubscribes a consumer from this producer.
+     * @param consumer - The consumer to unregister from the Producer.
+     */
+    removeMatrixConsumer(consumer: IMatrixConsumer<T>): void;
 
-  openMatrix(consumer: IMatrixConsumer<T>): {
-    readonly numRows: number;
-    readonly numCols: number;
-    read(row: number, col: number): T;
-  }
+    openMatrix(consumer: IMatrixConsumer<T>): {
+        readonly numRows: number;
+        readonly numCols: number;
+        read(row: number, col: number): T;
+    }
 }
