@@ -12,7 +12,7 @@
   "devDependencies": {
     "@types/benchmark": "^1.0.31",
     "@types/mocha": "^5.2.6",
-    "@types/node": "^8.10.46",
+    "@types/node": "^10.0.0",
     "benchmark": "^2.1.4",
     "mocha": "^6.1.4",
     "rimraf": "^2.6.3",

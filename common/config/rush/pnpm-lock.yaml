@@ -3,7 +3,7 @@ dependencies:
   '@rush-temp/nano': 'file:projects/nano.tgz'
   '@types/benchmark': 1.0.31
   '@types/mocha': 5.2.7
-  '@types/node': 8.10.51
+  '@types/node': 10.14.18
   benchmark: 2.1.4
   mocha: 6.2.0
   rimraf: 2.6.3
@@ -19,10 +19,10 @@ packages:
     dev: false
     resolution:
       integrity: sha512-NYrtPht0wGzhwe9+/idPaBB+TqkY9AhTvOLMkThm0IoEfLaiVQZwBwyJ5puCkO3AUCWrmcoePjp2mbFocKy4SQ==
-  /@types/node/8.10.51:
+  /@types/node/10.14.18:
     dev: false
     resolution:
-      integrity: sha512-cArrlJp3Yv6IyFT/DYe+rlO8o3SIHraALbBW/+CcCYW/a9QucpLI+n2p4sRxAvl2O35TiecpX2heSZtJjvEO+Q==
+      integrity: sha512-ryO3Q3++yZC/+b8j8BdKd/dn9JlzlHBPdm80656xwYUdmPkpTGTjkAdt6BByiNupGPE8w0FhBgvYy/fX9hRNGQ==
   /ansi-colors/3.2.3:
     dev: false
     engines:
@@ -929,20 +929,21 @@ packages:
       integrity: sha512-kKfnnYkbTfrAdd0xICNFw7Atm8nKpLcLv9AZGEt+kczL/WQVai4e2V6ZN8U/O+iI6WrNuJjNNOyu4zfhl9D3Hg==
   'file:projects/example.tgz':
     dependencies:
+      '@types/node': 10.14.18
       rimraf: 2.6.3
       ts-node: 8.3.0_typescript@3.5.3
       typescript: 3.5.3
     dev: false
     name: '@rush-temp/example'
     resolution:
-      integrity: sha512-wjxYy/PpiFXyELD+bLA7ceeAF6W3lNcdJVY1Rxhl/QfHFXPHUOpGv7pLxf1jyseevAXsE+luUfldKXJxcuwqNA==
+      integrity: sha512-B6y7YXfCU+/YdkNNeQBG5gFkG59HRQlaEUZndIPMfijb/BjfnIticUmhggF9PgwJgdjv0Gy4lztS0b58ydxbtw==
       tarball: 'file:projects/example.tgz'
     version: 0.0.0
   'file:projects/nano.tgz':
     dependencies:
       '@types/benchmark': 1.0.31
       '@types/mocha': 5.2.7
-      '@types/node': 8.10.51
+      '@types/node': 10.14.18
       benchmark: 2.1.4
       mocha: 6.2.0
       rimraf: 2.6.3
@@ -951,15 +952,16 @@ packages:
     dev: false
     name: '@rush-temp/nano'
     resolution:
-      integrity: sha512-T4uqNz5tTH0hsVQ9mg8VZfoBgb6t2zAdCstks1z9kCbDuS0zMr41ctIBb54SZL2zF5cT7GdIWaAMnPbbRdSoBg==
+      integrity: sha512-sat3syQ7AfASP2dRgwKz2IWvaopJggjYx6ctLSzIAh081NpBiD110bD4nXdNOCXzyWmT+IFVATCh3n7/X4k5Ow==
       tarball: 'file:projects/nano.tgz'
     version: 0.0.0
+registry: ''
 specifiers:
   '@rush-temp/example': 'file:./projects/example.tgz'
   '@rush-temp/nano': 'file:./projects/nano.tgz'
   '@types/benchmark': ^1.0.31
   '@types/mocha': ^5.2.6
-  '@types/node': ^8.10.46
+  '@types/node': ^10.0.0
   benchmark: ^2.1.4
   mocha: ^6.1.4
   rimraf: ^2.6.3
