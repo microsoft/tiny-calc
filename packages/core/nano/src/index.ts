@@ -26,3 +26,7 @@ export {
     IMatrixConsumer,
     IMatrixProducer
 } from "./types";
+
+export {
+    produce
+} from "./produce";

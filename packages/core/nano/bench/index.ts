@@ -1,6 +1,9 @@
 import { Suite } from "benchmark";
 import { runSuite, consume } from "./util";
 import { compile } from "../src/compiler";
+import { suite as jsonSuite } from "./json";
+
+runSuite(jsonSuite);
 
 const formulas = [
     "0",
