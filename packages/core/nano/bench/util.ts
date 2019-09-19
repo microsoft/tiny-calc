@@ -39,3 +39,9 @@ export function runSuite(suite: Suite) {
         })
         .run();
 }
+
+export function runSuites(suites: Iterable<Suite>) {
+    for (const suite of suites) {
+        runSuite(suite);
+    }
+}
