@@ -1,3 +1,5 @@
+export type Primitive = boolean | number | string;
+
 export interface Pending<T> {
     kind: "Pending";
     estimate?: T;

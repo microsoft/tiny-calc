@@ -1,7 +1,5 @@
-import { Pending } from "./types";
+import { Pending, Primitive } from "./types";
 import { SyntaxKind } from "./parser";
-
-export type Primitive = number | string | boolean;
 
 // TODO: Support Completions
 export interface CalcObj<O> {
