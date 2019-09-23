@@ -4,15 +4,15 @@ import { SyntaxKind } from "./parser";
 export type Primitive = number | string | boolean;
 
 // TODO: Support Completions
-export interface CalcObj<O> {
-    read(property: string, origin: O, ...args: any[]): CalcValue<O> | Pending<CalcValue<O>>;
+export interface CalcObj<T = unknown> {
+    read<O = unknown>(property: string, origin: O, ...args: any[]): CalcValue<T> | Pending<CalcValue<T>>;
 }
 
-export interface CalcFun<O = unknown> {
-    <T extends O>(trace: Trace, origin: T, args: CalcValue<T>[]): Delayed<CalcValue<T>>;
+export interface CalcFun<T = unknown> {
+    <O = unknown>(trace: Trace, origin: O, args: CalcValue<T>[]): Delayed<CalcValue<T>>;
 }
 
-export type CalcValue<O> = Primitive | CalcObj<O> | CalcFun<O>;
+export type CalcValue<T = unknown> = Primitive | CalcObj<T> | CalcFun<T>;
 
 export function makeError(message: string): CalcObj<unknown> {
     return {
