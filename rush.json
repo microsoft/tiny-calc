@@ -23,6 +23,12 @@
       "versionPolicyName": "public"
     },
     {
+      "packageName": "@tiny-calc/tool-config",
+      "projectFolder": "packages/common/tool-config",
+      "reviewCategory": "production",
+      "versionPolicyName": "public"
+    },
+    {
       "packageName": "@tiny-calc-test/example",
       "projectFolder": "packages/test/example",
       "shouldPublish": false,

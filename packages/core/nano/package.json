@@ -10,6 +10,7 @@
     "test": "mocha -r ts-node/register test/**/*.spec.ts"
   },
   "devDependencies": {
+    "@tiny-calc/tool-config": "^0.0.2",
     "@types/benchmark": "^1.0.31",
     "@types/mocha": "^5.2.6",
     "@types/node": "^10.0.0",

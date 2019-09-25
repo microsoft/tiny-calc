@@ -1,17 +1,9 @@
 {
+    "extends": "@tiny-calc/tool-config/tsconfig.json",
     "compilerOptions": {
-        "target": "es6",
-        "module": "commonjs",
-        "incremental": true,
-        "declaration": true,
-        "noImplicitAny": true,
-        "noImplicitReturns": true,
-        "noFallthroughCasesInSwitch": true,
-        "removeComments": true,
-        "preserveConstEnums": false,
-        "sourceMap": false,
-        "strict": true,
-        "outDir": "dist/"
+        "declarationDir": "./dist",
+        "rootDir": "./src",
+        "outDir": "./dist"
     },
     "include": ["src/**/*.ts"]
 }
