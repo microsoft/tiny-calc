@@ -8,7 +8,6 @@ export {
     Formula,
     isDelayed,
     makeError,
-    Primitive,
     Trace
 } from "./core";
 
@@ -18,6 +17,7 @@ export {
 
 export {
     Pending,
+    Primitive,
     IConsumer,
     IReader,
     IProducer,

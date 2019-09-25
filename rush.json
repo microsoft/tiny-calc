@@ -17,6 +17,12 @@
   },
   "projects": [
     {
+      "packageName": "@tiny-calc/micro",
+      "projectFolder": "packages/core/micro",
+      "reviewCategory": "production",
+      "versionPolicyName": "public"
+    },
+    {
       "packageName": "@tiny-calc/nano",
       "projectFolder": "packages/core/nano",
       "reviewCategory": "production",

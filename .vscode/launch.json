@@ -33,6 +33,32 @@
         {
             "type": "node",
             "request": "launch",
+            "name": "Micro Bench",
+            "cwd": "${workspaceFolder}/packages/core/micro",
+            "program": "${workspaceFolder}/packages/core/micro/node_modules/ts-node/dist/bin.js",
+            "args": [ "bench/index.ts" ],
+            "env": { "TS_NODE_PROJECT": "tsconfig.json" },
+            "console": "integratedTerminal"
+        },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "Micro Tests",
+            "cwd": "${workspaceFolder}/packages/core/micro",
+            "program": "${workspaceFolder}/packages/core/micro/node_modules/mocha/bin/_mocha",
+            "args": [
+                "-r",
+                "ts-node/register",
+                "--no-timeouts",
+                "test/**/*.spec.ts"
+            ],
+            "env": { "TS_NODE_PROJECT": "tsconfig.json" },
+            "console": "integratedTerminal",
+            "skipFiles": ["<node_internals>/**/*.js"]
+        },
+        {
+            "type": "node",
+            "request": "launch",
             "name": "Example",
             "cwd": "${workspaceFolder}/packages/test/example",
             "program": "${workspaceFolder}/packages/test/example/node_modules/ts-node/dist/bin.js",
