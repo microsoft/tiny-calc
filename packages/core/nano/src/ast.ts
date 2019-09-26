@@ -1,4 +1,4 @@
-import { Primitive } from "./core";
+import { Primitive } from "./types";
 
 import {
     BinaryOperatorToken,

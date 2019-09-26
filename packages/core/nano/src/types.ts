@@ -1,3 +1,5 @@
+export type Primitive = boolean | number | string;
+
 export interface Pending<T> {
     kind: "Pending";
     estimate?: T;
@@ -50,7 +52,12 @@ export interface IProducer<T> {
 
 export interface IVectorConsumer<T> {
     /** Notification that a range of items have been inserted, removed, and/or replaced in the given vector. */
-    itemsChanged(index: number, numRemoved: number, itemInserted: T[], producer: IVectorProducer<T>): void;
+    itemsChanged(index: number, numRemoved: number, itemsInserted: T[], producer: IVectorProducer<T>): void;
+}
+
+export interface IVectorReader<T> {
+    readonly length: number;
+    read(index: number): T;
 }
 
 /** Provides more efficient access to 1D data for vector-aware consumers. */
@@ -61,10 +68,7 @@ export interface IVectorProducer<T> {
      */
     removeVectorConsumer(consumer: IVectorConsumer<T>): void;
 
-    openVector(consumer: IVectorConsumer<T>): {
-        readonly length: T;
-        read(index: number): T;
-    }
+    openVector(consumer: IVectorConsumer<T>): IVectorReader<T>;
 }
 
 export interface IMatrixConsumer<T> {
@@ -78,7 +82,13 @@ export interface IMatrixConsumer<T> {
     cellsReplaced(row: number, col: number, numRows: number, numCols: number, values: T[], producer: IMatrixProducer<T>): void;
 }
 
-/** Provides more efficient access to 2D data for vector-aware consumers. */
+export interface IMatrixReader<T> {
+    readonly numRows: number;
+    readonly numCols: number;
+    read(row: number, col: number): T;
+}
+
+/** Provides more efficient access to 2D data for matrix-aware consumers. */
 export interface IMatrixProducer<T> {
     /**
      * Unsubscribes a consumer from this producer.
@@ -86,9 +96,5 @@ export interface IMatrixProducer<T> {
      */
     removeMatrixConsumer(consumer: IMatrixConsumer<T>): void;
 
-    openMatrix(consumer: IMatrixConsumer<T>): {
-        readonly numRows: number;
-        readonly numCols: number;
-        read(row: number, col: number): T;
-    }
+    openMatrix(consumer: IMatrixConsumer<T>): IMatrixReader<T>;
 }

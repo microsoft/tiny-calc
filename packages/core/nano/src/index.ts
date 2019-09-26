@@ -8,7 +8,6 @@ export {
     Formula,
     isDelayed,
     makeError,
-    Primitive,
     Trace
 } from "./core";
 
@@ -18,6 +17,7 @@ export {
 
 export {
     Pending,
+    Primitive,
     IConsumer,
     IReader,
     IProducer,
@@ -26,3 +26,7 @@ export {
     IMatrixConsumer,
     IMatrixProducer
 } from "./types";
+
+export {
+    produce
+} from "./produce";

@@ -11,6 +11,8 @@
     "@tiny-calc/nano": "^0.0.2"
   },
   "devDependencies": {
+    "@tiny-calc/tool-config": "^0.0.2",
+    "@types/node": "^10.0.0",
     "rimraf": "^2.6.3",
     "ts-node": "^8.1.0",
     "typescript": "^3.4.3"

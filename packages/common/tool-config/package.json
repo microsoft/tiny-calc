@@ -1,0 +1,11 @@
+{
+  "name": "@tiny-calc/tool-config",
+  "version": "0.0.2",
+  "description": "Common config for build tools",
+  "sideEffects": "false",
+  "scripts": {
+    "build": "echo No build steps necessary."
+  },
+  "author": "Microsoft",
+  "license": "MIT"
+}

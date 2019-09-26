@@ -1,5 +1,5 @@
 {
-  "name": "@tiny-calc/nano",
+  "name": "@tiny-calc/micro",
   "version": "0.0.2",
   "main": "dist/index.js",
   "scripts": {
@@ -10,6 +10,7 @@
     "test": "mocha -r ts-node/register test/**/*.spec.ts"
   },
   "devDependencies": {
+    "@tiny-calc/nano": "^0.0.2",
     "@tiny-calc/tool-config": "^0.0.2",
     "@types/benchmark": "^1.0.31",
     "@types/mocha": "^5.2.6",
