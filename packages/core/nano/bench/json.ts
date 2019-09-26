@@ -3,7 +3,7 @@ import { consume } from "./util";
 import { produce } from "../src/produce";
 import { nullConsumer } from "../test/util";
 
-export const suites = [];
+export const suites: Suite[] = [];
 
 {
     const array = new Array<number>(10000).fill(0).map(() => Math.random());

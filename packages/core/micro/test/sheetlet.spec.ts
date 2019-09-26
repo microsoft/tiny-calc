@@ -76,9 +76,9 @@ describe("Sheetlet", () => {
             setAt(0, 0, 1);
             assert.deepEqual(
                 extract(sheet, 3, 3), [
-                    [1, 1, 2],
-                    [1, 2, 5],
-                    [2, 4, 11],
+                    [1, 1,  2],
+                    [1, 3,  8],
+                    [2, 8, 26],
                 ]);
         });
     });

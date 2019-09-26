@@ -7,10 +7,13 @@
     "build": "tsc",
     "clean": "rimraf ./dist *.build.log",
     "dev": "npm run build -- --watch",
+    "prof": "tsc --project tsconfig.prof.json && node --prof temp/bench/profile.js && node --prof-process isolate-*-v8.log > profile.log && rm isolate-*-v8.log",
     "test": "mocha -r ts-node/register test/**/*.spec.ts"
   },
+  "dependencies": {
+    "@tiny-calc/nano": "^0.0.2"
+  },
   "devDependencies": {
-    "@tiny-calc/nano": "^0.0.2",
     "@tiny-calc/tool-config": "^0.0.2",
     "@types/benchmark": "^1.0.31",
     "@types/mocha": "^5.2.6",
