@@ -4,7 +4,8 @@
   "description": "Common config for build tools",
   "sideEffects": "false",
   "scripts": {
-    "build": "echo No build steps necessary."
+    "build": "echo No build steps necessary.",
+    "test": "echo No test steps necessary."
   },
   "author": "Microsoft",
   "license": "MIT"

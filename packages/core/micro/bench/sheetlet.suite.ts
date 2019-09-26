@@ -1,20 +1,17 @@
 import { Suite } from "benchmark";
 import { consume } from "./util";
-import "mocha";
 import { evalSheet, makeBenchmark } from "../test/sheets";
 
 const suite = new Suite();
 export const suites: Suite[] = [ suite ];
 
-// All of these benchmarks involve a square matrix where all cells except [0,0] are a sum
-// of all cells above and to the left.  Changing [0,0] recalculates the entire matrix.
+// These benchmarks involve a square matrix where all cells except [0,0] are a sum
+// of all cells above and to the left.  Changing [0,0] causes all other cells to recalculate.
 
 function cachedTest(size: number) {
-    const suite = new Suite();
     const { sheet } = makeBenchmark(size);
     evalSheet(sheet, size);
     suite.add(`Cached: ${size}x${size}`, () => { consume(evalSheet(sheet, size)); });
-    suites.push(suite);
 }
 
 function recalcTest(size: number) {
@@ -25,7 +22,6 @@ function recalcTest(size: number) {
         setAt(0, 0, i = ~i);    // Toggle [0,0] between 1 and -2
         consume(evalSheet(sheet, size));
     });
-    suites.push(suite);
 }
 
 cachedTest(2);

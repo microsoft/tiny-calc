@@ -18,6 +18,8 @@ import {
     Trace,
 } from "@tiny-calc/nano";
 
+import { keyToPoint, pointToKey } from "./key";
+
 import * as assert from "assert";
 import { IMatrix } from "./matrix";
 
@@ -31,31 +33,9 @@ Stack: ${new Error().stack}
 `) as never;
 }
 
-/**
- * Core referencing.
- *
- * TODO: Replace string keys with efficient number-based
- * representation.
- */
-
 const ROW = 0 as const;
 const COL = 1 as const;
 type Point = [number, number];
-
-const pointToKey = (row: number, col: number) => `${row};${col}`;
-
-function keyToPoint(key: string): Point | undefined {
-    const tokens = key.split(";");
-    if (tokens.length !== 2) { return undefined; }
-    const r = Number(tokens[ROW]);
-    const c = Number(tokens[COL]);
-    return isNaN(r) || isNaN(c) ? undefined : [r, c];
-}
-
-function keyAsPoint(key: string): Point {
-    const point = keyToPoint(key)!;
-    return point === undefined ? assertNever(point as never) : point;
-}
 
 function colNameToIndex(chars: string[]) {
     return chars
@@ -95,10 +75,10 @@ interface Binder<F, T = F> {
     deleteLinks: (source: F) => void;
 }
 
-function initBinder(): Binder<string> {
+function initBinder(): Binder<number> {
     interface IGraph {
-        cells: Map<string, Set<string>>;
-        formulaConsumers?: Map<string, unknown>;
+        cells: Map<number, Set<number>>;
+        formulaConsumers?: Map<number, unknown>;
     }
 
     const graph: IGraph = { cells: new Map() };
@@ -206,13 +186,13 @@ interface CellReader {
 }
 
 interface BuildHost extends CellReader {
-    binder: Binder<string>;
+    binder: Binder<number>;
     rootContext: CalcValue<Point>;
 }
 
-function createInvalidator(reader: CellReader, binder: Binder<string>) {
-    const go = (key: string) => {
-        const point = keyAsPoint(key);
+function createInvalidator(reader: CellReader, binder: Binder<number>) {
+    const go = (key: number) => {
+        const point = keyToPoint(key);
         const cell = reader.readCell(point[ROW], point[COL]);
         if (cell === undefined || !isFormulaCell(cell)) {
             const deps = binder.getDeps(key);
@@ -235,11 +215,11 @@ function createInvalidator(reader: CellReader, binder: Binder<string>) {
 /**
  * Initialize a build queue from edited `roots`.
  */
-function initBuildQueue(roots: string[], reader: CellReader, binder: Binder<string>) {
+function initBuildQueue(roots: number[], reader: CellReader, binder: Binder<number>) {
     const queue: Fiber[] = [];
 
-    function queueKey(key: string) {
-        const [row, column] = keyAsPoint(key);
+    function queueKey(key: number) {
+        const [row, column] = keyToPoint(key);
         const cell = reader.readCell(row, column); // TODO: make this read cell
         if (cell && isFormulaCell(cell) && cell.flag === CalcFlag.Dirty) {
             cell.flag = CalcFlag.Enqueued;
@@ -318,7 +298,7 @@ const coerceResult = (row: number, column: number, value: CalcValue<Point>) =>
  * evaluation, and remove dependency links (to be re-established on
  * dependent recalc).
  */
-function finishCell(queueKey: (key: string) => void, binder: Binder<string>, row: number, col: number, cell: FormulaCell, value: Value) {
+function finishCell(queueKey: (key: number) => void, binder: Binder<number>, row: number, col: number, cell: FormulaCell, value: Value) {
     cell.value = value;
     const key = pointToKey(row, col);
     const deps = binder.getDeps(key);
@@ -349,7 +329,7 @@ const errorValues = {
 /**
  * Recalc `sheet`, starting from the edited `roots`.
  */
-function rebuild(roots: string[], host: BuildHost): void {
+function rebuild(roots: number[], host: BuildHost): void {
     const [queue, queueKey] = initBuildQueue(roots, host, host.binder);
     const [dynamicFibers, addFiber] = initFiberStack();
 
