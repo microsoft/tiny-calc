@@ -63,7 +63,7 @@ export function makeTracer(): [Pending<unknown>[], Trace] {
     // pretending that all reads are written in ANF.
     const data: Pending<unknown>[] = [];
     const fn: Trace = <T>(value: T | Pending<T>) => {
-        if (typeof value === "object" && (value as any).kind === "Pending") {
+        if (typeof value === "object" && value && (value as any).kind === "Pending") {
             return data.push(value as Pending<unknown>), delay;
         }
         return value as T;
