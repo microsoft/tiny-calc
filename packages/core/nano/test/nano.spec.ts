@@ -852,6 +852,10 @@ Product(1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
         { expression: "IF(Foo * Bar > 10000, 'left', 'right')", expected: "right" },
         { expression: "4(3,2).stringify", expected: "The target of an application must be a calc function." },
         { expression: "(Sum + 3).stringify", expected: "Operator argument must be a primitive." },
+        {
+            expression: "(Sum + 3).prop.prop.prop.prop.prop.prop.prop.prop.prop.prop.prop.prop.prop.prop.prop.prop.stringify",
+            expected: "Operator argument must be a primitive."
+        },
         { expression: "42.", expected: 42 },
         { expression: "42.01", expected: 42.01 },
         { expression: "1/1", expected: 1 },
