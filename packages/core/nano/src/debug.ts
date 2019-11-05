@@ -6,6 +6,7 @@ export function assertNever(proof: never, message: string = "assertNever violati
     return error(message);
 }
 
+ // TODO: assertion signature
 export function assert(expression: boolean, message = "False expression"): void {
     if (!expression) {
         return error(message);

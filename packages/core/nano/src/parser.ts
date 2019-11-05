@@ -578,7 +578,7 @@ export const createParser = <R, E>(sink: ParserSink<R>, handler: ParserErrorHand
         }
     } as const;
 
-    const parseExpression = () => parseExpr(0);
+    const parseExpression = () => parseExpr(/* precedence */ 0);
 
     const parse = (input: string): [E, R] => {
         freshenContext(input);

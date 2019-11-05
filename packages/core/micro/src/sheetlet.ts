@@ -23,9 +23,6 @@ import { keyToPoint, pointToKey } from "./key";
 import * as assert from "assert";
 import { IMatrix } from "./matrix";
 
-/* tslint:disable:prefer-method-signature */
-/* tslint:disable:interface-name */
-
 function assertNever(_: never): never {
     return assert.fail(`
 Unreachable Expression ${JSON.stringify(_)}
@@ -220,7 +217,7 @@ function initBuildQueue(roots: number[], reader: CellReader, binder: Binder<numb
 
     function queueKey(key: number) {
         const [row, column] = keyToPoint(key);
-        const cell = reader.readCell(row, column); // TODO: make this read cell
+        const cell = reader.readCell(row, column);
         if (cell && isFormulaCell(cell) && cell.flag === CalcFlag.Dirty) {
             cell.flag = CalcFlag.Enqueued;
             queue.unshift(makePendingCell(row, column));
@@ -683,7 +680,7 @@ class Sheetlet implements ISheetlet {
     public readonly binder = initBinder();
 
     public readonly rootContext: CalcObj<Point> = {
-        read: (property, origin) => {
+        read: (property: string, origin: Point) => {
             if (property in funcs) {
                 return funcs[property];
             }
@@ -723,7 +720,6 @@ class Sheetlet implements ISheetlet {
     }
 
     public setCellText(row: number, col: number, value: Primitive | undefined) {
-        // setting text clears any cell data
         this.matrix.storeCellText(row, col, value);
         this.invalidate(pointToKey(row, col));
     }
