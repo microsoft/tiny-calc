@@ -10,6 +10,7 @@ import {
 
 import {
     binaryOperationsMap,
+    CalcObj,
     CalcValue,
     Delayed,
     ef,
@@ -158,11 +159,11 @@ function compileAST(gensym: () => number, scope: Record<string, string>, f: Form
     }
 }
 
-type RawFormula = <O>(trace: Trace, host: O, context: CalcValue<O>, ops: OpContext, ef: LiftedCore) => Delayed<CalcValue<O>>;
+type RawFormula = <O>(trace: Trace, host: O, context: CalcObj<O>, ops: OpContext, ef: LiftedCore) => Delayed<CalcValue<O>>;
 
 const parse = createParser(simpleSink, errorHandler);
 
-const formula = (raw: RawFormula): Formula => <O>(host: O, context: CalcValue<O>) => {
+const formula = (raw: RawFormula): Formula => <O>(host: O, context: CalcObj<O>) => {
     const [data, trace] = makeTracer();
     const result = raw(trace, host, context, ops, ef);
     return [data, result];

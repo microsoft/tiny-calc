@@ -173,5 +173,5 @@ export const ops: OpContext = {
     negate: liftUnaryOp((x: any) => -x),
 };
 
-export type Formula = <O>(host: O, context: CalcValue<O>) => [Pending<unknown>[], Delayed<CalcValue<O>>];
+export type Formula = <O>(host: O, context: CalcObj<O>) => [Pending<unknown>[], Delayed<CalcValue<O>>];
 
