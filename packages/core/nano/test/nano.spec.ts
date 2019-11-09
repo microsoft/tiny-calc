@@ -40,10 +40,12 @@ const testContext: CalcObj<undefined> = {
     read: (property: string) => {
         switch (property) {
             case "Foo": return 3;
+            case "I'm a property with a # of characters": return 100;
             case "Bar": return 5;
             case "Baz": return { kind: "Pending" };
             case "Qux": return { kind: "Pending" };
             case "A1": return { read(prop) { return prop === "value" ? sum : 0 } };
+            case "Something": return { read(prop) { return prop === "Property A" ? "A" : "B" } };
             case "Sum": return sum;
             case "Product": return prod;
             default: return 0;
@@ -873,6 +875,10 @@ describe("nano", () => {
     ];
 
     const evalCases = [
+        { expression: "{I'm a property with a # of characters}", expected: 100 },
+        { expression: "{I'm a property with a # of characters}*10", expected: 1000 },
+        { expression: "Something.{Property A}", expected: "A" },
+        { expression: "Something.{Property B}", expected: "B" },
         { expression: "----4", expected: 4 },
         { expression: "-4+-4", expected: -8 },
         { expression: "-4++-4", expected: -8 },
