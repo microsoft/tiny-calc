@@ -8,11 +8,8 @@ const astSink: ParserSink<object> = {
     lit(value: number | string | boolean, start: number, end: number) {
         return { start, end, value };
     },
-    ident(id: string, start: number, end: number) {
+    ident(id: string, _kind: unknown, _fieldAccess: boolean, start: number, end: number) {
         return { start, end, id };
-    },
-    field(label: string, start: number, end: number) {
-        return { start, end, label };
     },
     paren(expr: object, start: number, end: number) {
         return { start, end, expr };
@@ -43,10 +40,12 @@ const testContext: CalcObj<undefined> = {
     read: (property: string) => {
         switch (property) {
             case "Foo": return 3;
+            case "I'm a property with a # of characters": return 100;
             case "Bar": return 5;
             case "Baz": return { kind: "Pending" };
             case "Qux": return { kind: "Pending" };
             case "A1": return { read(prop) { return prop === "value" ? sum : 0 } };
+            case "Something": return { read(prop) { return prop === "Property A" ? "A" : "B" } };
             case "Sum": return sum;
             case "Product": return prod;
             default: return 0;
@@ -82,6 +81,60 @@ describe("nano", () => {
 
     const parseCases = [
         {
+            expression: "{hello world}",
+            expected: {
+                "start": 0,
+                "end": 13,
+                "id": "hello world"
+            },
+            errorCount: 0,
+        },
+        {
+            expression: "{hello world",
+            expected: {
+                "start": 0,
+                "end": 12,
+                "id": "hello world"
+            },
+            errorCount: 1,
+        },
+        {
+            expression: "'hello world",
+            expected: {
+                "start": 0,
+                "end": 12,
+                "value": "hello world"
+            },
+            errorCount: 1,
+        },
+        {
+            expression: "'hello world'",
+            expected: {
+                "start": 0,
+                "end": 13,
+                "value": "hello world"
+            },
+            errorCount: 0,
+        },
+        {
+            expression: '"hello } world"',
+            expected: {
+                "start": 0,
+                "end": 15,
+                "value": "hello } world"
+            },
+            errorCount: 0,
+        },
+        {
+            expression: "{Hello \\} world!!}",
+            expected: {
+                "start": 0,
+                "end": 18,
+                "id": "Hello } world!!"
+            },
+            errorCount: 0,
+        },
+        {
             expression: "+foo.hello(world)",
             expected: {
                 "start": 0,
@@ -101,7 +154,7 @@ describe("nano", () => {
                         "right": {
                             "start": 5,
                             "end": 10,
-                            "label": "hello"
+                            "id": "hello"
                         }
                     },
                     "args": [
@@ -143,7 +196,7 @@ describe("nano", () => {
                     "right": {
                         "start": 12,
                         "end": 17,
-                        "label": "world"
+                        "id": "world"
                     }
                 }
             },
@@ -166,7 +219,7 @@ describe("nano", () => {
                     "right": {
                         "start": 5,
                         "end": 10,
-                        "label": "hello"
+                        "id": "hello"
                     }
                 }
             },
@@ -206,7 +259,7 @@ describe("nano", () => {
                     "right": {
                         "start": 2,
                         "end": 7,
-                        "label": "hello"
+                        "id": "hello"
                     }
                 }
             },
@@ -524,7 +577,7 @@ describe("nano", () => {
                                     "right": {
                                         "start": 2,
                                         "end": 3,
-                                        "label": "B"
+                                        "id": "B"
                                     }
                                 },
                                 "right": {
@@ -534,7 +587,7 @@ describe("nano", () => {
                             "right": {
                                 "start": 5,
                                 "end": 6,
-                                "label": "C"
+                                "id": "C"
                             }
                         },
                         "right": {
@@ -544,7 +597,7 @@ describe("nano", () => {
                     "right": {
                         "start": 8,
                         "end": 9,
-                        "label": "D"
+                        "id": "D"
                     }
                 },
                 "right": {
@@ -594,7 +647,7 @@ describe("nano", () => {
                         "right": {
                             "start": 9,
                             "end": 12,
-                            "label": "max"
+                            "id": "max"
                         }
                     },
                     "args": [
@@ -648,7 +701,7 @@ describe("nano", () => {
                             "right": {
                                 "start": 4,
                                 "end": 7,
-                                "label": "Bar"
+                                "id": "Bar"
                             }
                         },
                         "right": {
@@ -675,7 +728,7 @@ describe("nano", () => {
                                     "right": {
                                         "start": 13,
                                         "end": 14,
-                                        "label": "B"
+                                        "id": "B"
                                     }
                                 },
                                 "right": {
@@ -685,7 +738,7 @@ describe("nano", () => {
                             "right": {
                                 "start": 16,
                                 "end": 17,
-                                "label": "C"
+                                "id": "C"
                             }
                         },
                         "right": {
@@ -822,6 +875,10 @@ describe("nano", () => {
     ];
 
     const evalCases = [
+        { expression: "{I'm a property with a # of characters}", expected: 100 },
+        { expression: "{I'm a property with a # of characters}*10", expected: 1000 },
+        { expression: "Something.{Property A}", expected: "A" },
+        { expression: "Something.{Property B}", expected: "B" },
         { expression: "----4", expected: 4 },
         { expression: "-4+-4", expected: -8 },
         { expression: "-4++-4", expected: -8 },

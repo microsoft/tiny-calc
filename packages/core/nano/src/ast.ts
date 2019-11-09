@@ -11,7 +11,6 @@ import {
 export const enum NodeKind {
     Literal,
     Ident,
-    Field,
     Paren,
     Fun,
     App,
@@ -29,11 +28,6 @@ interface LiteralNode {
 
 interface IdentNode {
     kind: NodeKind.Ident;
-    value: string;
-}
-
-interface FieldNode {
-    kind: NodeKind.Field;
     value: string;
 }
 
@@ -84,7 +78,6 @@ interface MissingNode {
 export type FormulaNode =
     | LiteralNode
     | IdentNode
-    | FieldNode
     | ParenNode
     | FunNode
     | AppNode
@@ -100,7 +93,6 @@ export type FormulaNode =
 type UnaryNode =
     | NodeKind.Literal
     | NodeKind.Ident
-    | NodeKind.Field
     | NodeKind.Paren
     | NodeKind.Missing;
 
@@ -144,9 +136,6 @@ const astSink: ParserSink<FormulaNode> = {
     },
     ident(id: string) {
         return createUnaryNode(NodeKind.Ident, id);
-    },
-    field(label: string) {
-        return createUnaryNode(NodeKind.Field, label);
     },
     paren(expr: FormulaNode) {
         return createUnaryNode(NodeKind.Paren, expr);
