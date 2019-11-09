@@ -43,7 +43,7 @@ const simpleSink = {
     lit(value: number | string | boolean) {
         return JSON.stringify(value);
     },
-    ident(id: string) {
+    ident(id: string, _flags: unknown, fieldAccess: boolean) {
         switch (id) {
             case "if":
             case "IF":
@@ -52,11 +52,8 @@ const simpleSink = {
             case "FUN":
                 return funIdent;
             default:
-                return `trace(context.read(${JSON.stringify(id)},host))`;
+                return fieldAccess ? JSON.stringify(id): `trace(context.read(${JSON.stringify(id)},host))`;
         }
-    },
-    field(label: string) {
-        return JSON.stringify(label);
     },
     paren(expr: string) {
         return `(${expr})`;
@@ -107,10 +104,7 @@ function compileAST(gensym: () => number, scope: Record<string, string>, f: Form
             if (scope[f.value] !== undefined) {
                 return scope[f.value];
             }
-            return simpleSink.ident(f.value);
-
-        case NodeKind.Field:
-            return simpleSink.field(f.value);
+            return simpleSink.ident(f.value, undefined, /* fieldAccess */ false);
 
         case NodeKind.Paren:
             return simpleSink.paren(compileAST(gensym, scope, f.value));
@@ -141,7 +135,10 @@ function compileAST(gensym: () => number, scope: Record<string, string>, f: Form
             return outputConditional(f.children.map(child => compileAST(gensym, scope, child)));
 
         case NodeKind.Dot:
-            return simpleSink.dot(compileAST(gensym, scope, f.operand1), compileAST(gensym, scope, f.operand2));
+            if (f.operand2.kind === NodeKind.Ident) {
+                return simpleSink.dot(compileAST(gensym, scope, f.operand1), f.operand2.value);
+            }
+            return assertNever(f.operand2.kind as never, "DOT field should be ident");
 
         case NodeKind.BinaryOp:
             return simpleSink.binOp(

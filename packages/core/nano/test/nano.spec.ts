@@ -8,11 +8,8 @@ const astSink: ParserSink<object> = {
     lit(value: number | string | boolean, start: number, end: number) {
         return { start, end, value };
     },
-    ident(id: string, start: number, end: number) {
+    ident(id: string, _kind: unknown, _fieldAccess: boolean, start: number, end: number) {
         return { start, end, id };
-    },
-    field(label: string, start: number, end: number) {
-        return { start, end, label };
     },
     paren(expr: object, start: number, end: number) {
         return { start, end, expr };
@@ -82,6 +79,60 @@ describe("nano", () => {
 
     const parseCases = [
         {
+            expression: "{hello world}",
+            expected: {
+                "start": 0,
+                "end": 13,
+                "id": "hello world"
+            },
+            errorCount: 0,
+        },
+        {
+            expression: "{hello world",
+            expected: {
+                "start": 0,
+                "end": 12,
+                "id": "hello world"
+            },
+            errorCount: 1,
+        },
+        {
+            expression: "'hello world",
+            expected: {
+                "start": 0,
+                "end": 12,
+                "value": "hello world"
+            },
+            errorCount: 1,
+        },
+        {
+            expression: "'hello world'",
+            expected: {
+                "start": 0,
+                "end": 13,
+                "value": "hello world"
+            },
+            errorCount: 0,
+        },
+        {
+            expression: '"hello } world"',
+            expected: {
+                "start": 0,
+                "end": 15,
+                "value": "hello } world"
+            },
+            errorCount: 0,
+        },
+        {
+            expression: "{Hello \\} world!!}",
+            expected: {
+                "start": 0,
+                "end": 18,
+                "id": "Hello } world!!"
+            },
+            errorCount: 0,
+        },
+        {
             expression: "+foo.hello(world)",
             expected: {
                 "start": 0,
@@ -101,7 +152,7 @@ describe("nano", () => {
                         "right": {
                             "start": 5,
                             "end": 10,
-                            "label": "hello"
+                            "id": "hello"
                         }
                     },
                     "args": [
@@ -143,7 +194,7 @@ describe("nano", () => {
                     "right": {
                         "start": 12,
                         "end": 17,
-                        "label": "world"
+                        "id": "world"
                     }
                 }
             },
@@ -166,7 +217,7 @@ describe("nano", () => {
                     "right": {
                         "start": 5,
                         "end": 10,
-                        "label": "hello"
+                        "id": "hello"
                     }
                 }
             },
@@ -206,7 +257,7 @@ describe("nano", () => {
                     "right": {
                         "start": 2,
                         "end": 7,
-                        "label": "hello"
+                        "id": "hello"
                     }
                 }
             },
@@ -524,7 +575,7 @@ describe("nano", () => {
                                     "right": {
                                         "start": 2,
                                         "end": 3,
-                                        "label": "B"
+                                        "id": "B"
                                     }
                                 },
                                 "right": {
@@ -534,7 +585,7 @@ describe("nano", () => {
                             "right": {
                                 "start": 5,
                                 "end": 6,
-                                "label": "C"
+                                "id": "C"
                             }
                         },
                         "right": {
@@ -544,7 +595,7 @@ describe("nano", () => {
                     "right": {
                         "start": 8,
                         "end": 9,
-                        "label": "D"
+                        "id": "D"
                     }
                 },
                 "right": {
@@ -594,7 +645,7 @@ describe("nano", () => {
                         "right": {
                             "start": 9,
                             "end": 12,
-                            "label": "max"
+                            "id": "max"
                         }
                     },
                     "args": [
@@ -648,7 +699,7 @@ describe("nano", () => {
                             "right": {
                                 "start": 4,
                                 "end": 7,
-                                "label": "Bar"
+                                "id": "Bar"
                             }
                         },
                         "right": {
@@ -675,7 +726,7 @@ describe("nano", () => {
                                     "right": {
                                         "start": 13,
                                         "end": 14,
-                                        "label": "B"
+                                        "id": "B"
                                     }
                                 },
                                 "right": {
@@ -685,7 +736,7 @@ describe("nano", () => {
                             "right": {
                                 "start": 16,
                                 "end": 17,
-                                "label": "C"
+                                "id": "C"
                             }
                         },
                         "right": {
