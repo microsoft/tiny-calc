@@ -296,18 +296,18 @@ function createScanner(onError: (message: string, start: number, end: number) =>
                     return (token = SyntaxKind.EqualsToken);
                 case CharacterCodes.lessThan:
                     pos += 1;
-                    if (text.charCodeAt(pos) === CharacterCodes.equals) {
+                    if (pos < end && text.charCodeAt(pos) === CharacterCodes.equals) {
                         pos += 1;
                         return (token = SyntaxKind.LessThanEqualsToken);
                     }
-                    if (text.charCodeAt(pos) === CharacterCodes.greaterThan) {
+                    if (pos < end && text.charCodeAt(pos) === CharacterCodes.greaterThan) {
                         pos += 1;
                         return (token = SyntaxKind.NotEqualsToken);
                     }
                     return (token = SyntaxKind.LessThanToken);
                 case CharacterCodes.greaterThan:
                     pos += 1;
-                    if (text.charCodeAt(pos) === CharacterCodes.equals) {
+                    if (pos < end && text.charCodeAt(pos) === CharacterCodes.equals) {
                         pos += 1;
                         return (token = SyntaxKind.GreaterThanEqualsToken);
                     }
@@ -429,7 +429,7 @@ function createScanner(onError: (message: string, start: number, end: number) =>
         const start = pos;
         scanNumberFragment();
         let decimalFragment: string | undefined;
-        if (text.charCodeAt(pos) === CharacterCodes.dot) {
+        if (pos < end && text.charCodeAt(pos) === CharacterCodes.dot) {
             pos += 1;
             decimalFragment = scanNumberFragment();
         }
@@ -444,7 +444,7 @@ function createScanner(onError: (message: string, start: number, end: number) =>
     function scanNumberFragment(): string {
         let start = pos;
         let result = "";
-        while (true) {
+        while (pos < end) {
             const ch = text.charCodeAt(pos);
             if (isDigit(ch)) {
                 pos += 1;
