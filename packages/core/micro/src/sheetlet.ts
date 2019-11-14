@@ -185,7 +185,7 @@ interface CellReader {
 
 interface BuildHost extends CellReader {
     binder: Binder<number>;
-    rootContext: CalcValue<Point>;
+    rootContext: CalcObj<Point>;
 }
 
 function createInvalidator(reader: CellReader, binder: Binder<number>) {
@@ -680,7 +680,7 @@ class Sheetlet implements ISheetlet {
 
     public readonly binder = initBinder();
 
-    public readonly rootContext: CalcValue<Point> = {
+    public readonly rootContext: CalcObj<Point> = {
         read: (property: string, origin: Point) => {
             if (property in funcs) {
                 return funcs[property];
