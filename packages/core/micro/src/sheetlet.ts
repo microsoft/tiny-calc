@@ -13,9 +13,10 @@ import {
     Formula,
     isDelayed,
     makeError,
+    ObjProps,
     Pending,
     Primitive,
-    Trace,
+    Runtime,
 } from "@tiny-calc/nano";
 
 import { keyToPoint, pointToKey } from "./key";
@@ -406,13 +407,13 @@ function rebuild(roots: number[], host: BuildHost): void {
  * These are mostly reducer wrappers around Range aggregations.
  */
 
-function extractNumberFromProperty<O>(trace: Trace, origin: O, arg: CalcValue<O>, property: string) {
+function extractNumberFromProperty<O>(runtime: Runtime, origin: O, arg: CalcValue<O>, property: string) {
     if (typeof arg === "number") { return arg; } // fast path
     let result: Delayed<CalcValue<O>> = arg;
     if (arg instanceof Range) {
-        result = trace(arg.read(property, origin));
+        result = runtime.read(origin, arg, property);
     } else if (typeof arg === "object") {
-        result = trace(arg.read("value", origin));
+        result = runtime.read(origin, arg, ObjProps.AsPrimitive);
     }
     switch (typeof result) {
         case "object":
@@ -434,24 +435,24 @@ function reduceNumbers<O>(args: Delayed<CalcValue<O>>[], fn: (prev: number, curr
     return total;
 }
 
-const sum: CalcFun = (trace, origin, args) => {
+const sum: CalcFun<unknown> = (trace, origin, args) => {
     const totals = args.map((arg) => extractNumberFromProperty(trace, origin, arg, "sum"));
     return reduceNumbers(totals, (prev, current) => prev + current, 0);
 };
 
-const product: CalcFun = (trace, origin, args) => {
+const product: CalcFun<unknown> = (trace, origin, args) => {
     const totals = args.map((arg) => extractNumberFromProperty(trace, origin, arg, "product"));
     return reduceNumbers(totals, (prev, current) => prev * current, 1);
 };
 
-const count: CalcFun = (trace, origin, args) => {
+const count: CalcFun<unknown> = (trace, origin, args) => {
     const totals = args.map((arg) => extractNumberFromProperty(trace, origin, arg, "count"));
     return reduceNumbers(totals, (prev, current) => prev + current, 0);
 };
 
-const average: CalcFun = (trace, origin, args) => {
-    const totals = args.map((arg) => extractNumberFromProperty(trace, origin, arg, "sum"));
-    const counts = args.map((arg) => extractNumberFromProperty(trace, origin, arg, "count"));
+const average: CalcFun<unknown> = (runtime, origin, args) => {
+    const totals = args.map((arg) => extractNumberFromProperty(runtime, origin, arg, "sum"));
+    const counts = args.map((arg) => extractNumberFromProperty(runtime, origin, arg, "count"));
     const total = reduceNumbers(totals, (prev, current) => prev + current, 0);
     if (typeof total === "number") {
         const finalCount = reduceNumbers(counts, (prev, current) => prev + current, 0);
@@ -460,8 +461,8 @@ const average: CalcFun = (trace, origin, args) => {
     return total;
 };
 
-const max: CalcFun = (trace, origin, args) => {
-    const maxs = args.map((arg) => extractNumberFromProperty(trace, origin, arg, "max"));
+const max: CalcFun<unknown> = (runtime, origin, args) => {
+    const maxs = args.map((arg) => extractNumberFromProperty(runtime, origin, arg, "max"));
     if (maxs.length === 0) { return 0; }
     for (const arg of maxs) {
         if (typeof arg !== "number") {
@@ -471,8 +472,8 @@ const max: CalcFun = (trace, origin, args) => {
     return reduceNumbers(maxs, (prev, current) => current > prev ? current : prev, maxs[0] as number);
 };
 
-const min: CalcFun = (trace, origin, args) => {
-    const mins = args.map((arg) => extractNumberFromProperty(trace, origin, arg, "min"));
+const min: CalcFun<unknown> = (runtime, origin, args) => {
+    const mins = args.map((arg) => extractNumberFromProperty(runtime, origin, arg, "min"));
     if (mins.length === 0) { return 0; }
     for (const arg of mins) {
         if (typeof arg !== "number") {
@@ -482,7 +483,7 @@ const min: CalcFun = (trace, origin, args) => {
     return reduceNumbers(mins, (prev, current) => current < prev ? current : prev, mins[0] as number);
 };
 
-const funcs: Record<string, CalcFun> = {
+const funcs: Record<string, CalcFun<unknown>> = {
     sum, product, count, average, max, min,
     SUM: sum, PRODUCT: product, COUNT: count, AVERAGE: average, MAX: max, MIN: min,
 };
@@ -642,7 +643,7 @@ class Range<O> implements CalcObj<O> {
             return fn(this, this.context, origin);
         }
         switch (property) {
-            case "value":
+            case ObjProps.AsPrimitive:
                 return this.context.link(this.tl[ROW], this.tl[COL], origin);
             case "row":
             case "ROW":
