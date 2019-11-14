@@ -96,7 +96,7 @@ export interface Runtime {
 }
 
 class CoreRuntime {
-    constructor(private trace: Trace) { }
+    constructor(public trace: Trace) { }
 
     read<O>(origin: O, context: Delayed<CalcValue<O>>, prop: string): Delayed<CalcValue<O>> {
         if (isDelayed(context)) { return delay }
