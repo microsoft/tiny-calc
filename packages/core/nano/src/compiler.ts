@@ -10,23 +10,23 @@ import {
 
 import {
     binaryOperationsMap,
+    CalcObj,
     CalcValue,
     Delayed,
-    ef,
+    errors,
     Formula,
-    LiftedCore,
-    makeTracer,
+    Runtime,
+    createRuntime,
     OpContext,
     ops,
-    Trace,
     unaryOperationsMap,
 } from "./core";
 
 import { FormulaNode, NodeKind, parseFormula } from "./ast";
 
 const needsASTCompilation = {};
-const ifIdent = "trace(context.read(\"if\", host))";
-const funIdent = "trace(context.read(\"fun\", host))";
+const ifIdent = "ef.read(origin,context,\"if\", err.readOnNonObjectError)";
+const funIdent = "ef.read(origin,context,\"fun\", err.readOnNonObjectError)";
 const errorHandler = createBooleanErrorHandler();
 
 function outputConditional(args: string[]): string {
@@ -36,14 +36,14 @@ function outputConditional(args: string[]): string {
     }
     const trueExpr = args[1] === undefined ? "true" : args[1];
     const falseExpr = args[2] === undefined ? "false" : args[2];
-    return `ef.select(${args[0]},function(){return ${trueExpr};},function(){return ${falseExpr};})`
+    return `ef.ifS(${args[0]},function($cond){return $cond?${trueExpr}:${falseExpr};})`
 }
 
 const simpleSink = {
     lit(value: number | string | boolean) {
         return JSON.stringify(value);
     },
-    ident(id: string) {
+    ident(id: string, _flags: unknown, fieldAccess: boolean) {
         switch (id) {
             case "if":
             case "IF":
@@ -52,11 +52,8 @@ const simpleSink = {
             case "FUN":
                 return funIdent;
             default:
-                return `trace(context.read(${JSON.stringify(id)},host))`;
+                return fieldAccess ? JSON.stringify(id) : `ef.read(origin,context,${JSON.stringify(id)}, err.readOnNonObjectError)`;
         }
-    },
-    field(label: string) {
-        return JSON.stringify(label);
     },
     paren(expr: string) {
         return `(${expr})`;
@@ -68,20 +65,20 @@ const simpleSink = {
             case funIdent:
                 throw needsASTCompilation;
             default:
-                return `ef.appN(trace,host,${head},[${args}])`;
+                return `ef.appN(origin,${head},[${args}], err.appOnNonFunctionError)`;
         }
     },
     dot(left: string, right: string) {
-        return `ef.read(trace,host,${left},${right})`;
+        return `ef.read(origin,${left},${right}, err.readOnNonObjectError)`;
     },
     binOp(op: BinaryOperatorToken, left: string, right: string) {
         const opStr = "ops." + binaryOperationsMap[op];
-        return `ef.app2(trace,host,${opStr},${left},${right})`;
+        return `ef.app2(origin,${opStr},${left},${right})`;
     },
     unaryOp(op: UnaryOperatorToken, expr: string) {
         if (op === SyntaxKind.MinusToken) {
             const opStr = "ops." + unaryOperationsMap[op];
-            return `ef.app1(trace,host,${opStr},${expr})`;
+            return `ef.app1(origin,${opStr},${expr})`;
         }
         return expr
     },
@@ -107,10 +104,7 @@ function compileAST(gensym: () => number, scope: Record<string, string>, f: Form
             if (scope[f.value] !== undefined) {
                 return scope[f.value];
             }
-            return simpleSink.ident(f.value);
-
-        case NodeKind.Field:
-            return simpleSink.field(f.value);
+            return simpleSink.ident(f.value, undefined, /* fieldAccess */ false);
 
         case NodeKind.Paren:
             return simpleSink.paren(compileAST(gensym, scope, f.value));
@@ -130,7 +124,7 @@ function compileAST(gensym: () => number, scope: Record<string, string>, f: Form
             }
             const body = compileAST(gensym, freshScope, children[children.length - 1]);
             // TODO: Pass in an actual arity error.
-            return `function(trace, host, ${name}){return ${name}.length>=${children.length - 1}?${body}:"#ARITY!";}`;
+            return `function(ef, origin, ${name}){return ${name}.length>=${children.length - 1}?${body}:"#ARITY!";}`;
 
         case NodeKind.App:
             const head = compileAST(gensym, scope, f.children[0]);
@@ -141,7 +135,10 @@ function compileAST(gensym: () => number, scope: Record<string, string>, f: Form
             return outputConditional(f.children.map(child => compileAST(gensym, scope, child)));
 
         case NodeKind.Dot:
-            return simpleSink.dot(compileAST(gensym, scope, f.operand1), compileAST(gensym, scope, f.operand2));
+            if (f.operand2.kind === NodeKind.Ident) {
+                return simpleSink.dot(compileAST(gensym, scope, f.operand1), f.operand2.value);
+            }
+            return assertNever(f.operand2.kind as never, "DOT field should be ident");
 
         case NodeKind.BinaryOp:
             return simpleSink.binOp(
@@ -158,13 +155,13 @@ function compileAST(gensym: () => number, scope: Record<string, string>, f: Form
     }
 }
 
-type RawFormula = <O>(trace: Trace, host: O, context: CalcValue<O>, ops: OpContext, ef: LiftedCore) => Delayed<CalcValue<O>>;
+type RawFormula = <O>(ef: Runtime, err: typeof errors, origin: O, context: CalcObj<O>, ops: OpContext) => Delayed<CalcValue<O>>;
 
 const parse = createParser(simpleSink, errorHandler);
 
-const formula = (raw: RawFormula): Formula => <O>(host: O, context: CalcValue<O>) => {
-    const [data, trace] = makeTracer();
-    const result = raw(trace, host, context, ops, ef);
+const formula = (raw: RawFormula): Formula => <O>(origin: O, context: CalcObj<O>) => {
+    const [data, rt] = createRuntime();
+    const result = raw(rt, errors, origin, context, ops);
     return [data, result];
 };
 
@@ -173,7 +170,7 @@ const quickCompile = (text: string) => {
     if (errors) {
         return undefined;
     }
-    return formula(new Function("trace", "host", "context", "ops", "ef", `return ${parsed};`) as RawFormula);
+    return formula(new Function("ef", "err", "origin", "context", "ops", `return ${parsed};`) as RawFormula);
 };
 
 const astCompile = (text: string) => {
@@ -182,7 +179,7 @@ const astCompile = (text: string) => {
         return undefined;
     }
     const parsed = compileAST(makeGensym(), {}, ast);
-    return formula(new Function("trace", "host", "context", "ops", "ef", `return ${parsed};`) as RawFormula);
+    return formula(new Function("ef", "err", "origin", "context", "ops", `return ${parsed};`) as RawFormula);
 };
 
 export const compile = (text: string) => {

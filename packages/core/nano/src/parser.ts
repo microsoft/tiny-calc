@@ -209,6 +209,13 @@ const keywords: Record<string, SyntaxKind> = {
     FALSE: SyntaxKind.FalseKeyword
 };
 
+const enum TokenFlags {
+    None = 0,
+    Unterminated = 1 << 0,
+    Quoted = 1 << 1,
+}
+
+
 interface Scanner {
     freshenContext: (onError: (message: string, start: number, end: number) => void, text: string) => void;
     getToken: () => SyntaxKind;
@@ -216,6 +223,7 @@ interface Scanner {
     getWSTokenPos: () => number;
     getTokenPos: () => number;
     getTextPos: () => number;
+    getTokenFlags: () => TokenFlags;
     scan: () => SyntaxKind;
 }
 
@@ -223,6 +231,7 @@ function createScanner(onError: (message: string, start: number, end: number) =>
     let text = initialText;
     let token: SyntaxKind = SyntaxKind.Unknown;
     let tokenValue: string = "";
+    let tokenFlags: TokenFlags = TokenFlags.None;
     let pos = 0;
     let tokenPos = 0;
     let wsTokenPos = 0;
@@ -233,6 +242,7 @@ function createScanner(onError: (message: string, start: number, end: number) =>
         text = newText;
         token = SyntaxKind.Unknown;
         tokenValue = "";
+        tokenFlags = TokenFlags.None;
         pos = 0;
         tokenPos = 0;
         wsTokenPos = 0;
@@ -242,6 +252,7 @@ function createScanner(onError: (message: string, start: number, end: number) =>
 
     function scan(): SyntaxKind {
         wsTokenPos = pos;
+        tokenFlags = TokenFlags.None;
         while (true) {
             tokenPos = pos;
             if (pos >= end) {
@@ -285,18 +296,18 @@ function createScanner(onError: (message: string, start: number, end: number) =>
                     return (token = SyntaxKind.EqualsToken);
                 case CharacterCodes.lessThan:
                     pos += 1;
-                    if (text.charCodeAt(pos) === CharacterCodes.equals) {
+                    if (pos < end && text.charCodeAt(pos) === CharacterCodes.equals) {
                         pos += 1;
                         return (token = SyntaxKind.LessThanEqualsToken);
                     }
-                    if (text.charCodeAt(pos) === CharacterCodes.greaterThan) {
+                    if (pos < end && text.charCodeAt(pos) === CharacterCodes.greaterThan) {
                         pos += 1;
                         return (token = SyntaxKind.NotEqualsToken);
                     }
                     return (token = SyntaxKind.LessThanToken);
                 case CharacterCodes.greaterThan:
                     pos += 1;
-                    if (text.charCodeAt(pos) === CharacterCodes.equals) {
+                    if (pos < end && text.charCodeAt(pos) === CharacterCodes.equals) {
                         pos += 1;
                         return (token = SyntaxKind.GreaterThanEqualsToken);
                     }
@@ -308,9 +319,14 @@ function createScanner(onError: (message: string, start: number, end: number) =>
                     pos += 1;
                     return (token = SyntaxKind.CloseParenToken);
 
+                case CharacterCodes.openBrace:
+                    tokenValue = scanString(CharacterCodes.closeBrace);
+                    tokenFlags |= TokenFlags.Quoted;
+                    return (token = SyntaxKind.Identifier);
+
                 case CharacterCodes.doubleQuote:
                 case CharacterCodes.singleQuote:
-                    tokenValue = scanString();
+                    tokenValue = scanString(ch);
                     return (token = SyntaxKind.StringLiteral);
 
                 case CharacterCodes._0:
@@ -360,7 +376,7 @@ function createScanner(onError: (message: string, start: number, end: number) =>
         // `pos` points to backslash
         pos += 1;
         if (pos >= end) {
-            onScanError("Unterminated string literal", pos, pos);
+            onScanError("Unexpected end", pos, pos);
             return "";
         }
         const ch = text.charCodeAt(pos);
@@ -377,23 +393,23 @@ function createScanner(onError: (message: string, start: number, end: number) =>
             case CharacterCodes.doubleQuote:
                 return "\"";
             default:
-                onScanError("Unterminated string literal", pos, pos);
                 return String.fromCharCode(ch);
         }
     }
 
-    function scanString(): string {
-        const quote = text.charCodeAt(pos);
+    function scanString(endQuote: number): string {
         pos += 1;
         let result = "";
         let start = pos;
         while (true) {
             if (pos >= end) {
-                onScanError("Unterminated string literal", pos, pos);
-                return "";
+                result += text.substring(start, pos);
+                tokenFlags |= TokenFlags.Unterminated;
+                onScanError("Unterminated string literal", start, pos);
+                break;
             }
             const ch = text.charCodeAt(pos);
-            if (ch === quote) {
+            if (ch === endQuote) {
                 result += text.substring(start, pos);
                 pos += 1;
                 break;
@@ -413,7 +429,7 @@ function createScanner(onError: (message: string, start: number, end: number) =>
         const start = pos;
         scanNumberFragment();
         let decimalFragment: string | undefined;
-        if (text.charCodeAt(pos) === CharacterCodes.dot) {
+        if (pos < end && text.charCodeAt(pos) === CharacterCodes.dot) {
             pos += 1;
             decimalFragment = scanNumberFragment();
         }
@@ -428,7 +444,7 @@ function createScanner(onError: (message: string, start: number, end: number) =>
     function scanNumberFragment(): string {
         let start = pos;
         let result = "";
-        while (true) {
+        while (pos < end) {
             const ch = text.charCodeAt(pos);
             if (isDigit(ch)) {
                 pos += 1;
@@ -446,6 +462,7 @@ function createScanner(onError: (message: string, start: number, end: number) =>
         getWSTokenPos: () => wsTokenPos,
         getTokenPos: () => tokenPos,
         getTextPos: () => pos,
+        getTokenFlags: () => tokenFlags,
         scan
     };
 }
@@ -458,8 +475,7 @@ export interface ParserErrorHandler<E> {
 
 export interface ParserSink<R> {
     lit: (value: boolean | number | string, start: number, end: number) => R;
-    ident: (id: string, start: number, end: number) => R;
-    field: (label: string, start: number, end: number) => R;
+    ident: (id: string, kind: TokenFlags, fieldAccess: boolean, start: number, end: number) => R;
     paren: (expr: R, start: number, end: number) => R;
     app: (head: R, args: R[], start: number, end: number) => R;
     dot: (left: R, right: R, start: number, end: number) => R;
@@ -578,7 +594,7 @@ export const createParser = <R, E>(sink: ParserSink<R>, handler: ParserErrorHand
         }
     } as const;
 
-    const parseExpression = () => parseExpr(0);
+    const parseExpression = () => parseExpr(/* precedence */ 0);
 
     const parse = (input: string): [E, R] => {
         freshenContext(input);
@@ -617,11 +633,12 @@ export const createParser = <R, E>(sink: ParserSink<R>, handler: ParserErrorHand
         return false;
     }
 
-    function parseIdentifer(): R {
+    function parseIdentifer(fieldAccess: boolean): R {
         const start = scanner.getWSTokenPos();
         const tokenValue = scanner.getTokenValue();
+        const flags = scanner.getTokenFlags();
         nextToken();
-        return sink.ident(tokenValue, start, scanner.getWSTokenPos());
+        return sink.ident(tokenValue, flags, fieldAccess, start, scanner.getWSTokenPos());
     }
 
     function parseLiteral(value: boolean | number | string): R {
@@ -631,15 +648,11 @@ export const createParser = <R, E>(sink: ParserSink<R>, handler: ParserErrorHand
     }
 
     function parseField(): R {
-        const start = scanner.getWSTokenPos();
-        const tokenValue = scanner.getTokenValue();
-        if (parseOptional(SyntaxKind.Identifier)) {
-            return sink.field(tokenValue, start, scanner.getWSTokenPos());
+        // TODO: Review whether we need this, or whether we can just try and parse ident.
+        if (currentToken === SyntaxKind.Identifier) {
+            return parseIdentifer(/*fieldAccess */ true);
         }
-        if (parseOptional(SyntaxKind.StringLiteral)) {
-            return sink.field(JSON.stringify(tokenValue).slice(1, -1), start, scanner.getWSTokenPos());
-        }
-        return sink.missing(start);
+        return sink.missing(scanner.getWSTokenPos());
     }
 
     function parseBinOp(lhs: R, start: number, token: BinaryOperatorToken, precedence: number) {
@@ -751,7 +764,7 @@ export const createParser = <R, E>(sink: ParserSink<R>, handler: ParserErrorHand
                 return parseLiteral(JSON.stringify(scanner.getTokenValue()).slice(1, -1));
 
             case SyntaxKind.Identifier:
-                return parseIdentifer();
+                return parseIdentifer(/* fieldAccess */ false);
 
             case SyntaxKind.OpenParenToken:
                 const start = scanner.getWSTokenPos();

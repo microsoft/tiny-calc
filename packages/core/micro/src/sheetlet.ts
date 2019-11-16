@@ -13,18 +13,16 @@ import {
     Formula,
     isDelayed,
     makeError,
+    ObjProps,
     Pending,
     Primitive,
-    Trace,
+    Runtime,
 } from "@tiny-calc/nano";
 
 import { keyToPoint, pointToKey } from "./key";
 
 import * as assert from "assert";
 import { IMatrix } from "./matrix";
-
-/* tslint:disable:prefer-method-signature */
-/* tslint:disable:interface-name */
 
 function assertNever(_: never): never {
     return assert.fail(`
@@ -187,7 +185,7 @@ interface CellReader {
 
 interface BuildHost extends CellReader {
     binder: Binder<number>;
-    rootContext: CalcValue<Point>;
+    rootContext: CalcObj<Point>;
 }
 
 function createInvalidator(reader: CellReader, binder: Binder<number>) {
@@ -220,7 +218,7 @@ function initBuildQueue(roots: number[], reader: CellReader, binder: Binder<numb
 
     function queueKey(key: number) {
         const [row, column] = keyToPoint(key);
-        const cell = reader.readCell(row, column); // TODO: make this read cell
+        const cell = reader.readCell(row, column);
         if (cell && isFormulaCell(cell) && cell.flag === CalcFlag.Dirty) {
             cell.flag = CalcFlag.Enqueued;
             queue.unshift(makePendingCell(row, column));
@@ -415,15 +413,15 @@ type PrimitiveMap = {
     boolean: boolean;
 }
 
-function extractTypeFromProperty<K extends keyof PrimitiveMap>(type: K, defaultValue: PrimitiveMap[K]): <O>(trace: Trace, origin: O, arg: CalcValue<O>, property: string) => PrimitiveMap[K] | Delayed<CalcValue<O>>;
-function extractTypeFromProperty(type: keyof PrimitiveMap, defaultValue: Primitive): <O>(trace: Trace, origin: O, arg: CalcValue<O>, property: string) => Primitive | Delayed<CalcValue<O>> {
-    return <O>(trace: Trace, origin: O, arg: CalcValue<O>, property: string) => {
+function extractTypeFromProperty<K extends keyof PrimitiveMap>(type: K, defaultValue: PrimitiveMap[K]): <O>(runtime: Runtime, origin: O, arg: CalcValue<O>, property: string) => PrimitiveMap[K] | Delayed<CalcValue<O>>;
+function extractTypeFromProperty(type: keyof PrimitiveMap, defaultValue: Primitive): <O>(runtime: Runtime, origin: O, arg: CalcValue<O>, property: string) => Primitive | Delayed<CalcValue<O>> {
+    return <O>(runtime: Runtime, origin: O, arg: CalcValue<O>, property: string) => {
         if (typeof arg === type) { return arg; } // fast path
         let result: Delayed<CalcValue<O>> = arg;
         if (arg instanceof Range) {
-            result = trace(arg.read(property, origin));
+            result = runtime.read(origin, arg, property, arg);
         } else if (typeof arg === "object") {
-            result = trace(arg.read("value", origin));
+            result = runtime.read(origin, arg, ObjProps.AsPrimitive, arg);
         }
         switch (typeof result) {
             case "object":
@@ -455,24 +453,25 @@ function reduceType<K extends keyof PrimitiveMap>(type: K): <O>(args: Delayed<Ca
 const reduceNumbers = reduceType("number");
 const reduceStrings = reduceType("string");
 
-const sum: CalcFun = (trace, origin, args) => {
-    const totals = args.map((arg) => extractNumberFromProperty(trace, origin, arg, "sum"));
+
+const sum: CalcFun<unknown> = (runtime, origin, args) => {
+    const totals = args.map((arg) => extractNumberFromProperty(runtime, origin, arg, "sum"));
     return reduceNumbers(totals, (prev, current) => prev + current, 0);
 };
 
-const product: CalcFun = (trace, origin, args) => {
-    const totals = args.map((arg) => extractNumberFromProperty(trace, origin, arg, "product"));
+const product: CalcFun<unknown> = (runtime, origin, args) => {
+    const totals = args.map((arg) => extractNumberFromProperty(runtime, origin, arg, "product"));
     return reduceNumbers(totals, (prev, current) => prev * current, 1);
 };
 
-const count: CalcFun = (trace, origin, args) => {
-    const totals = args.map((arg) => extractNumberFromProperty(trace, origin, arg, "count"));
+const count: CalcFun<unknown> = (runtime, origin, args) => {
+    const totals = args.map((arg) => extractNumberFromProperty(runtime, origin, arg, "count"));
     return reduceNumbers(totals, (prev, current) => prev + current, 0);
 };
 
-const average: CalcFun = (trace, origin, args) => {
-    const totals = args.map((arg) => extractNumberFromProperty(trace, origin, arg, "sum"));
-    const counts = args.map((arg) => extractNumberFromProperty(trace, origin, arg, "count"));
+const average: CalcFun<unknown> = (runtime, origin, args) => {
+    const totals = args.map((arg) => extractNumberFromProperty(runtime, origin, arg, "sum"));
+    const counts = args.map((arg) => extractNumberFromProperty(runtime, origin, arg, "count"));
     const total = reduceNumbers(totals, (prev, current) => prev + current, 0);
     if (typeof total === "number") {
         const finalCount = reduceNumbers(counts, (prev, current) => prev + current, 0);
@@ -481,8 +480,8 @@ const average: CalcFun = (trace, origin, args) => {
     return total;
 };
 
-const max: CalcFun = (trace, origin, args) => {
-    const maxs = args.map((arg) => extractNumberFromProperty(trace, origin, arg, "max"));
+const max: CalcFun<unknown> = (runtime, origin, args) => {
+    const maxs = args.map((arg) => extractNumberFromProperty(runtime, origin, arg, "max"));
     if (maxs.length === 0) { return 0; }
     for (const arg of maxs) {
         if (typeof arg !== "number") {
@@ -492,8 +491,8 @@ const max: CalcFun = (trace, origin, args) => {
     return reduceNumbers(maxs, (prev, current) => current > prev ? current : prev, maxs[0] as number);
 };
 
-const min: CalcFun = (trace, origin, args) => {
-    const mins = args.map((arg) => extractNumberFromProperty(trace, origin, arg, "min"));
+const min: CalcFun<unknown> = (runtime, origin, args) => {
+    const mins = args.map((arg) => extractNumberFromProperty(runtime, origin, arg, "min"));
     if (mins.length === 0) { return 0; }
     for (const arg of mins) {
         if (typeof arg !== "number") {
@@ -503,12 +502,13 @@ const min: CalcFun = (trace, origin, args) => {
     return reduceNumbers(mins, (prev, current) => current < prev ? current : prev, mins[0] as number);
 };
 
-const concat: CalcFun = (trace, origin, args) => {
-    const val = args.map((arg) => extractStringFromProperty(trace, origin, arg, "concat"));
+
+const concat: CalcFun<unknown> = (runtime, origin, args) => {
+    const val = args.map((arg) => extractStringFromProperty(runtime, origin, arg, "concat"));
     return reduceStrings(val, (prev, current) => prev + current, "");
 };
 
-const funcs: Record<string, CalcFun> = {
+const funcs: Record<string, CalcFun<unknown>> = {
     sum, product, count, average, max, min, concat,
     SUM: sum, PRODUCT: product, COUNT: count, AVERAGE: average, MAX: max, MIN: min, CONCAT: concat,
 };
@@ -674,7 +674,7 @@ class Range<O> implements CalcObj<O> {
             return fn(this, this.context, origin);
         }
         switch (property) {
-            case "value":
+            case ObjProps.AsPrimitive:
                 return this.context.link(this.tl[ROW], this.tl[COL], origin);
             case "row":
             case "ROW":
@@ -711,8 +711,8 @@ class Sheetlet implements ISheetlet {
 
     public readonly binder = initBinder();
 
-    public readonly rootContext: CalcValue<Point> = {
-        read: (property, origin) => {
+    public readonly rootContext: CalcObj<Point> = {
+        read: (property: string, origin: Point) => {
             if (property in funcs) {
                 return funcs[property];
             }
@@ -730,7 +730,7 @@ class Sheetlet implements ISheetlet {
         },
     };
 
-    private readonly orphanFormulaContext: CalcValue<Point> = {
+    private readonly orphanFormulaContext: CalcObj<Point> = {
         read: (property) => {
             if (property in funcs) {
                 return funcs[property];
@@ -762,7 +762,6 @@ class Sheetlet implements ISheetlet {
     }
 
     public setCellText(row: number, col: number, value: Primitive | undefined) {
-        // setting text clears any cell data
         this.matrix.storeCellText(row, col, value);
         this.invalidate(pointToKey(row, col));
     }
@@ -816,7 +815,7 @@ class Sheetlet implements ISheetlet {
      */
     public evaluateFormula(formula: string): Primitive | undefined {
         const program = formula[0] === "=" ? formula.substring(1) : formula;
-        const origin: Point = [0,0];
+        const origin: Point = [0, 0];
         const fn = compile(program);
         if (fn === undefined) { return undefined; }
         const value = fn(origin, this.orphanFormulaContext)[1];
