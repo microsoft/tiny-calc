@@ -2,13 +2,15 @@ export {
     CalcFun,
     CalcObj,
     CalcValue,
+    createRuntime,
     Delay,
     Delayed,
     errors,
     Formula,
     isDelayed,
     makeError,
-    Trace
+    ObjProps,
+    Runtime,
 } from "./core";
 
 export {

@@ -12,7 +12,7 @@ import {
 
 
 interface Producer extends IProducer<Record<string, Value>> { }
-type Value = Producer | CalcFun | Primitive;
+type Value = Producer | CalcFun<unknown> | Primitive;
 // type CalcRecord = Record<string, Value>;
 
 export class Context implements Producer {
