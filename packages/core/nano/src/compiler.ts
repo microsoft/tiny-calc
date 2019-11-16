@@ -13,6 +13,7 @@ import {
     CalcObj,
     CalcValue,
     Delayed,
+    errors,
     Formula,
     Runtime,
     createRuntime,
@@ -24,8 +25,8 @@ import {
 import { FormulaNode, NodeKind, parseFormula } from "./ast";
 
 const needsASTCompilation = {};
-const ifIdent = "ef.read(origin,context,\"if\")";
-const funIdent = "ef.read(origin,context,\"fun\")";
+const ifIdent = "ef.read(origin,context,\"if\", err.readOnNonObjectError)";
+const funIdent = "ef.read(origin,context,\"fun\", err.readOnNonObjectError)";
 const errorHandler = createBooleanErrorHandler();
 
 function outputConditional(args: string[]): string {
@@ -51,7 +52,7 @@ const simpleSink = {
             case "FUN":
                 return funIdent;
             default:
-                return fieldAccess ? JSON.stringify(id) : `ef.read(origin,context,${JSON.stringify(id)})`;
+                return fieldAccess ? JSON.stringify(id) : `ef.read(origin,context,${JSON.stringify(id)}, err.readOnNonObjectError)`;
         }
     },
     paren(expr: string) {
@@ -64,11 +65,11 @@ const simpleSink = {
             case funIdent:
                 throw needsASTCompilation;
             default:
-                return `ef.appN(origin,${head},[${args}])`;
+                return `ef.appN(origin,${head},[${args}], err.appOnNonFunctionError)`;
         }
     },
     dot(left: string, right: string) {
-        return `ef.read(origin,${left},${right})`;
+        return `ef.read(origin,${left},${right}, err.readOnNonObjectError)`;
     },
     binOp(op: BinaryOperatorToken, left: string, right: string) {
         const opStr = "ops." + binaryOperationsMap[op];
@@ -154,13 +155,13 @@ function compileAST(gensym: () => number, scope: Record<string, string>, f: Form
     }
 }
 
-type RawFormula = <O>(ef: Runtime, origin: O, context: CalcObj<O>, ops: OpContext) => Delayed<CalcValue<O>>;
+type RawFormula = <O>(ef: Runtime, err: typeof errors, origin: O, context: CalcObj<O>, ops: OpContext) => Delayed<CalcValue<O>>;
 
 const parse = createParser(simpleSink, errorHandler);
 
 const formula = (raw: RawFormula): Formula => <O>(origin: O, context: CalcObj<O>) => {
     const [data, rt] = createRuntime();
-    const result = raw(rt, origin, context, ops);
+    const result = raw(rt, errors, origin, context, ops);
     return [data, result];
 };
 
@@ -169,7 +170,7 @@ const quickCompile = (text: string) => {
     if (errors) {
         return undefined;
     }
-    return formula(new Function("ef", "origin", "context", "ops", `return ${parsed};`) as RawFormula);
+    return formula(new Function("ef", "err", "origin", "context", "ops", `return ${parsed};`) as RawFormula);
 };
 
 const astCompile = (text: string) => {
@@ -178,7 +179,7 @@ const astCompile = (text: string) => {
         return undefined;
     }
     const parsed = compileAST(makeGensym(), {}, ast);
-    return formula(new Function("ef", "origin", "context", "ops", `return ${parsed};`) as RawFormula);
+    return formula(new Function("ef", "err", "origin", "context", "ops", `return ${parsed};`) as RawFormula);
 };
 
 export const compile = (text: string) => {

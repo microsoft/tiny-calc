@@ -411,9 +411,9 @@ function extractNumberFromProperty<O>(runtime: Runtime, origin: O, arg: CalcValu
     if (typeof arg === "number") { return arg; } // fast path
     let result: Delayed<CalcValue<O>> = arg;
     if (arg instanceof Range) {
-        result = runtime.read(origin, arg, property);
+        result = runtime.read(origin, arg, property, arg);
     } else if (typeof arg === "object") {
-        result = runtime.read(origin, arg, ObjProps.AsPrimitive);
+        result = runtime.read(origin, arg, ObjProps.AsPrimitive, arg);
     }
     switch (typeof result) {
         case "object":

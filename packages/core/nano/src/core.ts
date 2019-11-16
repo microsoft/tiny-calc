@@ -1,11 +1,6 @@
 import { Pending, Primitive } from "./types";
 import { SyntaxKind } from "./parser";
 
-export const enum ObjProps {
-    AsString = "stringify",
-    AsPrimitive = "value",
-}
-
 // TODO: Support Completions
 export interface CalcObj<O> {
     read: (property: string, origin: O, ...args: any[]) => CalcValue<O> | Pending<CalcValue<O>>;
@@ -16,6 +11,11 @@ export interface CalcFun<ODef> {
 }
 
 export type CalcValue<O> = Primitive | CalcObj<O> | CalcFun<O>;
+
+export const enum ObjProps {
+    AsString = "stringify",
+    AsPrimitive = "value",
+}
 
 export function makeError(message: string): CalcObj<unknown> {
     return {
@@ -88,19 +88,19 @@ function makeTracer(): [Pending<unknown>[], Trace] {
  * the function is always produced via `pure`.
  */
 export interface Runtime {
-    read: <O>(origin: O, context: Delayed<CalcValue<O>>, prop: string) => Delayed<CalcValue<O>>;
+    read: <O, F>(origin: O, context: Delayed<CalcValue<O>>, prop: string, fallback: F) => Delayed<CalcValue<O> | F>;
     ifS: <A>(cond: Delayed<boolean>, cont: (cond: boolean) => Delayed<A>) => Delayed<A>;
     app1: <O, A, B>(origin: O, op: (runtime: Runtime, origin: O, expr: A) => B, expr: Delayed<A>) => Delayed<B>;
     app2: <O, A, B, C>(origin: O, op: (runtime: Runtime, origin: O, l: A, r: B) => C, l: Delayed<A>, r: Delayed<B>) => Delayed<C>;
-    appN: <O>(origin: O, fn: Delayed<CalcValue<O>>, args: Delayed<CalcValue<O>>[]) => Delayed<CalcValue<O>>;
+    appN: <O, F>(origin: O, fn: Delayed<CalcValue<O>>, args: Delayed<CalcValue<O>>[], fallback: F) => Delayed<CalcValue<O> | F>;
 }
 
 class CoreRuntime {
     constructor(public trace: Trace) { }
 
-    read<O>(origin: O, context: Delayed<CalcValue<O>>, prop: string): Delayed<CalcValue<O>> {
+    read<O, F>(origin: O, context: Delayed<CalcValue<O>>, prop: string, fallback: F): Delayed<CalcValue<O> | F> {
         if (isDelayed(context)) { return delay }
-        return typeof context === "object" ? this.trace(context.read(prop, origin)) : readOnNonObjectError;
+        return typeof context === "object" ? this.trace(context.read(prop, origin)) : fallback;
     }
 
     ifS<A>(cond: Delayed<boolean>, cont: (cond: boolean) => Delayed<A>): Delayed<A> {
@@ -115,14 +115,14 @@ class CoreRuntime {
         return isDelayed(l) || isDelayed(r) ? delay : op(this, origin, l, r);
     }
 
-    appN<O>(origin: O, fn: Delayed<CalcValue<O>>, args: Delayed<CalcValue<O>>[]): Delayed<CalcValue<O>> {
+    appN<O, F>(origin: O, fn: Delayed<CalcValue<O>>, args: Delayed<CalcValue<O>>[], fallback: F): Delayed<CalcValue<O> | F> {
         if (isDelayed(fn)) { return delay };
         let target: Delayed<CalcValue<O>> = fn;
         if (typeof target === "object") {
             target = this.trace(target.read(ObjProps.AsPrimitive, origin));
         }
         if (isDelayed(target)) { return delay; }
-        if (typeof target !== "function") { return appOnNonFunctionError; }
+        if (typeof target !== "function") { return fallback; }
         for (let i = 0; i < args.length; i += 1) {
             if (isDelayed(args[i])) { return delay };
         }
@@ -147,16 +147,13 @@ export const unaryOperationsMap = {
     [SyntaxKind.MinusToken]: "negate",
 } as const;
 
-type BinaryOperations = typeof binaryOperationsMap;
-type UnaryOperations = typeof unaryOperationsMap;
-type Operations = BinaryOperations[keyof BinaryOperations] | UnaryOperations[keyof UnaryOperations];
 type CoreBinOp = <O>(runtime: Runtime, origin: O, l: CalcValue<O>, r: CalcValue<O>) => Delayed<CalcValue<O>>;
 type CoreUnaryOp = <O>(runtime: Runtime, origin: O, expr: CalcValue<O>) => Delayed<CalcValue<O>>;
 
 function liftBinOp(fn: (l: Primitive, r: Primitive) => CalcValue<unknown>): CoreBinOp {
     return (runtime, origin, l, r) => {
-        const lAsValue = typeof l === "object" ? runtime.read(origin, l, ObjProps.AsPrimitive) : l;
-        const rAsValue = typeof r === "object" ? runtime.read(origin, r, ObjProps.AsPrimitive) : r;
+        const lAsValue = runtime.read(origin, l, ObjProps.AsPrimitive, l);
+        const rAsValue = runtime.read(origin, r, ObjProps.AsPrimitive, r);
         if (isDelayed(lAsValue) || isDelayed(rAsValue)) { return delay; }
         if (typeof lAsValue === "object") { return lAsValue; }
         if (typeof lAsValue === "function") { return functionAsOpArgumentError; }
@@ -168,16 +165,19 @@ function liftBinOp(fn: (l: Primitive, r: Primitive) => CalcValue<unknown>): Core
 
 function liftUnaryOp(fn: (expr: Primitive) => Primitive): CoreUnaryOp {
     return (runtime, origin, expr) => {
-        const exprAsValue = typeof expr === "object" ? runtime.read(origin, expr, ObjProps.AsPrimitive) : expr;
-        if (typeof exprAsValue === "object") { return exprAsValue; }
-        if (typeof exprAsValue === "function") { return functionAsOpArgumentError; }
-        return fn(exprAsValue);
+        const exprAsValue = runtime.read(origin, expr, ObjProps.AsPrimitive, expr);
+        switch (typeof exprAsValue) {
+            case "object":
+                return exprAsValue;
+            case "function":
+                return functionAsOpArgumentError;
+            default:
+                return fn(exprAsValue);
+        }
     };
 }
 
-export type OpContext = Record<Operations, CoreBinOp | CoreUnaryOp>;
-
-export const ops: OpContext = {
+export const ops = {
     plus: liftBinOp((x: any, y: any) => x + y),
     minus: liftBinOp((x: any, y: any) => x - y),
     mult: liftBinOp((x: any, y: any) => x * y),
@@ -189,7 +189,9 @@ export const ops: OpContext = {
     gte: liftBinOp((x: any, y: any) => x >= y),
     ne: liftBinOp((x: any, y: any) => x !== y),
     negate: liftUnaryOp((x: any) => -x),
-};
+} as const;
+
+export type OpContext = typeof ops;
 
 export type Formula = <O>(origin: O, context: CalcObj<O>) => [Pending<unknown>[], Delayed<CalcValue<O>>];
 
