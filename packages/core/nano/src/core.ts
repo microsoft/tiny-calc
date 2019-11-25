@@ -26,19 +26,23 @@ export function makeError(message: string): CalcObj<unknown> {
     };
 }
 
-const readOnNonObjectError = makeError("The target of a dot-operation must be a calc object.");
-const appOnNonFunctionError = makeError("The target of an application must be a calc function.");
-const functionAsOpArgumentError = makeError("Operator argument must be a primitive.");
-const functionArityError = makeError("#ARITY!");
+const appOnNonFunction = makeError("The target of an application must be a calc function.");
 const div0 = makeError("#DIV/0!");
+const functionArity = makeError("#ARITY!");
+const functionAsOpArgument = makeError("Operator argument must be a primitive.");
+const nonStringField = makeError("A field expression must be of type string");
+const readOnNonObject = makeError("The target of a dot-operation must be a calc object.");
 
 export const errors = {
-    readOnNonObjectError,
-    appOnNonFunctionError,
-    functionAsOpArgumentError,
-    functionArityError,
+    appOnNonFunction,
     div0,
+    functionArity,
+    functionAsOpArgument,
+    nonStringField,
+    readOnNonObject,
 } as const;
+
+export type Errors = typeof errors;
 
 declare const $effect: unique symbol;
 export type Delay = { [$effect]: never };
@@ -130,23 +134,6 @@ class CoreRuntime {
     }
 }
 
-export const binaryOperationsMap = {
-    [SyntaxKind.PlusToken]: "plus",
-    [SyntaxKind.MinusToken]: "minus",
-    [SyntaxKind.AsteriskToken]: "mult",
-    [SyntaxKind.SlashToken]: "div",
-    [SyntaxKind.EqualsToken]: "eq",
-    [SyntaxKind.LessThanToken]: "lt",
-    [SyntaxKind.GreaterThanToken]: "gt",
-    [SyntaxKind.LessThanEqualsToken]: "lte",
-    [SyntaxKind.GreaterThanEqualsToken]: "gte",
-    [SyntaxKind.NotEqualsToken]: "ne",
-} as const;
-
-export const unaryOperationsMap = {
-    [SyntaxKind.MinusToken]: "negate",
-} as const;
-
 type CoreBinOp = <O>(runtime: Runtime, origin: O, l: CalcValue<O>, r: CalcValue<O>) => Delayed<CalcValue<O>>;
 type CoreUnaryOp = <O>(runtime: Runtime, origin: O, expr: CalcValue<O>) => Delayed<CalcValue<O>>;
 
@@ -156,8 +143,8 @@ function liftBinOp(fn: (l: Primitive, r: Primitive) => CalcValue<unknown>): Core
         const rAsValue = runtime.read(origin, r, ObjProps.AsPrimitive, r);
         if (isDelayed(lAsValue) || isDelayed(rAsValue)) { return delay; }
         if (typeof lAsValue === "object") { return lAsValue; }
-        if (typeof lAsValue === "function") { return functionAsOpArgumentError; }
-        if (typeof rAsValue === "function") { return functionAsOpArgumentError; }
+        if (typeof lAsValue === "function") { return functionAsOpArgument; }
+        if (typeof rAsValue === "function") { return functionAsOpArgument; }
         if (typeof rAsValue === "object") { return rAsValue; }
         return fn(lAsValue, rAsValue);
     };
@@ -170,28 +157,33 @@ function liftUnaryOp(fn: (expr: Primitive) => Primitive): CoreUnaryOp {
             case "object":
                 return exprAsValue;
             case "function":
-                return functionAsOpArgumentError;
+                return functionAsOpArgument;
             default:
                 return fn(exprAsValue);
         }
     };
 }
 
-export const ops = {
-    plus: liftBinOp((x: any, y: any) => x + y),
-    minus: liftBinOp((x: any, y: any) => x - y),
-    mult: liftBinOp((x: any, y: any) => x * y),
-    div: liftBinOp((x: any, y: any) => y === 0 ? errors.div0 : x / y),
-    eq: liftBinOp((x: any, y: any) => x === y),
-    lt: liftBinOp((x: any, y: any) => x < y),
-    gt: liftBinOp((x: any, y: any) => x > y),
-    lte: liftBinOp((x: any, y: any) => x <= y),
-    gte: liftBinOp((x: any, y: any) => x >= y),
-    ne: liftBinOp((x: any, y: any) => x !== y),
-    negate: liftUnaryOp((x: any) => -x),
+export const binOps = {
+    [SyntaxKind.PlusToken]: liftBinOp((x: any, y: any) => x + y),
+    [SyntaxKind.MinusToken]: liftBinOp((x: any, y: any) => x - y),
+    [SyntaxKind.AsteriskToken]: liftBinOp((x: any, y: any) => x * y),
+    [SyntaxKind.SlashToken]: liftBinOp((x: any, y: any) => y === 0 ? errors.div0 : x / y),
+    [SyntaxKind.EqualsToken]: liftBinOp((x: any, y: any) => x === y),
+    [SyntaxKind.LessThanToken]: liftBinOp((x: any, y: any) => x < y),
+    [SyntaxKind.GreaterThanToken]: liftBinOp((x: any, y: any) => x > y),
+    [SyntaxKind.LessThanEqualsToken]: liftBinOp((x: any, y: any) => x <= y),
+    [SyntaxKind.GreaterThanEqualsToken]: liftBinOp((x: any, y: any) => x >= y),
+    [SyntaxKind.NotEqualsToken]: liftBinOp((x: any, y: any) => x !== y)
 } as const;
 
-export type OpContext = typeof ops;
+export const unaryOps = {
+    [SyntaxKind.PlusToken]: ((_rt: any, _o: any, x: any) => x) as CoreUnaryOp,
+    [SyntaxKind.MinusToken]: liftUnaryOp((x: any) => -x)
+} as const;
+
+export type BinaryOps = typeof binOps;
+export type UnaryOps = typeof unaryOps;
 
 export type Formula = <O>(origin: O, context: CalcObj<O>) => [Pending<unknown>[], Delayed<CalcValue<O>>];
 

@@ -9,7 +9,8 @@ import {
 } from "./parser";
 
 import {
-    binaryOperationsMap,
+    binOps,
+    BinaryOps,
     CalcObj,
     CalcValue,
     Delayed,
@@ -17,16 +18,15 @@ import {
     Formula,
     Runtime,
     createRuntime,
-    OpContext,
-    ops,
-    unaryOperationsMap,
+    unaryOps,
+    UnaryOps,
 } from "./core";
 
 import { FormulaNode, NodeKind, parseFormula } from "./ast";
 
 const needsASTCompilation = {};
-const ifIdent = "ef.read(origin,context,\"if\", err.readOnNonObjectError)";
-const funIdent = "ef.read(origin,context,\"fun\", err.readOnNonObjectError)";
+const ifIdent = "ef.read(origin,context,\"if\", err.readOnNonObject)";
+const funIdent = "ef.read(origin,context,\"fun\", err.readOnNonObject)";
 const errorHandler = createBooleanErrorHandler();
 
 function outputConditional(args: string[]): string {
@@ -52,7 +52,7 @@ const simpleSink = {
             case "FUN":
                 return funIdent;
             default:
-                return fieldAccess ? JSON.stringify(id) : `ef.read(origin,context,${JSON.stringify(id)}, err.readOnNonObjectError)`;
+                return fieldAccess ? JSON.stringify(id) : `ef.read(origin,context,${JSON.stringify(id)}, err.readOnNonObject)`;
         }
     },
     paren(expr: string) {
@@ -65,19 +65,19 @@ const simpleSink = {
             case funIdent:
                 throw needsASTCompilation;
             default:
-                return `ef.appN(origin,${head},[${args}], err.appOnNonFunctionError)`;
+                return `ef.appN(origin,${head},[${args}], err.appOnNonFunction)`;
         }
     },
     dot(left: string, right: string) {
-        return `ef.read(origin,${left},${right}, err.readOnNonObjectError)`;
+        return `ef.read(origin,${left},${right}, err.readOnNonObject)`;
     },
     binOp(op: BinaryOperatorToken, left: string, right: string) {
-        const opStr = "ops." + binaryOperationsMap[op];
+        const opStr = `binOps[${op}]`;
         return `ef.app2(origin,${opStr},${left},${right})`;
     },
     unaryOp(op: UnaryOperatorToken, expr: string) {
         if (op === SyntaxKind.MinusToken) {
-            const opStr = "ops." + unaryOperationsMap[op];
+            const opStr = `unaryOps[${op}]`;
             return `ef.app1(origin,${opStr},${expr})`;
         }
         return expr
@@ -155,13 +155,13 @@ function compileAST(gensym: () => number, scope: Record<string, string>, f: Form
     }
 }
 
-type RawFormula = <O>(ef: Runtime, err: typeof errors, origin: O, context: CalcObj<O>, ops: OpContext) => Delayed<CalcValue<O>>;
+type RawFormula = <O>(ef: Runtime, err: typeof errors, origin: O, context: CalcObj<O>, binOps: BinaryOps, unaryOps: UnaryOps) => Delayed<CalcValue<O>>;
 
 const parse = createParser(simpleSink, errorHandler);
 
 const formula = (raw: RawFormula): Formula => <O>(origin: O, context: CalcObj<O>) => {
     const [data, rt] = createRuntime();
-    const result = raw(rt, errors, origin, context, ops);
+    const result = raw(rt, errors, origin, context, binOps, unaryOps);
     return [data, result];
 };
 
@@ -170,7 +170,7 @@ const quickCompile = (text: string) => {
     if (errors) {
         return undefined;
     }
-    return formula(new Function("ef", "err", "origin", "context", "ops", `return ${parsed};`) as RawFormula);
+    return formula(new Function("ef", "err", "origin", "context", "binOps", "unaryOps", `return ${parsed};`) as RawFormula);
 };
 
 const astCompile = (text: string) => {
@@ -179,7 +179,7 @@ const astCompile = (text: string) => {
         return undefined;
     }
     const parsed = compileAST(makeGensym(), {}, ast);
-    return formula(new Function("ef", "err", "origin", "context", "ops", `return ${parsed};`) as RawFormula);
+    return formula(new Function("ef", "err", "origin", "context", "binOps", "unaryOps", `return ${parsed};`) as RawFormula);
 };
 
 export const compile = (text: string) => {

@@ -18,6 +18,11 @@ export {
 } from "./compiler";
 
 export {
+    interpret,
+    Interpreter
+} from "./interpreter";
+
+export {
     Pending,
     Primitive,
     IConsumer,

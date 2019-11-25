@@ -186,20 +186,22 @@ function isIdentifierPart(ch: number): boolean {
 }
 
 function isWhitespaceChar(ch: number): boolean {
-    return (
-        ch === CharacterCodes.space ||
-        ch === CharacterCodes.tab ||
-        ch === CharacterCodes.verticalTab ||
-        ch === CharacterCodes.formFeed ||
-        ch === CharacterCodes.nonBreakingSpace ||
-        ch === CharacterCodes.nextLine ||
-        ch === CharacterCodes.ogham ||
-        (ch >= CharacterCodes.enQuad && ch <= CharacterCodes.zeroWidthSpace) ||
-        ch === CharacterCodes.narrowNoBreakSpace ||
-        ch === CharacterCodes.mathematicalSpace ||
-        ch === CharacterCodes.ideographicSpace ||
-        ch === CharacterCodes.byteOrderMark
-    );
+    switch(ch) {
+        case CharacterCodes.space:
+        case CharacterCodes.tab:
+        case CharacterCodes.verticalTab:
+        case CharacterCodes.formFeed:
+        case CharacterCodes.nonBreakingSpace:
+        case CharacterCodes.nextLine:
+        case CharacterCodes.ogham:
+        case CharacterCodes.narrowNoBreakSpace:
+        case CharacterCodes.mathematicalSpace:
+        case CharacterCodes.ideographicSpace:
+        case CharacterCodes.byteOrderMark:
+            return true;
+        default:
+            return ch >= CharacterCodes.enQuad && ch <= CharacterCodes.zeroWidthSpace;
+    }
 }
 
 const keywords: Record<string, SyntaxKind> = {
@@ -473,7 +475,7 @@ export interface ParserErrorHandler<E> {
     onError: (message: string, start: number, end: number) => void;
 }
 
-export interface ParserSink<R> {
+export interface ExpAlgebra<R> {
     lit: (value: boolean | number | string, start: number, end: number) => R;
     ident: (id: string, kind: TokenFlags, fieldAccess: boolean, start: number, end: number) => R;
     paren: (expr: R, start: number, end: number) => R;
@@ -517,10 +519,10 @@ function isStartOfExpression(kind: SyntaxKind): boolean {
         case SyntaxKind.StringLiteral:
         case SyntaxKind.Identifier:
         case SyntaxKind.OpenParenToken:
-        // These cases are for error handling so that we look ahead
-        // and create the binOp node with missing children.
         case SyntaxKind.PlusToken:
         case SyntaxKind.MinusToken:
+        // These cases are for error handling so that we look ahead
+        // and create the binOp node with missing children.
         case SyntaxKind.AsteriskToken:
         case SyntaxKind.SlashToken:
         case SyntaxKind.EqualsToken:
@@ -567,7 +569,7 @@ export const createBooleanErrorHandler: () => ParserErrorHandler<boolean> = () =
     }
 }
 
-export const createParser = <R, E>(sink: ParserSink<R>, handler: ParserErrorHandler<E>) => {
+export const createParser = <R, E>(algebra: ExpAlgebra<R>, handler: ParserErrorHandler<E>) => {
     const scanner = createScanner(handler.onError, "");
     let currentToken: SyntaxKind;
 
@@ -587,10 +589,10 @@ export const createParser = <R, E>(sink: ParserSink<R>, handler: ParserErrorHand
 
     const dotAppMap = {
         [SyntaxKind.OpenParenToken]: (lhs: R, start: number) => {
-            return sink.app(lhs, parseArgumentList(), start, scanner.getWSTokenPos());
+            return algebra.app(lhs, parseArgumentList(), start, scanner.getWSTokenPos());
         },
         [SyntaxKind.DotToken]: (lhs: R, start: number) => {
-            return sink.dot(lhs, parseField(), start, scanner.getWSTokenPos());
+            return algebra.dot(lhs, parseField(), start, scanner.getWSTokenPos());
         }
     } as const;
 
@@ -638,13 +640,13 @@ export const createParser = <R, E>(sink: ParserSink<R>, handler: ParserErrorHand
         const tokenValue = scanner.getTokenValue();
         const flags = scanner.getTokenFlags();
         nextToken();
-        return sink.ident(tokenValue, flags, fieldAccess, start, scanner.getWSTokenPos());
+        return algebra.ident(tokenValue, flags, fieldAccess, start, scanner.getWSTokenPos());
     }
 
     function parseLiteral(value: boolean | number | string): R {
         const start = scanner.getWSTokenPos();
         nextToken();
-        return sink.lit(value, start, scanner.getWSTokenPos());
+        return algebra.lit(value, start, scanner.getWSTokenPos());
     }
 
     function parseField(): R {
@@ -652,11 +654,11 @@ export const createParser = <R, E>(sink: ParserSink<R>, handler: ParserErrorHand
         if (currentToken === SyntaxKind.Identifier) {
             return parseIdentifer(/*fieldAccess */ true);
         }
-        return sink.missing(scanner.getWSTokenPos());
+        return algebra.missing(scanner.getWSTokenPos());
     }
 
     function parseBinOp(lhs: R, start: number, token: BinaryOperatorToken, precedence: number) {
-        return sink.binOp(token, lhs, parseExpr(precedence), start, scanner.getWSTokenPos());
+        return algebra.binOp(token, lhs, parseExpr(precedence), start, scanner.getWSTokenPos());
     }
 
     function isListEnd() {
@@ -689,7 +691,7 @@ export const createParser = <R, E>(sink: ParserSink<R>, handler: ParserErrorHand
             }
             if (parseOptional(SyntaxKind.CommaToken)) {
                 if (freshArgument) {
-                    list.push(sink.missing(nextArgPos));
+                    list.push(algebra.missing(nextArgPos));
                 }
                 freshArgument = true;
                 nextArgPos = scanner.getWSTokenPos();
@@ -698,7 +700,7 @@ export const createParser = <R, E>(sink: ParserSink<R>, handler: ParserErrorHand
             nextToken();
         }
         if (freshArgument && list.length > 0) {
-            list.push(sink.missing(nextArgPos));
+            list.push(algebra.missing(nextArgPos));
         }
         parseExpected(SyntaxKind.CloseParenToken);
         return list;
@@ -728,7 +730,7 @@ export const createParser = <R, E>(sink: ParserSink<R>, handler: ParserErrorHand
             case SyntaxKind.MinusToken:
                 const start = scanner.getWSTokenPos();
                 nextToken();
-                return sink.unaryOp(token, parsePrefixUnary(), start, scanner.getWSTokenPos());
+                return algebra.unaryOp(token, parsePrefixUnary(), start, scanner.getWSTokenPos());
             default:
                 return parseDotOrApp();
         }
@@ -771,10 +773,10 @@ export const createParser = <R, E>(sink: ParserSink<R>, handler: ParserErrorHand
                 nextToken();
                 const expr = parseExpression();
                 parseExpected(SyntaxKind.CloseParenToken);
-                return sink.paren(expr, start, scanner.getWSTokenPos());
+                return algebra.paren(expr, start, scanner.getWSTokenPos());
 
             default:
-                return sink.missing(scanner.getWSTokenPos());
+                return algebra.missing(scanner.getWSTokenPos());
         }
     }
 };
