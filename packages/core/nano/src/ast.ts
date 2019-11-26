@@ -134,10 +134,7 @@ const astSink: ExpAlgebra<FormulaNode> = {
     lit(value: number | string | boolean) {
         return createUnaryNode(NodeKind.Literal, value);
     },
-    ident(id, _flags, fieldAccess) {
-        if (fieldAccess) {
-            return createUnaryNode(NodeKind.Literal, id);
-        }
+    ident(id) {
         return createUnaryNode(NodeKind.Ident, id);
     },
     paren(expr: FormulaNode) {

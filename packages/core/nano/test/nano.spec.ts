@@ -68,9 +68,7 @@ describe("nano", () => {
         it(`Eval: ${expression}`, () => {
             const f = compile(expression);
             assert.notEqual(f, undefined)
-            console.time(expression);
             const [pending, actual] = f!(undefined, testContext);
-            console.timeEnd(expression)
             assert.deepEqual(pending, []);
             assert.strictEqual(actual, expected);
         });
@@ -80,9 +78,7 @@ describe("nano", () => {
         it(`Interpret: ${expression}`, () => {
             const [ok, formula] = parseFormula(expression);
             assert.strictEqual(ok, false);
-            console.time(expression);
             const [pending, actual] = interpret(undefined, testContext, formula);
-            console.timeEnd(expression)
             assert.deepEqual(pending, []);
             assert.strictEqual(actual, expected);
         });
@@ -936,7 +932,7 @@ Product(1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
         { expression: "(1/0).stringify", expected: "#DIV/0!" },
         { expression: "FUN(42)()", expected: 42 },
         { expression: "A1(1, 2, 3, FUN(42)())", expected: 48 },
-        { expression: "FUN(x, y, x + y)(1)", expected: "#ARITY!" },
+        { expression: "FUN(x, y, x + y)(1).stringify", expected: "#ARITY!" },
         { expression: "FUN(x, y, z, x + y + z)(1, 2, 3) + FUN(x, y, z, x + y + z)(4, 5, 6) + FUN(x, y, z, x + y + z)(7, 8, 9) + FUN(x, y, z, x + y + z)(10, 11, 12)", expected: 78 },
         { expression: "FUN(f, f(1, 2, 3) + f(4, 5, 6) + f(7, 8, 9) + f(10, 11, 12))(FUN(x, y, z, x + y + z))", expected: 78 },
         { expression: "FUN(x, y, z, x + FUN(x, x*x)(y) + z)(2, 3, 4)", expected: 15 },

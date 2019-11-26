@@ -123,8 +123,7 @@ function compileAST(gensym: () => number, scope: Record<string, string>, f: Form
                 return assertNever(ident as never, "FUN arg should be ident");
             }
             const body = compileAST(gensym, freshScope, children[children.length - 1]);
-            // TODO: Pass in an actual arity error.
-            return `function(ef, origin, ${name}){return ${name}.length>=${children.length - 1}?${body}:"#ARITY!";}`;
+            return `function(ef, origin, ${name}){return ${name}.length>=${children.length - 1}?${body}:err.functionArity;}`;
 
         case NodeKind.App:
             const head = compileAST(gensym, scope, f.children[0]);
@@ -136,7 +135,7 @@ function compileAST(gensym: () => number, scope: Record<string, string>, f: Form
 
         case NodeKind.Dot:
             if (f.operand2.kind === NodeKind.Ident) {
-                return simpleSink.dot(compileAST(gensym, scope, f.operand1), f.operand2.value);
+                return simpleSink.dot(compileAST(gensym, scope, f.operand1), JSON.stringify(f.operand2.value));
             }
             return assertNever(f.operand2.kind as never, "DOT field should be ident");
 

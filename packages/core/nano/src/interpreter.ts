@@ -65,9 +65,8 @@ function evaluate<O>(ctx: EvalContext, origin: O, rt: Runtime, root: CalcObj<O>,
             
         case NodeKind.Dot:
             const obj = evaluate(ctx, origin, rt, root, formula.operand1);
-            const prop = evaluate(ctx, origin, rt, root, formula.operand2);
-            if (typeof prop  === "string") {
-                return rt.read(origin, obj, prop, ctx.errors.readOnNonObject);
+            if (formula.operand2.kind === NodeKind.Ident) {
+                return rt.read(origin, obj, formula.operand2.value, ctx.errors.readOnNonObject);
             }
             return ctx.errors.nonStringField;
             
