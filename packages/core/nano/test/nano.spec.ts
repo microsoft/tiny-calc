@@ -1,10 +1,12 @@
-import { createDiagnosticErrorHandler, createParser, SyntaxKind, ParserSink } from "../src/parser";
+import { parseFormula } from "../src/ast";
+import { createDiagnosticErrorHandler, createParser, SyntaxKind, ExpAlgebra } from "../src/parser";
 import { compile } from "../src/compiler";
+import { interpret } from "../src/interpreter";
 import { CalcValue, CalcObj, CalcFun, errors } from "../src/core";
 import * as assert from "assert";
 import "mocha";
 
-const astSink: ParserSink<object> = {
+const astSink: ExpAlgebra<object> = {
     lit(value: number | string | boolean, start: number, end: number) {
         return { start, end, value };
     },
@@ -65,8 +67,18 @@ describe("nano", () => {
     function evalTest(expression: string, expected: CalcValue<any>) {
         it(`Eval: ${expression}`, () => {
             const f = compile(expression);
-            assert.notEqual(f, undefined);
+            assert.notEqual(f, undefined)
             const [pending, actual] = f!(undefined, testContext);
+            assert.deepEqual(pending, []);
+            assert.strictEqual(actual, expected);
+        });
+    }
+
+    function interpretTest(expression: string, expected: CalcValue<any>) {
+        it(`Interpret: ${expression}`, () => {
+            const [ok, formula] = parseFormula(expression);
+            assert.strictEqual(ok, false);
+            const [pending, actual] = interpret(undefined, testContext, formula);
             assert.deepEqual(pending, []);
             assert.strictEqual(actual, expected);
         });
@@ -920,11 +932,57 @@ Product(1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
         { expression: "(1/0).stringify", expected: "#DIV/0!" },
         { expression: "FUN(42)()", expected: 42 },
         { expression: "A1(1, 2, 3, FUN(42)())", expected: 48 },
-        { expression: "FUN(x, y, x + y)(1)", expected: "#ARITY!" },
+        { expression: "FUN(x, y, x + y)(1).stringify", expected: "#ARITY!" },
         { expression: "FUN(x, y, z, x + y + z)(1, 2, 3) + FUN(x, y, z, x + y + z)(4, 5, 6) + FUN(x, y, z, x + y + z)(7, 8, 9) + FUN(x, y, z, x + y + z)(10, 11, 12)", expected: 78 },
         { expression: "FUN(f, f(1, 2, 3) + f(4, 5, 6) + f(7, 8, 9) + f(10, 11, 12))(FUN(x, y, z, x + y + z))", expected: 78 },
         { expression: "FUN(x, y, z, x + FUN(x, x*x)(y) + z)(2, 3, 4)", expected: 15 },
         { expression: "FUN(g, f, FUN(x, g(f(x))))(FUN(x, x + 1), FUN(x, x - 1))(10)=10", expected: true }
+    ];
+
+        const interpretCases = [
+        { expression: "{I'm a property with a # of characters}", expected: 100 },
+        { expression: "{I'm a property with a # of characters}*10", expected: 1000 },
+        { expression: "Something.{Property A}", expected: "A" },
+        { expression: "Something.{Property B}", expected: "B" },
+        { expression: "----4", expected: 4 },
+        { expression: "-4+-4", expected: -8 },
+        { expression: "-4++-4", expected: -8 },
+        { expression: "-4--4", expected: 0 },
+        { expression: "Sum(Foo + Bar, Bar * Foo, 3, IF(Foo < 0, 10, 100))", expected: 126 },
+        {
+            expression: `Sum(1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1)+
+Sum(1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1)+
+Product(1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1)+
+Sum(1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1)+
+Product(1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1)+
+Sum(1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1)+
+Product(1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1)`, expected: 259
+        },
+        { expression: "IF", expected: 0 },
+        { expression: "FUN", expected: 0 },
+        { expression: "IF(true)", expected: true },
+        { expression: "IF(Foo > 2, Foo + Bar, Bar * Foo)", expected: 8 },
+        { expression: "1.3333 + 2.2222", expected: 3.5555 },
+        { expression: "1 + 2    + 3 + 4 =   10 - 10 + 10", expected: true },
+        { expression: "IF(1*2*3*4<>8, 'hello' + 'world', 10 / 2)", expected: "helloworld" },
+        { expression: "IF(1*2*3*4<>24, 'hello' + 'world', 10 / 2)", expected: 5 },
+        { expression: "IF(1*2*3*4<>24, 'hello' + 'world')", expected: false },
+        { expression: "1*2+3*4", expected: 14 },
+        { expression: "4*1*2+3*4", expected: 20 },
+        { expression: "4*1*(2+3)*4", expected: 80 },
+        { expression: "Foo + Bar", expected: 8 },
+        { expression: "IF(Foo * Bar > 10000, 'left', 'right')", expected: "right" },
+        { expression: "4(3,2).stringify", expected: "The target of an application must be a calc function." },
+        { expression: "(Sum + 3).stringify", expected: "Operator argument must be a primitive." },
+        {
+            expression: "(Sum + 3).prop.prop.prop.prop.prop.prop.prop.prop.prop.prop.prop.prop.prop.prop.prop.prop.stringify",
+            expected: "Operator argument must be a primitive."
+        },
+        { expression: "42.", expected: 42 },
+        { expression: "42.01", expected: 42.01 },
+        { expression: "1/1", expected: 1 },
+        { expression: "1/0", expected: errors.div0 },
+        { expression: "(1/0).stringify", expected: "#DIV/0!" }
     ];
 
     const compilationFailureCases = [
@@ -945,5 +1003,9 @@ Product(1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
 
     for (const { expression } of compilationFailureCases) {
         compilationFailureTest(expression);
+    }
+
+    for (const { expression, expected } of interpretCases) {
+        interpretTest(expression, expected);
     }
 });

@@ -4,7 +4,7 @@ import {
     BinaryOperatorToken,
     createBooleanErrorHandler,
     createParser,
-    ParserSink,
+    ExpAlgebra,
     UnaryOperatorToken,
 } from "./parser";
 
@@ -130,11 +130,11 @@ function createNaryNode<K extends NaryNode>(kind: K, children: FormulaNode[]): N
 
 const errorHandler = createBooleanErrorHandler();
 
-const astSink: ParserSink<FormulaNode> = {
+const astSink: ExpAlgebra<FormulaNode> = {
     lit(value: number | string | boolean) {
         return createUnaryNode(NodeKind.Literal, value);
     },
-    ident(id: string) {
+    ident(id) {
         return createUnaryNode(NodeKind.Ident, id);
     },
     paren(expr: FormulaNode) {
