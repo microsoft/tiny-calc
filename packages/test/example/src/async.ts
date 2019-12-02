@@ -49,25 +49,28 @@ const delayedCalcValue: CalcObj<unknown> = {
     }
 }
 
-const f = compile("{a number} + 10 + {a number} + \" \" + {a string} + \" \" + {a bool}");
+const f = compile("{a number} + IF({a number} > 10, {other}, {other}) + {a number} + \" \" + {a string} + \" \" + {a bool}");
 
-function runFormula(f: Formula, attempts: number): Promise<CalcValue<undefined>> {
-    console.time('singleEval')
-    const [pendings, value] = f(undefined, delayedCalcValue);
-    console.timeEnd('singleEval')
-    if (isDelayed(value)) {
-        if (attempts === 0) {
-            return Promise.reject("Exhausted attempts!");
+/**
+ * Care needs to be taken when using promise loops as they have a
+ * tendency to leak memory.
+ */
+async function runFormula(f: Formula, attempts: number): Promise<CalcValue<undefined>> {
+    let [pendings, value] = f(undefined, delayedCalcValue);
+    while (isDelayed(value)) {
+        if (attempts > 0) {
+            await Promise.all(pendings.map((p: any) => p.promise));
+            [pendings, value] = f(undefined, delayedCalcValue);
+            attempts--;
+            continue;
         }
-        return Promise.all(
-            pendings.map((p: any) => p.promise)
-        ).then(() => runFormula(f, attempts--));
+        throw "Exhausted attempts!";
     }
-    return Promise.resolve(value);
+    return value;
 }
 
 if (f) {
     console.time('go');
     const cb = (x: CalcValue<undefined>) => { console.timeEnd('go'); console.log(x) };
-    runFormula(f, 1).then(cb).catch(cb);
+    runFormula(f, 5).then(cb).catch(cb);
 }
