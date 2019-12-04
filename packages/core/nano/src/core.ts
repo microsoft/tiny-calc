@@ -86,10 +86,6 @@ function makeTracer(): [Pending<unknown>[], Trace] {
 /**
  * Core expression runtime that implements collection and propagation
  * of potentially unavailable resources.
- *
- * This is like a selective applicative functor + fetch, if you squint
- * hard enough. `app1` and `app2` are specialised to the cases where
- * the function is always produced via `pure`.
  */
 export interface Runtime {
     read: <O, F>(origin: O, context: Delayed<CalcValue<O>>, prop: string, fallback: F) => Delayed<CalcValue<O> | F>;
