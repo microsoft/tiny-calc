@@ -292,10 +292,10 @@ function createScanner(onError: (message: string, start: number, end: number) =>
                 case CharacterCodes.comma:
                     pos += 1;
                     return (token = SyntaxKind.CommaToken);
-
                 case CharacterCodes.equals:
                     pos += 1;
                     return (token = SyntaxKind.EqualsToken);
+
                 case CharacterCodes.lessThan:
                     pos += 1;
                     if (pos < end && text.charCodeAt(pos) === CharacterCodes.equals) {
@@ -307,6 +307,7 @@ function createScanner(onError: (message: string, start: number, end: number) =>
                         return (token = SyntaxKind.NotEqualsToken);
                     }
                     return (token = SyntaxKind.LessThanToken);
+
                 case CharacterCodes.greaterThan:
                     pos += 1;
                     if (pos < end && text.charCodeAt(pos) === CharacterCodes.equals) {
@@ -314,6 +315,7 @@ function createScanner(onError: (message: string, start: number, end: number) =>
                         return (token = SyntaxKind.GreaterThanEqualsToken);
                     }
                     return (token = SyntaxKind.GreaterThanToken);
+
                 case CharacterCodes.openParen:
                     pos += 1;
                     return (token = SyntaxKind.OpenParenToken);
@@ -341,8 +343,8 @@ function createScanner(onError: (message: string, start: number, end: number) =>
                 case CharacterCodes._7:
                 case CharacterCodes._8:
                 case CharacterCodes._9:
-                    ({ type: token, value: tokenValue } = scanNumber());
-                    return token;
+                    tokenValue = scanNumber();
+                    return (token = SyntaxKind.NumberLiteral);
 
                 default:
                     if (isIdentifierStart(ch)) {
@@ -427,7 +429,7 @@ function createScanner(onError: (message: string, start: number, end: number) =>
         return result;
     }
 
-    function scanNumber(): { type: SyntaxKind; value: string } {
+    function scanNumber(): string {
         const start = pos;
         scanNumberFragment();
         let decimalFragment: string | undefined;
@@ -436,11 +438,7 @@ function createScanner(onError: (message: string, start: number, end: number) =>
             decimalFragment = scanNumberFragment();
         }
         const textPart = text.substring(start, pos);
-        const result = decimalFragment !== undefined ? "" + +textPart : textPart;
-        return {
-            type: SyntaxKind.NumberLiteral,
-            value: result
-        };
+        return decimalFragment !== undefined ? "" + +textPart : textPart;
     }
 
     function scanNumberFragment(): string {
