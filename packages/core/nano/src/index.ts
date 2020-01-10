@@ -2,18 +2,25 @@ export {
     CalcFun,
     CalcObj,
     CalcValue,
+    createRuntime,
     Delay,
     Delayed,
     errors,
     Formula,
     isDelayed,
     makeError,
-    Trace
+    ObjProps,
+    Runtime,
 } from "./core";
 
 export {
     compile,
 } from "./compiler";
+
+export {
+    interpret,
+    Interpreter
+} from "./interpreter";
 
 export {
     Pending,

@@ -31,9 +31,9 @@ describe("Sheetlet", () => {
     }
 
     describe("constant", () => {
-        const matrix = new Matrix(/* numRows: */ 2, /* numCols: */ 3,
-            [0, 1, 2,
-             3, 4, 5]);
+        const matrix = new Matrix(/* numRows: */ 2, /* numCols: */ 4,
+            [0, 1, 2, "Hello",
+             3, 4, 5, " world"]);
 
         const sheet = createSheetlet(matrix);
         
@@ -52,6 +52,8 @@ describe("Sheetlet", () => {
             const evalCases = [
                 { formula: "C1", expected: 2 },
                 { formula: "A2", expected: 3 },
+                { formula: "CONCAT(D1:D2)", expected: "Hello world" },
+                { formula: "CONCAT(D1, D2)", expected: "Hello world" },
             ];
     
             for (const { formula, expected } of evalCases) {

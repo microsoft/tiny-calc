@@ -1,18 +1,17 @@
-import { createDiagnosticErrorHandler, createParser, SyntaxKind, ParserSink } from "../src/parser";
+import { parseFormula } from "../src/ast";
+import { createDiagnosticErrorHandler, createParser, SyntaxKind, ExpAlgebra } from "../src/parser";
 import { compile } from "../src/compiler";
+import { interpret } from "../src/interpreter";
 import { CalcValue, CalcObj, CalcFun, errors } from "../src/core";
 import * as assert from "assert";
 import "mocha";
 
-const astSink: ParserSink<object> = {
+const astSink: ExpAlgebra<object> = {
     lit(value: number | string | boolean, start: number, end: number) {
         return { start, end, value };
     },
-    ident(id: string, start: number, end: number) {
+    ident(id: string, _kind: unknown, _fieldAccess: boolean, start: number, end: number) {
         return { start, end, id };
-    },
-    field(label: string, start: number, end: number) {
-        return { start, end, label };
     },
     paren(expr: object, start: number, end: number) {
         return { start, end, expr };
@@ -36,17 +35,19 @@ const astSink: ParserSink<object> = {
 
 export const astParse = createParser(astSink, createDiagnosticErrorHandler());
 
-const sum: CalcFun = <O>(_trace: any, _host: O, args: any[]) => args.reduce((prev, now) => prev + now, 0);
-const prod: CalcFun = <O>(_trace: any, _host: O, args: any[]) => args.reduce((prev, now) => prev * now, 1);
+const sum: CalcFun<unknown> = <O>(_rt: any, _origin: O, args: any[]) => args.reduce((prev, now) => prev + now, 0);
+const prod: CalcFun<unknown> = <O>(_rt: any, _origin: O, args: any[]) => args.reduce((prev, now) => prev * now, 1);
 
 const testContext: CalcObj<undefined> = {
     read: (property: string) => {
         switch (property) {
             case "Foo": return 3;
+            case "I'm a property with a # of characters": return 100;
             case "Bar": return 5;
             case "Baz": return { kind: "Pending" };
             case "Qux": return { kind: "Pending" };
             case "A1": return { read(prop) { return prop === "value" ? sum : 0 } };
+            case "Something": return { read(prop) { return prop === "Property A" ? "A" : "B" } };
             case "Sum": return sum;
             case "Product": return prod;
             default: return 0;
@@ -66,8 +67,18 @@ describe("nano", () => {
     function evalTest(expression: string, expected: CalcValue<any>) {
         it(`Eval: ${expression}`, () => {
             const f = compile(expression);
-            assert.notEqual(f, undefined);
+            assert.notEqual(f, undefined)
             const [pending, actual] = f!(undefined, testContext);
+            assert.deepEqual(pending, []);
+            assert.strictEqual(actual, expected);
+        });
+    }
+
+    function interpretTest(expression: string, expected: CalcValue<any>) {
+        it(`Interpret: ${expression}`, () => {
+            const [ok, formula] = parseFormula(expression);
+            assert.strictEqual(ok, false);
+            const [pending, actual] = interpret(undefined, testContext, formula);
             assert.deepEqual(pending, []);
             assert.strictEqual(actual, expected);
         });
@@ -81,6 +92,60 @@ describe("nano", () => {
     }
 
     const parseCases = [
+        {
+            expression: "{hello world}",
+            expected: {
+                "start": 0,
+                "end": 13,
+                "id": "hello world"
+            },
+            errorCount: 0,
+        },
+        {
+            expression: "{hello world",
+            expected: {
+                "start": 0,
+                "end": 12,
+                "id": "hello world"
+            },
+            errorCount: 1,
+        },
+        {
+            expression: "'hello world",
+            expected: {
+                "start": 0,
+                "end": 12,
+                "value": "hello world"
+            },
+            errorCount: 1,
+        },
+        {
+            expression: "'hello world'",
+            expected: {
+                "start": 0,
+                "end": 13,
+                "value": "hello world"
+            },
+            errorCount: 0,
+        },
+        {
+            expression: '"hello } world"',
+            expected: {
+                "start": 0,
+                "end": 15,
+                "value": "hello } world"
+            },
+            errorCount: 0,
+        },
+        {
+            expression: "{Hello \\} world!!}",
+            expected: {
+                "start": 0,
+                "end": 18,
+                "id": "Hello } world!!"
+            },
+            errorCount: 0,
+        },
         {
             expression: "+foo.hello(world)",
             expected: {
@@ -101,7 +166,7 @@ describe("nano", () => {
                         "right": {
                             "start": 5,
                             "end": 10,
-                            "label": "hello"
+                            "id": "hello"
                         }
                     },
                     "args": [
@@ -143,7 +208,7 @@ describe("nano", () => {
                     "right": {
                         "start": 12,
                         "end": 17,
-                        "label": "world"
+                        "id": "world"
                     }
                 }
             },
@@ -166,7 +231,7 @@ describe("nano", () => {
                     "right": {
                         "start": 5,
                         "end": 10,
-                        "label": "hello"
+                        "id": "hello"
                     }
                 }
             },
@@ -206,7 +271,7 @@ describe("nano", () => {
                     "right": {
                         "start": 2,
                         "end": 7,
-                        "label": "hello"
+                        "id": "hello"
                     }
                 }
             },
@@ -524,7 +589,7 @@ describe("nano", () => {
                                     "right": {
                                         "start": 2,
                                         "end": 3,
-                                        "label": "B"
+                                        "id": "B"
                                     }
                                 },
                                 "right": {
@@ -534,7 +599,7 @@ describe("nano", () => {
                             "right": {
                                 "start": 5,
                                 "end": 6,
-                                "label": "C"
+                                "id": "C"
                             }
                         },
                         "right": {
@@ -544,7 +609,7 @@ describe("nano", () => {
                     "right": {
                         "start": 8,
                         "end": 9,
-                        "label": "D"
+                        "id": "D"
                     }
                 },
                 "right": {
@@ -594,7 +659,7 @@ describe("nano", () => {
                         "right": {
                             "start": 9,
                             "end": 12,
-                            "label": "max"
+                            "id": "max"
                         }
                     },
                     "args": [
@@ -648,7 +713,7 @@ describe("nano", () => {
                             "right": {
                                 "start": 4,
                                 "end": 7,
-                                "label": "Bar"
+                                "id": "Bar"
                             }
                         },
                         "right": {
@@ -675,7 +740,7 @@ describe("nano", () => {
                                     "right": {
                                         "start": 13,
                                         "end": 14,
-                                        "label": "B"
+                                        "id": "B"
                                     }
                                 },
                                 "right": {
@@ -685,7 +750,7 @@ describe("nano", () => {
                             "right": {
                                 "start": 16,
                                 "end": 17,
-                                "label": "C"
+                                "id": "C"
                             }
                         },
                         "right": {
@@ -822,6 +887,10 @@ describe("nano", () => {
     ];
 
     const evalCases = [
+        { expression: "{I'm a property with a # of characters}", expected: 100 },
+        { expression: "{I'm a property with a # of characters}*10", expected: 1000 },
+        { expression: "Something.{Property A}", expected: "A" },
+        { expression: "Something.{Property B}", expected: "B" },
         { expression: "----4", expected: 4 },
         { expression: "-4+-4", expected: -8 },
         { expression: "-4++-4", expected: -8 },
@@ -852,6 +921,10 @@ Product(1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
         { expression: "IF(Foo * Bar > 10000, 'left', 'right')", expected: "right" },
         { expression: "4(3,2).stringify", expected: "The target of an application must be a calc function." },
         { expression: "(Sum + 3).stringify", expected: "Operator argument must be a primitive." },
+        {
+            expression: "(Sum + 3).prop.prop.prop.prop.prop.prop.prop.prop.prop.prop.prop.prop.prop.prop.prop.prop.stringify",
+            expected: "Operator argument must be a primitive."
+        },
         { expression: "42.", expected: 42 },
         { expression: "42.01", expected: 42.01 },
         { expression: "1/1", expected: 1 },
@@ -859,11 +932,57 @@ Product(1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
         { expression: "(1/0).stringify", expected: "#DIV/0!" },
         { expression: "FUN(42)()", expected: 42 },
         { expression: "A1(1, 2, 3, FUN(42)())", expected: 48 },
-        { expression: "FUN(x, y, x + y)(1)", expected: "#ARITY!" },
+        { expression: "FUN(x, y, x + y)(1).stringify", expected: "#ARITY!" },
         { expression: "FUN(x, y, z, x + y + z)(1, 2, 3) + FUN(x, y, z, x + y + z)(4, 5, 6) + FUN(x, y, z, x + y + z)(7, 8, 9) + FUN(x, y, z, x + y + z)(10, 11, 12)", expected: 78 },
         { expression: "FUN(f, f(1, 2, 3) + f(4, 5, 6) + f(7, 8, 9) + f(10, 11, 12))(FUN(x, y, z, x + y + z))", expected: 78 },
         { expression: "FUN(x, y, z, x + FUN(x, x*x)(y) + z)(2, 3, 4)", expected: 15 },
         { expression: "FUN(g, f, FUN(x, g(f(x))))(FUN(x, x + 1), FUN(x, x - 1))(10)=10", expected: true }
+    ];
+
+        const interpretCases = [
+        { expression: "{I'm a property with a # of characters}", expected: 100 },
+        { expression: "{I'm a property with a # of characters}*10", expected: 1000 },
+        { expression: "Something.{Property A}", expected: "A" },
+        { expression: "Something.{Property B}", expected: "B" },
+        { expression: "----4", expected: 4 },
+        { expression: "-4+-4", expected: -8 },
+        { expression: "-4++-4", expected: -8 },
+        { expression: "-4--4", expected: 0 },
+        { expression: "Sum(Foo + Bar, Bar * Foo, 3, IF(Foo < 0, 10, 100))", expected: 126 },
+        {
+            expression: `Sum(1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1)+
+Sum(1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1)+
+Product(1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1)+
+Sum(1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1)+
+Product(1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1)+
+Sum(1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1)+
+Product(1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1)`, expected: 259
+        },
+        { expression: "IF", expected: 0 },
+        { expression: "FUN", expected: 0 },
+        { expression: "IF(true)", expected: true },
+        { expression: "IF(Foo > 2, Foo + Bar, Bar * Foo)", expected: 8 },
+        { expression: "1.3333 + 2.2222", expected: 3.5555 },
+        { expression: "1 + 2    + 3 + 4 =   10 - 10 + 10", expected: true },
+        { expression: "IF(1*2*3*4<>8, 'hello' + 'world', 10 / 2)", expected: "helloworld" },
+        { expression: "IF(1*2*3*4<>24, 'hello' + 'world', 10 / 2)", expected: 5 },
+        { expression: "IF(1*2*3*4<>24, 'hello' + 'world')", expected: false },
+        { expression: "1*2+3*4", expected: 14 },
+        { expression: "4*1*2+3*4", expected: 20 },
+        { expression: "4*1*(2+3)*4", expected: 80 },
+        { expression: "Foo + Bar", expected: 8 },
+        { expression: "IF(Foo * Bar > 10000, 'left', 'right')", expected: "right" },
+        { expression: "4(3,2).stringify", expected: "The target of an application must be a calc function." },
+        { expression: "(Sum + 3).stringify", expected: "Operator argument must be a primitive." },
+        {
+            expression: "(Sum + 3).prop.prop.prop.prop.prop.prop.prop.prop.prop.prop.prop.prop.prop.prop.prop.prop.stringify",
+            expected: "Operator argument must be a primitive."
+        },
+        { expression: "42.", expected: 42 },
+        { expression: "42.01", expected: 42.01 },
+        { expression: "1/1", expected: 1 },
+        { expression: "1/0", expected: errors.div0 },
+        { expression: "(1/0).stringify", expected: "#DIV/0!" }
     ];
 
     const compilationFailureCases = [
@@ -884,5 +1003,9 @@ Product(1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
 
     for (const { expression } of compilationFailureCases) {
         compilationFailureTest(expression);
+    }
+
+    for (const { expression, expected } of interpretCases) {
+        interpretTest(expression, expected);
     }
 });

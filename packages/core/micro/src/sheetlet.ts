@@ -13,18 +13,16 @@ import {
     Formula,
     isDelayed,
     makeError,
+    ObjProps,
     Pending,
     Primitive,
-    Trace,
+    Runtime,
 } from "@tiny-calc/nano";
 
 import { keyToPoint, pointToKey } from "./key";
 
 import * as assert from "assert";
 import { IMatrix } from "./matrix";
-
-/* tslint:disable:prefer-method-signature */
-/* tslint:disable:interface-name */
 
 function assertNever(_: never): never {
     return assert.fail(`
@@ -187,7 +185,7 @@ interface CellReader {
 
 interface BuildHost extends CellReader {
     binder: Binder<number>;
-    rootContext: CalcValue<Point>;
+    rootContext: CalcObj<Point>;
 }
 
 function createInvalidator(reader: CellReader, binder: Binder<number>) {
@@ -220,7 +218,7 @@ function initBuildQueue(roots: number[], reader: CellReader, binder: Binder<numb
 
     function queueKey(key: number) {
         const [row, column] = keyToPoint(key);
-        const cell = reader.readCell(row, column); // TODO: make this read cell
+        const cell = reader.readCell(row, column);
         if (cell && isFormulaCell(cell) && cell.flag === CalcFlag.Dirty) {
             cell.flag = CalcFlag.Enqueued;
             queue.unshift(makePendingCell(row, column));
@@ -253,7 +251,7 @@ interface CellFiber extends PendingValue {
     column: number;
 }
 
-type FunctionTask = "sum" | "product" | "count" | "average" | "max" | "min";
+type FunctionTask = "sum" | "product" | "count" | "average" | "max" | "min" | "concat";
 
 interface FunctionFiber<O = unknown, T = unknown> extends PendingValue {
     task: FiberKind.Function;
@@ -409,52 +407,71 @@ function rebuild(roots: number[], host: BuildHost): void {
  * These are mostly reducer wrappers around Range aggregations.
  */
 
-function extractNumberFromProperty<O>(trace: Trace, origin: O, arg: CalcValue<O>, property: string) {
-    if (typeof arg === "number") { return arg; } // fast path
-    let result: Delayed<CalcValue<O>> = arg;
-    if (arg instanceof Range) {
-        result = trace(arg.read(property, origin));
-    } else if (typeof arg === "object") {
-        result = trace(arg.read("value", origin));
-    }
-    switch (typeof result) {
-        case "object":
-        case "number":
-            return result;
-        default:
-            return 0;
-    }
+type PrimitiveMap = {
+    number: number;
+    string: string;
+    boolean: boolean;
 }
 
-function reduceNumbers<O>(args: Delayed<CalcValue<O>>[], fn: (prev: number, current: number) => number, init: number) {
-    let total = init;
-    for (const arg of args) {
-        if (typeof arg !== "number") {
-            return arg;
+function extractTypeFromProperty<K extends keyof PrimitiveMap>(type: K, defaultValue: PrimitiveMap[K]): <O>(runtime: Runtime, origin: O, arg: CalcValue<O>, property: string) => PrimitiveMap[K] | Delayed<CalcValue<O>>;
+function extractTypeFromProperty(type: keyof PrimitiveMap, defaultValue: Primitive): <O>(runtime: Runtime, origin: O, arg: CalcValue<O>, property: string) => Primitive | Delayed<CalcValue<O>> {
+    return <O>(runtime: Runtime, origin: O, arg: CalcValue<O>, property: string) => {
+        if (typeof arg === type) { return arg; } // fast path
+        let result: Delayed<CalcValue<O>> = arg;
+        if (arg instanceof Range) {
+            result = runtime.read(origin, arg, property, arg);
+        } else if (typeof arg === "object") {
+            result = runtime.read(origin, arg, ObjProps.AsPrimitive, arg);
         }
-        total = fn(total, arg);
+        switch (typeof result) {
+            case "object":
+            case type:
+                return result;
+            default:
+                return defaultValue;
+        }
     }
-    return total;
 }
 
-const sum: CalcFun = (trace, origin, args) => {
-    const totals = args.map((arg) => extractNumberFromProperty(trace, origin, arg, "sum"));
+const extractNumberFromProperty = extractTypeFromProperty("number", 0);
+const extractStringFromProperty = extractTypeFromProperty("string", "");
+
+function reduceType<K extends keyof PrimitiveMap>(type: K): <O>(args: Delayed<CalcValue<O>>[], fn: (prev: PrimitiveMap[K], current: PrimitiveMap[K]) => PrimitiveMap[K], init: PrimitiveMap[K]) => PrimitiveMap[K] | Delayed<CalcValue<O>>;
+function reduceType<K extends keyof PrimitiveMap>(type: K): <O>(args: Delayed<CalcValue<O>>[], fn: (prev: Primitive, current: Primitive) => Primitive, init: Primitive) => Primitive | Delayed<CalcValue<O>> {
+    return <O>(args: Delayed<CalcValue<O>>[], fn: (prev: Primitive, current: Primitive) => Primitive, init: Primitive) => {
+        let total = init;
+        for (const arg of args) {
+            if (typeof arg !== type) {
+                return arg;
+            }
+            total = fn(total, arg as Primitive);
+        }
+        return total;
+    }
+}
+
+const reduceNumbers = reduceType("number");
+const reduceStrings = reduceType("string");
+
+
+const sum: CalcFun<unknown> = (runtime, origin, args) => {
+    const totals = args.map((arg) => extractNumberFromProperty(runtime, origin, arg, "sum"));
     return reduceNumbers(totals, (prev, current) => prev + current, 0);
 };
 
-const product: CalcFun = (trace, origin, args) => {
-    const totals = args.map((arg) => extractNumberFromProperty(trace, origin, arg, "product"));
+const product: CalcFun<unknown> = (runtime, origin, args) => {
+    const totals = args.map((arg) => extractNumberFromProperty(runtime, origin, arg, "product"));
     return reduceNumbers(totals, (prev, current) => prev * current, 1);
 };
 
-const count: CalcFun = (trace, origin, args) => {
-    const totals = args.map((arg) => extractNumberFromProperty(trace, origin, arg, "count"));
+const count: CalcFun<unknown> = (runtime, origin, args) => {
+    const totals = args.map((arg) => extractNumberFromProperty(runtime, origin, arg, "count"));
     return reduceNumbers(totals, (prev, current) => prev + current, 0);
 };
 
-const average: CalcFun = (trace, origin, args) => {
-    const totals = args.map((arg) => extractNumberFromProperty(trace, origin, arg, "sum"));
-    const counts = args.map((arg) => extractNumberFromProperty(trace, origin, arg, "count"));
+const average: CalcFun<unknown> = (runtime, origin, args) => {
+    const totals = args.map((arg) => extractNumberFromProperty(runtime, origin, arg, "sum"));
+    const counts = args.map((arg) => extractNumberFromProperty(runtime, origin, arg, "count"));
     const total = reduceNumbers(totals, (prev, current) => prev + current, 0);
     if (typeof total === "number") {
         const finalCount = reduceNumbers(counts, (prev, current) => prev + current, 0);
@@ -463,8 +480,8 @@ const average: CalcFun = (trace, origin, args) => {
     return total;
 };
 
-const max: CalcFun = (trace, origin, args) => {
-    const maxs = args.map((arg) => extractNumberFromProperty(trace, origin, arg, "max"));
+const max: CalcFun<unknown> = (runtime, origin, args) => {
+    const maxs = args.map((arg) => extractNumberFromProperty(runtime, origin, arg, "max"));
     if (maxs.length === 0) { return 0; }
     for (const arg of maxs) {
         if (typeof arg !== "number") {
@@ -474,8 +491,8 @@ const max: CalcFun = (trace, origin, args) => {
     return reduceNumbers(maxs, (prev, current) => current > prev ? current : prev, maxs[0] as number);
 };
 
-const min: CalcFun = (trace, origin, args) => {
-    const mins = args.map((arg) => extractNumberFromProperty(trace, origin, arg, "min"));
+const min: CalcFun<unknown> = (runtime, origin, args) => {
+    const mins = args.map((arg) => extractNumberFromProperty(runtime, origin, arg, "min"));
     if (mins.length === 0) { return 0; }
     for (const arg of mins) {
         if (typeof arg !== "number") {
@@ -485,9 +502,15 @@ const min: CalcFun = (trace, origin, args) => {
     return reduceNumbers(mins, (prev, current) => current < prev ? current : prev, mins[0] as number);
 };
 
-const funcs: Record<string, CalcFun> = {
-    sum, product, count, average, max, min,
-    SUM: sum, PRODUCT: product, COUNT: count, AVERAGE: average, MAX: max, MIN: min,
+
+const concat: CalcFun<unknown> = (runtime, origin, args) => {
+    const val = args.map((arg) => extractStringFromProperty(runtime, origin, arg, "concat"));
+    return reduceStrings(val, (prev, current) => prev + current, "");
+};
+
+const funcs: Record<string, CalcFun<unknown>> = {
+    sum, product, count, average, max, min, concat,
+    SUM: sum, PRODUCT: product, COUNT: count, AVERAGE: average, MAX: max, MIN: min, CONCAT: concat,
 };
 
 /*
@@ -504,24 +527,25 @@ const createRunner = <Res>(fn: (box: [Res]) => (x: unknown) => void) => {
     };
 };
 
-const createSum = createRunner<number>((result) => (n) => { if (typeof n === "number") { result[0] += n; } });
-const createProduct = createRunner<number>((result) => (n) => { if (typeof n === "number") { result[0] *= n; } });
-const createCount = createRunner<number>((result) => (n) => { if (typeof n === "number") { result[0]++; } });
-const createAverage = createRunner<[number, number]>((result) => (n) => { if (typeof n === "number") { result[0][0] += n; result[0][1]++; } });
+const createSum = createRunner<number>(result => n => { if (typeof n === "number") { result[0] += n; } });
+const createProduct = createRunner<number>(result => n => { if (typeof n === "number") { result[0] *= n; } });
+const createCount = createRunner<number>(result => n => { if (typeof n === "number") { result[0]++; } });
+const createAverage = createRunner<[number, number]>(result => n => { if (typeof n === "number") { result[0][0] += n; result[0][1]++; } });
 const createMax = createRunner<number | undefined>(
-    (result) => (n) => {
+    result => n => {
         if (typeof n === "number" && (result[0] === undefined || n > result[0])) {
             result[0] = n;
         }
     },
 );
 const createMin = createRunner<number | undefined>(
-    (result) => (n) => {
+    result => n => {
         if (typeof n === "number" && (result[0] === undefined || n < result[0])) {
             result[0] = n;
         }
     },
 );
+const createConcat = createRunner<string>((result) => s => { if (typeof s === "string") { result[0] += s; } });
 
 /*
  * Core aggregation functions over ranges
@@ -592,13 +616,18 @@ const rangeMin: RangeAggregation<number, number | undefined> = (range, context, 
     return result === undefined ? 0 : result;
 };
 
+const rangeConcat: RangeAggregation<string> = (range, context, origin, someTask?) => {
+    const task = someTask || makePendingFunction("concat", range, origin, range.tl, "");
+    return runFunc(context, task, createConcat);
+};
+
 type FreshAggregation<R, Accum = R> = <O>(
     range: Range<O>, context: RangeContext<O>, origin: O,
 ) => R | FunctionFiber<O, Accum>;
 
 const aggregations: Record<string, FreshAggregation<CalcValue<unknown>, unknown>> = {
-    sum: rangeSum, product: rangeProduct, count: rangeCount, average: rangeAverage, max: rangeMax, min: rangeMin,
-    SUM: rangeSum, PRODUCT: rangeProduct, COUNT: rangeCount, AVERAGE: rangeAverage, MAX: rangeMax, MIN: rangeMin,
+    sum: rangeSum, product: rangeProduct, count: rangeCount, average: rangeAverage, max: rangeMax, min: rangeMin, concat: rangeConcat,
+    SUM: rangeSum, PRODUCT: rangeProduct, COUNT: rangeCount, AVERAGE: rangeAverage, MAX: rangeMax, MIN: rangeMin, CONCAT: rangeConcat,
 };
 
 function tryParseRange<O>(context: RangeContext<O>, text: string) {
@@ -645,7 +674,7 @@ class Range<O> implements CalcObj<O> {
             return fn(this, this.context, origin);
         }
         switch (property) {
-            case "value":
+            case ObjProps.AsPrimitive:
                 return this.context.link(this.tl[ROW], this.tl[COL], origin);
             case "row":
             case "ROW":
@@ -681,8 +710,8 @@ class Sheetlet implements ISheetlet {
 
     public readonly binder = initBinder();
 
-    public readonly rootContext: CalcValue<Point> = {
-        read: (property, origin) => {
+    public readonly rootContext: CalcObj<Point> = {
+        read: (property: string, origin: Point) => {
             if (property in funcs) {
                 return funcs[property];
             }
@@ -697,6 +726,16 @@ class Sheetlet implements ISheetlet {
                     const range = tryParseRange(this.inSheetContext, property);
                     return range || errorValues.unknownField;
             }
+        },
+    };
+
+    private readonly orphanFormulaContext: CalcObj<Point> = {
+        read: (property) => {
+            if (property in funcs) {
+                return funcs[property];
+            }
+            const range = tryParseRange(this.outOfSheetContext, property);
+            return range || errorValues.unknownField;
         },
     };
 
@@ -770,12 +809,11 @@ class Sheetlet implements ISheetlet {
      */
     public evaluateFormula(formula: string): Primitive | undefined {
         const program = formula[0] === "=" ? formula.substring(1) : formula;
-        const start: Point = [0, 0];
-        const end: Point = [this.matrix.numRows - 1, this.matrix.numCols - 1];
+        const origin: Point = [0, 0];
         const fn = compile(program);
         if (fn === undefined) { return undefined; }
-        const value = fn(undefined, new Range<any>(this.outOfSheetContext, start, end))[1];
-        return isDelayed(value) ? undefined : this.primitiveFromValue(undefined, value);
+        const value = fn(origin, this.orphanFormulaContext)[1];
+        return isDelayed(value) ? undefined : this.primitiveFromValue(origin, value);
     }
 
     private primitiveFromValue<O>(origin: O, value: CalcValue<O>): Primitive | undefined {
