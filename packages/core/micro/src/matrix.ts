@@ -4,7 +4,6 @@ export interface IMatrix {
    readonly numRows: number;
    readonly numCols: number;
    loadCellText: (row: number, col: number) => Primitive | undefined;
-   storeCellText: (row: number, col: number, value: Primitive | undefined) => void;
    loadCellData: (row: number, col: number) => object | undefined;
    storeCellData: (row: number, col: number, value: object | undefined) => void;
 }

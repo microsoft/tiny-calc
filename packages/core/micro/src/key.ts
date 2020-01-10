@@ -16,8 +16,12 @@ export function pointToKey(row: number, col: number) {
 
 /** Decode the given `key` to it's RC0 row/col. */
 export function keyToPoint(position: number) {
-    // Note: Can not replace division with shift as numerator exceeds 32b.
+    // Can not replace division with shift as numerator exceeds 32b, but the quotient can
+    // be safely converted to a Uint32 in lieu of 'Math.floor()' for a measurable speedup.
     const row = (position / maxCols) >>> 0;
+
+    // The column portion is less than 32b and resides in the low bits of the Uint53.  We
+    // can safely extract it with mask.
     const col = position & colMask;
     return [ row, col ];
 }
