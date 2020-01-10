@@ -33,7 +33,7 @@ export function makeBenchmark(size: number): { sheet: ISheetlet, setAt: (row: nu
         sheet,
         setAt: (row: number, col: number, value: Primitive) => {
             matrix.storeCellText(row, col, value);
-            sheet.refreshFromModel(row, col);
+            sheet.invalidate(row, col);
         }
     };
 }

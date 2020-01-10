@@ -671,8 +671,7 @@ class Range<O> implements CalcObj<O> {
  * Sheetlet: a grid of incrementally recalculating formulas.
  */
 export interface ISheetlet {
-    refreshFromModel: (row: number, col: number) => void;
-    setCellText: (row: number, col: number, value: Primitive | undefined) => void;
+    invalidate: (row: number, col: number) => void;
     evaluateCell: (row: number, col: number) => Primitive | undefined;
     evaluateFormula: (formula: string) => Primitive | undefined;
 }
@@ -711,21 +710,15 @@ class Sheetlet implements ISheetlet {
         parseRef: this.parseRef.bind(this),
     };
 
-    private readonly invalidate = createInvalidator({
+    private readonly invalidateKey = createInvalidator({
         readCell: this.getCell.bind(this),
     }, this.binder);
 
     constructor(private readonly matrix: IMatrix) { }
 
-    public refreshFromModel(row: number, col: number) {
+    public invalidate(row: number, col: number) {
         this.matrix.storeCellData(row, col, undefined);
-        this.invalidate(pointToKey(row, col));
-    }
-
-    public setCellText(row: number, col: number, value: Primitive | undefined) {
-        // setting text clears any cell data
-        this.matrix.storeCellText(row, col, value);
-        this.invalidate(pointToKey(row, col));
+        this.invalidateKey(pointToKey(row, col));
     }
 
     public parseRef(text: string): Point | undefined {
