@@ -17,6 +17,19 @@ export const enum ObjProps {
     AsPrimitive = "value",
 }
 
+export enum CoreMessages {
+    Plus = "plus",
+    Minus = "minus",
+    LT = "lt",
+    GT = "gt",
+    LTE = "lte",
+    GTE = "gte",
+    EQ = "eq",
+    NEQ = "neq",
+    Coerce = "coerce",
+    Read = "read",
+}
+
 export function makeError(message: string): CalcObj<unknown> {
     return {
         send(property) {
