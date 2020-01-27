@@ -19,15 +19,15 @@ interface PendingPromise extends Pending<CalcObj<unknown>> {
 }
 
 const delayedCalcValue: CalcObj<unknown> = {
-    read(prop) {
-        if (cache[prop] !== undefined) {
-            return cache[prop];
+    send(message) {
+        if (cache[message] !== undefined) {
+            return cache[message];
         }
 
         let time: number;
         let val: Primitive;
 
-        switch (prop) {
+        switch (message) {
             case "a string":
                 time = 100;
                 val = "hello world";
@@ -43,9 +43,9 @@ const delayedCalcValue: CalcObj<unknown> = {
         }
         const pending: PendingPromise = {
             kind: "Pending",
-            promise: createTimeoutPromise(time, val, x => cache[prop] = x)
+            promise: createTimeoutPromise(time, val, x => cache[message] = x)
         }
-        return cache[prop] = pending;
+        return cache[message] = pending;
     }
 }
 

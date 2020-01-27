@@ -56,22 +56,22 @@ function createPending(v: Pending<Value>): Pending<CalcValue<FormulaHost>> {
 function createCalcValue(v: Producer): CalcObj<FormulaHost> {
     const cache: Record<string, CalcValue<FormulaHost>> = {};
     return {
-        read: (prop: string, consumer: IConsumer<Record<string, Value>>) => {
-            if (cache[prop] !== undefined) {
-                return cache[prop];
+        send: (message: string, consumer: IConsumer<Record<string, Value>>) => {
+            if (cache[message] !== undefined) {
+                return cache[message];
             }
-            const value = v.open(consumer).read(prop);
+            const value = v.open(consumer).read(message);
             switch (typeof value) {
                 case "string":
                 case "number":
                 case "boolean":
                 case "function":
-                    return cache[prop] = value;
+                    return cache[message] = value;
                 default:
                     if ("kind" in value) {
                         return createPending(value);
                     }
-                    return cache[prop] = createCalcValue(value);
+                    return cache[message] = createCalcValue(value);
             }
         }
     }

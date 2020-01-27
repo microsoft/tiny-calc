@@ -289,7 +289,7 @@ function initFiberStack() {
 }
 
 const coerceResult = (row: number, column: number, value: CalcValue<Point>) =>
-    value instanceof Range ? (value as Range<Point>).read("value", [row, column]) : value;
+    value instanceof Range ? (value as Range<Point>).send("value", [row, column]) : value;
 
 /**
  * Mark a cell as calculated with `value`, queue its dependents for
@@ -668,12 +668,12 @@ class Range<O> implements CalcObj<O> {
         this.width = Math.abs(first[COL] - second[COL]) + 1;
     }
 
-    public read(property: string, origin: O): CalcValue<O> | Pending<CalcValue<O>> {
-        if (aggregations[property] !== undefined) {
-            const fn = aggregations[property as keyof typeof aggregations];
+    public send(message: string, origin: O): CalcValue<O> | Pending<CalcValue<O>> {
+        if (aggregations[message] !== undefined) {
+            const fn = aggregations[message as keyof typeof aggregations];
             return fn(this, this.context, origin);
         }
-        switch (property) {
+        switch (message) {
             case ObjProps.AsPrimitive:
                 return this.context.link(this.tl[ROW], this.tl[COL], origin);
             case "row":
@@ -683,11 +683,11 @@ class Range<O> implements CalcObj<O> {
             case "COLUMN":
                 return this.tl[COL] + 1;
             default:
-                const range = tryParseRange(this.context, property);
+                const range = tryParseRange(this.context, message);
                 if (range === undefined) {
                     const value = this.context.link(this.tl[ROW], this.tl[COL], origin);
                     if (typeof value === "object") {
-                        return isPending(value) ? value : value.read(property, origin);
+                        return isPending(value) ? value : value.send(message, origin);
                     }
                     return errorValues.unknownField;
                 }
@@ -711,30 +711,30 @@ class Sheetlet implements ISheetlet {
     public readonly binder = initBinder();
 
     public readonly rootContext: CalcObj<Point> = {
-        read: (property: string, origin: Point) => {
-            if (property in funcs) {
-                return funcs[property];
+        send: (message: string, context: Point) => {
+            if (message in funcs) {
+                return funcs[message];
             }
-            switch (property) {
+            switch (message) {
                 case "row":
                 case "ROW":
-                    return origin[ROW] + 1;
+                    return context[ROW] + 1;
                 case "column":
                 case "COLUMN":
-                    return origin[COL] + 1;
+                    return context[COL] + 1;
                 default:
-                    const range = tryParseRange(this.inSheetContext, property);
+                    const range = tryParseRange(this.inSheetContext, message);
                     return range || errorValues.unknownField;
             }
         },
     };
 
     private readonly orphanFormulaContext: CalcObj<Point> = {
-        read: (property) => {
-            if (property in funcs) {
-                return funcs[property];
+        send: (message) => {
+            if (message in funcs) {
+                return funcs[message];
             }
-            const range = tryParseRange(this.outOfSheetContext, property);
+            const range = tryParseRange(this.outOfSheetContext, message);
             return range || errorValues.unknownField;
         },
     };
@@ -816,7 +816,7 @@ class Sheetlet implements ISheetlet {
         return isDelayed(value) ? undefined : this.primitiveFromValue(origin, value);
     }
 
-    private primitiveFromValue<O>(origin: O, value: CalcValue<O>): Primitive | undefined {
+    private primitiveFromValue<O>(context: O, value: CalcValue<O>): Primitive | undefined {
         switch (typeof value) {
             case "number":
             case "string":
@@ -826,9 +826,9 @@ class Sheetlet implements ISheetlet {
                 return "<function>";
             case "object":
                 if (value instanceof Range) {
-                    return this.primitiveFromValue(origin, value.read("value", origin) as CalcValue<O>);
+                    return this.primitiveFromValue(context, value.send("value", context) as CalcValue<O>);
                 }
-                const asString = value.read("stringify", origin);
+                const asString = value.send("stringify", context);
                 return typeof asString === "string" ? asString : undefined;
             default:
                 return assertNever(value);

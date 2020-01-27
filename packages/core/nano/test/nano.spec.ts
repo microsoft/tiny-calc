@@ -39,15 +39,15 @@ const sum: CalcFun<unknown> = <O>(_rt: any, _origin: O, args: any[]) => args.red
 const prod: CalcFun<unknown> = <O>(_rt: any, _origin: O, args: any[]) => args.reduce((prev, now) => prev * now, 1);
 
 const testContext: CalcObj<undefined> = {
-    read: (property: string) => {
-        switch (property) {
+    send: (message: string) => {
+        switch (message) {
             case "Foo": return 3;
             case "I'm a property with a # of characters": return 100;
             case "Bar": return 5;
             case "Baz": return { kind: "Pending" };
             case "Qux": return { kind: "Pending" };
-            case "A1": return { read(prop) { return prop === "value" ? sum : 0 } };
-            case "Something": return { read(prop) { return prop === "Property A" ? "A" : "B" } };
+            case "A1": return { send(message) { return message === "value" ? sum : 0 } };
+            case "Something": return { send(message) { return message === "Property A" ? "A" : "B" } };
             case "Sum": return sum;
             case "Product": return prod;
             default: return 0;
