@@ -22,6 +22,7 @@ export {
     CalcObj,
     CalcValue,
     Runtime,
+    NumericTrait,
     PrimordialTrait,
     ReadableTrait,
     ReferenceTrait,
