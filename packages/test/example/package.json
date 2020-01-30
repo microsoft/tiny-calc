@@ -8,7 +8,8 @@
     "test": "ts-node src/index.ts"
   },
   "dependencies": {
-    "@tiny-calc/nano": "^0.0.2"
+    "@tiny-calc/nano": "^0.0.2",
+    "node-fetch": "^2.6.0",
   },
   "devDependencies": {
     "@tiny-calc/tool-config": "^0.0.2",

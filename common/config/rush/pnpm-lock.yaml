@@ -8,6 +8,7 @@ dependencies:
   '@types/node': 10.14.19
   benchmark: 2.1.4
   mocha: 6.2.0
+  node-fetch: 2.6.0
   rimraf: 2.7.1
   ts-node: 8.4.1_typescript@3.6.3
   typescript: 3.6.3
@@ -542,6 +543,12 @@ packages:
     dev: false
     resolution:
       integrity: sha512-VNYPRfGfmZLx0Ye20jWzHUjyTW/c+6Wq+iLhDzUI4XmhrDd9l/FozXV3F2xOaXjvp0co0+v1YSR3CMP6g+VvLQ==
+  /node-fetch/2.6.0:
+    dev: false
+    engines:
+      node: 4.x || >=6.0.0
+    resolution:
+      integrity: sha512-8dG4H5ujfvFiqDmVu9fQ5bOHUC15JMjMY/Zumv26oOvvVJjM67KF8koCWIabKQ1GJIa9r2mMZscBq/TbdOcmNA==
   /npm-run-path/2.0.2:
     dependencies:
       path-key: 2.0.1
@@ -958,13 +965,14 @@ packages:
   'file:projects/example.tgz':
     dependencies:
       '@types/node': 10.14.19
+      node-fetch: 2.6.0
       rimraf: 2.7.1
       ts-node: 8.4.1_typescript@3.6.3
       typescript: 3.6.3
     dev: false
     name: '@rush-temp/example'
     resolution:
-      integrity: sha512-4nU7OpBELANLuXQ8YX+oers0d+s3ovosuC0n9hZuipRdGcmFCGT4ICq/TeiYkRiIhGlb9teUWvRDfHDVdB29EQ==
+      integrity: sha512-Uq/z/uAX2nnhKrTr+z6IOS8RDk0JAQ1VinyFjb13oNqzNvIhy/CCgJKPpKm50p4CzQSN3Vxgpj7YmbVlzy4toA==
       tarball: 'file:projects/example.tgz'
     version: 0.0.0
   'file:projects/micro.tgz':
@@ -980,7 +988,7 @@ packages:
     dev: false
     name: '@rush-temp/micro'
     resolution:
-      integrity: sha512-IYwn34EYT4nHvqCcWxGPeB4VbH9DRugAUefpYkFZdhqTK4xEu++uOGgYs733zijpFF5hVT6mXandDaatXgwV6w==
+      integrity: sha512-o97hfWYZ+Gl5nd3M1NeF6mL5b2hJnAE8VGGFQOWuU9p6O3q4KnJl+NSdETtJ7e6+dEHi9UTyGDHtMwpVqRjNPQ==
       tarball: 'file:projects/micro.tgz'
     version: 0.0.0
   'file:projects/nano.tgz':
@@ -996,16 +1004,17 @@ packages:
     dev: false
     name: '@rush-temp/nano'
     resolution:
-      integrity: sha512-U+pSXajctR7ycC6+pEONH9wCTvB3uRF52YUoSueuSaSdihC6jKmAuhWrMn1MMQie8j3/GqDN265z1rOnbN54Xg==
+      integrity: sha512-64XAklLBwzbrtd/MQk0ZnCV0q9GdhDxjqfS9x57xhcxuwNtX90QpGu/RVy15i0RVpCwZq592E+Gf5Qi42/Eq7A==
       tarball: 'file:projects/nano.tgz'
     version: 0.0.0
   'file:projects/tool-config.tgz':
     dev: false
     name: '@rush-temp/tool-config'
     resolution:
-      integrity: sha512-BDeIvazvOSmWFwDv4DyHDCfKNf98rhNIMf5H4nNGwFP308bjDrrhb60kepHOlhsTBVMTqcutFbRwOm+7W2ddtw==
+      integrity: sha512-StJjuCOSDfNwkL8npyY4TPZweUjfUWBd75IK+M85or85Dh5uClPTjXSFGEAlMXDgSCMdzo6pDJBhRAuv4Us/3g==
       tarball: 'file:projects/tool-config.tgz'
     version: 0.0.0
+registry: ''
 specifiers:
   '@rush-temp/example': 'file:./projects/example.tgz'
   '@rush-temp/micro': 'file:./projects/micro.tgz'
@@ -1016,6 +1025,7 @@ specifiers:
   '@types/node': ^10.0.0
   benchmark: ^2.1.4
   mocha: ^6.1.4
+  node-fetch: ^2.6.0
   rimraf: ^2.6.3
   ts-node: ^8.1.0
   typescript: ^3.4.3
