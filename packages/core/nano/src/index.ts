@@ -1,7 +1,4 @@
 export {
-    CalcFun,
-    CalcObj,
-    CalcValue,
     createRuntime,
     Delay,
     Delayed,
@@ -9,8 +6,6 @@ export {
     Formula,
     isDelayed,
     makeError,
-    ObjProps,
-    Runtime,
 } from "./core";
 
 export {
@@ -23,6 +18,13 @@ export {
 } from "./interpreter";
 
 export {
+    CalcFun,
+    CalcObj,
+    CalcValue,
+    Runtime,
+    PrimordialTrait,
+    ReadableTrait,
+    ReferenceTrait,
     Pending,
     Primitive,
     IConsumer,

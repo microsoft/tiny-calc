@@ -1,64 +1,87 @@
+export enum PrimordialTrait {
+    Numeric = 1, // 1 << 0
+    Error = 2, // 1 << 1
+    Comparable = 4, // 1 << 2
+    Readable = 16, // 1 << 3
+    Reference = 32 // 1 << 4
+}
+
+export interface TraitMap<C> {
+    [PrimordialTrait.Numeric]: NumericTrait<C>;
+    [PrimordialTrait.Error]: ErrorTrait<C>;
+    [PrimordialTrait.Comparable]: ComparableTrait<C>;
+    [PrimordialTrait.Readable]: ReadableTrait<C>;
+    [PrimordialTrait.Reference]: ReferenceTrait<C>;
+}
+
 export type Primitive = boolean | number | string;
+
+export interface CalcObj<C = void> {
+    acquire: <T extends PrimordialTrait>(t: T) => TraitMap<C>[T] | undefined;
+    serialise: (context: C) => string;
+}
+
+export interface CalcFun<CLex = void> {
+    <CDyn extends CLex, Delay>(runtime: Runtime<Delay>, context: CDyn, args: CalcValue<CDyn>[]): CalcValue<CDyn> | Delay;
+}
+
+export type CalcValue<C = void> = Primitive | CalcObj<C> | CalcFun<C>;
+export type DataValue<C> = CalcObj<C> | Primitive;
+
+export interface ErrorTrait<C> {
+    enrich: (message: string) => ErrorTrait<C>
+}
+
+export interface NumericTrait<C> {
+    plus: (left: boolean, other: NumericTrait<C> | number, context: C) => CalcValue<C>;
+    minus: (left: boolean, other: NumericTrait<C> | number, context: C) => CalcValue<C>;
+    times: (left: boolean, other: NumericTrait<C> | number, context: C) => CalcValue<C>;
+    div: (left: boolean, other: NumericTrait<C> | number, context: C) => CalcValue<C>;
+    negate: (context: C) => CalcValue<C>;
+}
+
+export interface ComparableTrait<C> {
+    compare: (left: boolean, other: ComparableTrait<C> | Primitive, context: C) => number | CalcObj<C>
+}
 
 export interface Pending<T> {
     kind: "Pending";
     estimate?: T;
 }
 
-export enum PrimordialTrait {
-    None = 0,
-    Numeric = 1 << 0,
-    Boolean = 1 << 1,
-    String = 1 << 2,
-    Comparable = 1 << 3,
-    Error = 1 << 4,
+export interface ReadableTrait<C> {
+    read: (property: string, context: C) => CalcValue<C> | Pending<CalcValue<C>>;
 }
 
-export interface CalcObj<C = void> {
-    traits: () => PrimordialTrait;
-    serialise: (context: C) => string;
-    send: (message: string, context: C, args: unknown[] | void) => CalcValue<C> | Pending<CalcValue<C>>;
-}
-
-// export interface CalcFun<CLex = void> {
-//     <CDyn extends CLex>(runtime: Runtime, context: CDyn, args: CalcValue<CDyn>[]): Delayed<CalcValue<CDyn>>;
-// }
-
-export type CalcValue<C> = Primitive | CalcObj<C> // | CalcFun<C>;
-
-export interface ErrorTrait<C> extends CalcObj<C> {
-    enrich: (message: string) => ErrorTrait<C>
-}
-
-export interface NumericTrait<C> extends CalcObj<C> {
-    add: (other: CalcValue<C>, context: C) => NumericTrait<C> | ErrorTrait<C>;
-    minus: (other: CalcValue<C>, context: C) => NumericTrait<C> | ErrorTrait<C>;
-    times: (other: CalcValue<C>, context: C) => NumericTrait<C> | ErrorTrait<C>;
-    div: (other: CalcValue<C>, context: C) => NumericTrait<C> | ErrorTrait<C>;
-    negate: (context: C) => NumericTrait<C> | ErrorTrait<C>;
-}
-
-export interface ComparableTrait<C> extends CalcObj<C> {
-    compare: (other: CalcValue<C>, context: C) => -1 | 0 | 1 | ErrorTrait<C>
-}
-
-export interface ReferenceTrait<C> extends CalcObj<C> {
+export interface ReferenceTrait<C> {
     dereference: (context: C) => CalcValue<C> | Pending<CalcValue<C>>;
 }
 
-export enum QueryOp {
-    Sum,
-    Average,
-    Max,
-    Min,
-    Product,
-    Concat,
+export interface TypedUnaryOp {
+    trait: PrimordialTrait,
+    fn: <C>(context: C, expr: DataValue<C>) => CalcValue<C>,
+    err: <C>(context: C, expr: CalcValue<C>) => CalcValue<C>,
 }
 
-export interface QueryableTrait<C> extends CalcObj<C> {
-    run: (op: QueryOp, context: C) => CalcValue<C> | Pending<CalcValue<C>>;
+export interface TypedBinOp {
+    trait1: PrimordialTrait,
+    trait2: PrimordialTrait,
+    fn: <C>(context: C, l: DataValue<C>, r: DataValue<C>) => CalcValue<C>,
+    err: <C>(context: C, expr: CalcValue<C>, pos: number) => CalcValue<C>,
 }
 
+/**
+ * Expression runtime that implements collection and propagation
+ * of potentially unavailable resources.
+ */
+export interface Runtime<Delay> {
+//    isDelayed: (x: unknown) => x is Delay;
+    read: <C, F>(context: C, receiver: CalcValue<C> | Delay, prop: string, fallback: F) => CalcValue<C> | F | Delay;
+    ifS: <T>(cond: boolean | Delay, cont: (cond: boolean) => T | Delay) => T | Delay;
+    app1: <C>(context: C, op: TypedUnaryOp, expr: CalcValue<C> | Delay ) => CalcValue<C> | Delay;
+    app2: <C>(context: C, op: TypedBinOp, l: CalcValue<C> | Delay, r: CalcValue<C> | Delay) => CalcValue<C> | Delay;
+    appN: <C, F>(context: C, fn: CalcValue<C> | Delay, args: (CalcValue<C> | Delay)[], fallback: F) => CalcValue<C> | F | Delay;
+}
 
 /**
  * The interface for an object that can bind to an IProducer.

@@ -1,6 +1,12 @@
 import { assert, assertNever } from "./debug";
 
 import {
+    CalcObj,
+    CalcValue,
+    Runtime,
+} from "./types";
+
+import {
     BinaryOperatorToken,
     createBooleanErrorHandler,
     createParser,
@@ -11,12 +17,10 @@ import {
 import {
     binOps,
     BinaryOps,
-    CalcObj,
-    CalcValue,
+    Delay,
     Delayed,
     errors,
     Formula,
-    Runtime,
     createRuntime,
     unaryOps,
     UnaryOps,
@@ -154,7 +158,7 @@ function compileAST(gensym: () => number, scope: Record<string, string>, f: Form
     }
 }
 
-type RawFormula = <O>(ef: Runtime, err: typeof errors, origin: O, context: CalcObj<O>, binOps: BinaryOps, unaryOps: UnaryOps) => Delayed<CalcValue<O>>;
+type RawFormula = <O>(ef: Runtime<Delay>, err: typeof errors, origin: O, context: CalcObj<O>, binOps: BinaryOps, unaryOps: UnaryOps) => Delayed<CalcValue<O>>;
 
 const parse = createParser(simpleSink, errorHandler);
 

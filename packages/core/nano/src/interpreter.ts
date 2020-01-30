@@ -2,19 +2,22 @@ import { FormulaNode, NodeKind } from "./ast";
 import {
     binOps,
     BinaryOps,
-    CalcObj,
-    CalcValue,
     createRuntime,
+    Delay,
     Delayed,
     errors,
     Errors,
     isDelayed,
-    Runtime,
     unaryOps,
     UnaryOps,
 } from "./core";
 
-import { Pending } from "./types";
+import {
+    CalcObj,
+    CalcValue,
+    Pending,
+    Runtime,
+} from "./types";
 
 interface EvalContext {
     readonly errors: Errors;
@@ -22,7 +25,7 @@ interface EvalContext {
     readonly unaryOps: UnaryOps;
 }
 
-function evaluate<O>(ctx: EvalContext, origin: O, rt: Runtime, root: CalcObj<O>, formula: FormulaNode): Delayed<CalcValue<O>> {
+function evaluate<O>(ctx: EvalContext, origin: O, rt: Runtime<Delay>, root: CalcObj<O>, formula: FormulaNode): Delayed<CalcValue<O>> {
     switch (formula.kind) {
         case NodeKind.Literal:
             return formula.value;
