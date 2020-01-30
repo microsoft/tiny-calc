@@ -2,7 +2,7 @@ import { parseFormula } from "../src/ast";
 import { createDiagnosticErrorHandler, createParser, SyntaxKind, ExpAlgebra } from "../src/parser";
 import { compile } from "../src/compiler";
 import { interpret } from "../src/interpreter";
-import { CalcValue, CalcObj, CalcFun, NumericTrait, ReadableTrait, ReferenceTrait, PrimordialTrait, errors } from "../src/index";
+import { CalcValue, CalcObj, CalcFun, ComparableTrait, NumericTrait, ReadableTrait, ReferenceTrait, PrimordialTrait, Primitive, errors } from "../src/index";
 import * as assert from "assert";
 import "mocha";
 
@@ -62,7 +62,7 @@ function createReadable(read: (prop: string) => CalcValue<unknown>): CalcObj<unk
     return val;
 }
 
-class Currency implements CalcObj<unknown>, NumericTrait<unknown> {
+class Currency implements CalcObj<unknown>, NumericTrait<unknown>, ComparableTrait<unknown> {
     constructor(public readonly value: number, public readonly currency: string) { }
     
     serialise() {
@@ -70,7 +70,18 @@ class Currency implements CalcObj<unknown>, NumericTrait<unknown> {
     }
     
     acquire(t: PrimordialTrait) {
-        return (t === PrimordialTrait.Numeric ? this : undefined) as any
+        if ((t & (PrimordialTrait.Numeric | PrimordialTrait.Comparable)) !== 0) {
+            return this as any;
+        }
+        return undefined;
+    }
+
+    compare(left: boolean, other: ComparableTrait<unknown> | Primitive): number | CalcObj<unknown> {
+        if (other instanceof Currency) {
+            return left ? this.value - other.value : other.value - this.value;
+        }
+        return errors.typeError;
+
     }
 
     plus(left: boolean, other: NumericTrait<unknown> | number): CalcValue<unknown> {
@@ -1064,7 +1075,10 @@ Product(1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
         { expression: "{$100} + {$100} + {$100} + {$100} + {$100}", expected: "$500", serialise: true },
         { expression: "{$100} + {300 GBP}", expected: "Incorrect currency addition!", serialise: true },
         { expression: "{300 GBP} / {300 GBP}", expected: 1 },
-        { expression: "10 * {300 GBP}", expected: "GBP3000", serialise: true }
+        { expression: "10 * {300 GBP}", expected: "GBP3000", serialise: true },
+        { expression: "{300 GBP} = {300 GBP}", expected: "true", serialise: true },
+        { expression: "{$100} < {$200}", expected: "true", serialise: true },
+        { expression: "{$100} > {$200}", expected: "false", serialise: true },
     ];
 
     const interpretCases = [
@@ -1115,6 +1129,9 @@ Product(1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
         { expression: "{$100} + {$100} + {$100} + {$100} + {$100}", expected: "$500", serialise: true },
         { expression: "{$100} + {300 GBP}", expected: "Incorrect currency addition!", serialise: true },
         { expression: "{300 GBP} / {300 GBP}", expected: 1 },
+        { expression: "{300 GBP} = {300 GBP}", expected: "true", serialise: true },
+        { expression: "{$100} < {$200}", expected: "true", serialise: true },
+        { expression: "{$100} > {$200}", expected: "false", serialise: true },
         { expression: "10 * {300 GBP}", expected: "GBP3000", serialise: true }
     ];
 
