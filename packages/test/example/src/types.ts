@@ -4,6 +4,8 @@ import {
     IProducer,
     Formula,
     Primitive,
+    ReadableTrait,
+    PrimordialTrait,
     CalcFun,
     CalcObj,
     CalcValue,
@@ -53,10 +55,12 @@ function createPending(v: Pending<Value>): Pending<CalcValue<FormulaHost>> {
     return { kind: "Pending", estimate: v.estimate }
 }
 
-function createCalcValue(v: Producer): CalcObj<FormulaHost> {
+function createCalcValue(v: Producer): CalcObj<FormulaHost> & ReadableTrait<FormulaHost> {
     const cache: Record<string, CalcValue<FormulaHost>> = {};
-    return {
-        send: (message: string, consumer: IConsumer<Record<string, Value>>) => {
+    const calcVal: CalcObj<FormulaHost> & ReadableTrait<FormulaHost> = {
+        acquire: t => (t === PrimordialTrait.Readable ? calcVal : undefined) as any,
+        serialise: () => "{ RECORD }",
+        read: (message: string, consumer: IConsumer<Record<string, Value>>) => {
             if (cache[message] !== undefined) {
                 return cache[message];
             }
@@ -75,6 +79,7 @@ function createCalcValue(v: Producer): CalcObj<FormulaHost> {
             }
         }
     }
+    return calcVal;
 }
 
 export class ListFormula implements FormulaHost {

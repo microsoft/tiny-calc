@@ -2,6 +2,8 @@ import {
     Pending,
     Formula,
     Primitive,
+    ReadableTrait,
+    PrimordialTrait,
     isDelayed,
     CalcObj,
     CalcValue,
@@ -18,36 +20,46 @@ interface PendingPromise extends Pending<CalcObj<unknown>> {
     promise: Promise<void>;
 }
 
-const delayedCalcValue: CalcObj<unknown> = {
-    send(message) {
-        if (cache[message] !== undefined) {
-            return cache[message];
-        }
-
-        let time: number;
-        let val: Primitive;
-
-        switch (message) {
-            case "a string":
-                time = 100;
-                val = "hello world";
-                break;
-            case "a bool":
-                time = 400;
-                val = true;
-                break;
-            default:
-                time = 600;
-                val = 42;
-                break;
-        }
-        const pending: PendingPromise = {
-            kind: "Pending",
-            promise: createTimeoutPromise(time, val, x => cache[message] = x)
-        }
-        return cache[message] = pending;
+function createReadable(read: (prop: string) => Pending<CalcValue<unknown>> | CalcValue<unknown>): CalcObj<unknown> & ReadableTrait<unknown> {
+    const val: CalcObj<unknown> & ReadableTrait<unknown> = {
+        acquire: t => (t === PrimordialTrait.Readable ? val : undefined) as any,
+        serialise: () => "TODO",
+        read
     }
+    return val;
 }
+
+const read = (prop: string) => {
+    if (cache[prop] !== undefined) {
+        return cache[prop];
+    }
+
+    let time: number;
+    let val: Primitive;
+
+    switch (prop) {
+        case "a string":
+            time = 100;
+            val = "hello world";
+            break;
+        case "a bool":
+            time = 400;
+            val = true;
+            break;
+        default:
+            time = 600;
+            val = 42;
+            break;
+    }
+    const pending: PendingPromise = {
+        kind: "Pending",
+        promise: createTimeoutPromise(time, val, x => cache[prop] = x)
+    }
+    return cache[prop] = pending;
+}
+
+const delayedCalcValue: CalcObj<unknown> = createReadable(read);
+
 
 const f = compile("{a number} + IF({a number} > 10, {other}, {other}) + {a number} + \" \" + {a string} + \" \" + {a bool}");
 

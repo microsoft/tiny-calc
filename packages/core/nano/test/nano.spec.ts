@@ -86,6 +86,7 @@ class Currency implements CalcObj<unknown>, NumericTrait<unknown> {
         return other.plus(!left, this.value, undefined);
         
     }
+    
     minus(left: boolean, other: NumericTrait<unknown> | number): CalcValue<unknown> {
         if (typeof other === "number") {
             const val = left ? this.value - other : other - this.value;
@@ -100,6 +101,7 @@ class Currency implements CalcObj<unknown>, NumericTrait<unknown> {
         }
         return other.plus(!left, this.value, undefined);
     }
+    
     times(left: boolean, other: NumericTrait<unknown> | number): CalcValue<unknown> {
         if (typeof other === "number") {
             return new Currency(this.value * other, this.currency);
@@ -109,6 +111,7 @@ class Currency implements CalcObj<unknown>, NumericTrait<unknown> {
         }
         return other.times(!left, this.value, undefined);
     }
+    
     div(left: boolean, other: NumericTrait<unknown> | number): CalcValue<unknown> {
         if (typeof other === "number") {
             // TODO: incorrect units
@@ -123,6 +126,7 @@ class Currency implements CalcObj<unknown>, NumericTrait<unknown> {
         }
         return other.div(!left, this.value, undefined);
     }
+    
     negate(): CalcValue<unknown> {
         return new Currency(-this.value, this.currency);
     }

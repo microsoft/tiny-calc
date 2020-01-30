@@ -13,9 +13,11 @@ import {
     Formula,
     isDelayed,
     makeError,
-    ObjProps,
     Pending,
+    ReadableTrait,
+    ReferenceTrait,
     Primitive,
+    PrimordialTrait,
     Runtime,
 } from "@tiny-calc/nano";
 
@@ -289,7 +291,7 @@ function initFiberStack() {
 }
 
 const coerceResult = (row: number, column: number, value: CalcValue<Point>) =>
-    value instanceof Range ? (value as Range<Point>).send("value", [row, column]) : value;
+    value instanceof Range ? (value as Range<Point>).dereference([row, column]) : value;
 
 /**
  * Mark a cell as calculated with `value`, queue its dependents for
@@ -413,20 +415,21 @@ type PrimitiveMap = {
     boolean: boolean;
 }
 
-function extractTypeFromProperty<K extends keyof PrimitiveMap>(type: K, defaultValue: PrimitiveMap[K]): <O>(runtime: Runtime, origin: O, arg: CalcValue<O>, property: string) => PrimitiveMap[K] | Delayed<CalcValue<O>>;
-function extractTypeFromProperty(type: keyof PrimitiveMap, defaultValue: Primitive): <O>(runtime: Runtime, origin: O, arg: CalcValue<O>, property: string) => Primitive | Delayed<CalcValue<O>> {
-    return <O>(runtime: Runtime, origin: O, arg: CalcValue<O>, property: string) => {
+function extractTypeFromProperty<K extends keyof PrimitiveMap>(
+    type: K, defaultValue: PrimitiveMap[K]
+): <O, Delay>(runtime: Runtime<Delay>, origin: O, arg: CalcValue<O>, property: string) => PrimitiveMap[K] | Delay | CalcValue<O>;
+
+
+function extractTypeFromProperty(
+    type: keyof PrimitiveMap,
+    defaultValue: Primitive
+): <O, Delay>(runtime: Runtime<Delay>, origin: O, arg: CalcValue<O>, property: string) => Primitive | Delay | CalcValue<O> {
+    return <O, Delay>(runtime: Runtime<Delay>, origin: O, arg: CalcValue<O>, property: string) => {
         if (typeof arg === type) { return arg; } // fast path
-        let result: Delayed<CalcValue<O>> = arg;
-        if (arg instanceof Range) {
-            result = runtime.read(origin, arg, property, arg);
-        } else if (typeof arg === "object") {
-            result = runtime.read(origin, arg, ObjProps.AsPrimitive, arg);
-        }
-        switch (typeof result) {
+        switch (typeof arg) {
             case "object":
             case type:
-                return result;
+                return runtime.read(origin, arg, property, arg);
             default:
                 return defaultValue;
         }
@@ -436,9 +439,9 @@ function extractTypeFromProperty(type: keyof PrimitiveMap, defaultValue: Primiti
 const extractNumberFromProperty = extractTypeFromProperty("number", 0);
 const extractStringFromProperty = extractTypeFromProperty("string", "");
 
-function reduceType<K extends keyof PrimitiveMap>(type: K): <O>(args: Delayed<CalcValue<O>>[], fn: (prev: PrimitiveMap[K], current: PrimitiveMap[K]) => PrimitiveMap[K], init: PrimitiveMap[K]) => PrimitiveMap[K] | Delayed<CalcValue<O>>;
-function reduceType<K extends keyof PrimitiveMap>(type: K): <O>(args: Delayed<CalcValue<O>>[], fn: (prev: Primitive, current: Primitive) => Primitive, init: Primitive) => Primitive | Delayed<CalcValue<O>> {
-    return <O>(args: Delayed<CalcValue<O>>[], fn: (prev: Primitive, current: Primitive) => Primitive, init: Primitive) => {
+function reduceType<K extends keyof PrimitiveMap>(type: K): <O, Delay>(args: (Delay | CalcValue<O>)[], fn: (prev: PrimitiveMap[K], current: PrimitiveMap[K]) => PrimitiveMap[K], init: PrimitiveMap[K]) => PrimitiveMap[K] | CalcValue<O> | Delay;
+function reduceType<K extends keyof PrimitiveMap>(type: K): <O, Delay>(args: (Delay | CalcValue<O>)[], fn: (prev: Primitive, current: Primitive) => Primitive, init: Primitive) => Primitive | CalcValue<O> | Delay {
+    return <O, Delay>(args: (CalcValue<O> | Delay)[], fn: (prev: Primitive, current: Primitive) => Primitive, init: Primitive) => {
         let total = init;
         for (const arg of args) {
             if (typeof arg !== type) {
@@ -654,7 +657,7 @@ function tryParseRange<O>(context: RangeContext<O>, text: string) {
  * aggregations over the view. The canonical value of a Range is the
  * top left corner.
  */
-class Range<O> implements CalcObj<O> {
+class Range<O> implements CalcObj<O>, ReadableTrait<O>, ReferenceTrait<O> {
     public readonly tl: Point;
     public readonly height: number;
     public readonly width: number;
@@ -668,14 +671,29 @@ class Range<O> implements CalcObj<O> {
         this.width = Math.abs(first[COL] - second[COL]) + 1;
     }
 
-    public send(message: string, origin: O): CalcValue<O> | Pending<CalcValue<O>> {
+    public acquire(t: PrimordialTrait) {
+        switch (t) {
+            case PrimordialTrait.Readable:
+            case PrimordialTrait.Reference:
+                return this as any;
+            default: return undefined;
+        }
+    }
+    
+    public serialise() {
+        return "REF";
+    }
+    
+    public dereference(context: O) {
+        return this.context.link(this.tl[ROW], this.tl[COL], context);
+    }
+    
+    public read(message: string, origin: O): CalcValue<O> | Pending<CalcValue<O>> {
         if (aggregations[message] !== undefined) {
             const fn = aggregations[message as keyof typeof aggregations];
             return fn(this, this.context, origin);
         }
         switch (message) {
-            case ObjProps.AsPrimitive:
-                return this.context.link(this.tl[ROW], this.tl[COL], origin);
             case "row":
             case "ROW":
                 return this.tl[ROW] + 1;
@@ -687,7 +705,13 @@ class Range<O> implements CalcObj<O> {
                 if (range === undefined) {
                     const value = this.context.link(this.tl[ROW], this.tl[COL], origin);
                     if (typeof value === "object") {
-                        return isPending(value) ? value : value.send(message, origin);
+                        if (isPending(value)) {
+                            return value;
+                        }
+                        const reader = value.acquire(PrimordialTrait.Readable)
+                        if (reader) {
+                            return reader.read(message, origin);
+                        }
                     }
                     return errorValues.unknownField;
                 }
@@ -710,8 +734,10 @@ class Sheetlet implements ISheetlet {
 
     public readonly binder = initBinder();
 
-    public readonly rootContext: CalcObj<Point> = {
-        send: (message: string, context: Point) => {
+    public readonly rootContext: CalcObj<Point> & ReadableTrait<Point> = {
+        serialise: () => "TODO",
+        acquire: t => (t === PrimordialTrait.Readable ? this.rootContext : undefined) as any,
+        read: (message: string, context: Point) => {
             if (message in funcs) {
                 return funcs[message];
             }
@@ -729,8 +755,10 @@ class Sheetlet implements ISheetlet {
         },
     };
 
-    private readonly orphanFormulaContext: CalcObj<Point> = {
-        send: (message) => {
+    private readonly orphanFormulaContext: CalcObj<Point> & ReadableTrait<Point> = {
+        serialise: () => "TODO",
+        acquire: t => (t === PrimordialTrait.Readable ? this.orphanFormulaContext : undefined) as any,
+        read: (message) => {
             if (message in funcs) {
                 return funcs[message];
             }
@@ -826,9 +854,9 @@ class Sheetlet implements ISheetlet {
                 return "<function>";
             case "object":
                 if (value instanceof Range) {
-                    return this.primitiveFromValue(context, value.send("value", context) as CalcValue<O>);
+                    return this.primitiveFromValue(context, value.dereference(context) as CalcValue<O>);
                 }
-                const asString = value.send("stringify", context);
+                const asString = value.serialise(context);
                 return typeof asString === "string" ? asString : undefined;
             default:
                 return assertNever(value);
