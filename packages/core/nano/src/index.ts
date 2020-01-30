@@ -1,4 +1,9 @@
 export {
+    parseFormula,
+    FormulaNode
+} from "./ast"
+
+export {
     createRuntime,
     Delay,
     Delayed,
