@@ -1,33 +1,9 @@
-import { Pending, Primitive } from "./types";
+import { CalcObj, CalcValue, Pending, Primitive } from "./types";
 import { SyntaxKind } from "./parser";
-
-// TODO: Support Completions
-export interface CalcObj<C> {
-    send: (message: string, context: C, args?: unknown[] | undefined) => CalcValue<C> | Pending<CalcValue<C>>;
-}
-
-export interface CalcFun<CLex> {
-    <CDyn extends CLex>(runtime: Runtime, context: CDyn, args: CalcValue<CDyn>[]): Delayed<CalcValue<CDyn>>;
-}
-
-export type CalcValue<C> = Primitive | CalcObj<C> | CalcFun<C>;
 
 export const enum ObjProps {
     AsString = "stringify",
     AsPrimitive = "value",
-}
-
-export enum CoreMessages {
-    Plus = "plus",
-    Minus = "minus",
-    LT = "lt",
-    GT = "gt",
-    LTE = "lte",
-    GTE = "gte",
-    EQ = "eq",
-    NEQ = "neq",
-    Coerce = "coerce",
-    Read = "read",
 }
 
 export function makeError(message: string): CalcObj<unknown> {
