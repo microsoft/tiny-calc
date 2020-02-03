@@ -14,10 +14,10 @@ import {
     isDelayed,
     makeError,
     Pending,
-    ReadableTrait,
-    ReferenceTrait,
+    ReadableType,
+    ReferenceType,
     Primitive,
-    PrimordialTrait,
+    PrimordialType,
     Runtime,
 } from "@tiny-calc/nano";
 
@@ -657,7 +657,7 @@ function tryParseRange<O>(context: RangeContext<O>, text: string) {
  * aggregations over the view. The canonical value of a Range is the
  * top left corner.
  */
-class Range<O> implements CalcObj<O>, ReadableTrait<O>, ReferenceTrait<O> {
+class Range<O> implements CalcObj<O>, ReadableType<O>, ReferenceType<O> {
     public readonly tl: Point;
     public readonly height: number;
     public readonly width: number;
@@ -671,10 +671,10 @@ class Range<O> implements CalcObj<O>, ReadableTrait<O>, ReferenceTrait<O> {
         this.width = Math.abs(first[COL] - second[COL]) + 1;
     }
 
-    public acquire(t: PrimordialTrait) {
+    public acquire(t: PrimordialType) {
         switch (t) {
-            case PrimordialTrait.Readable:
-            case PrimordialTrait.Reference:
+            case PrimordialType.Readable:
+            case PrimordialType.Reference:
                 return this as any;
             default: return undefined;
         }
@@ -708,7 +708,7 @@ class Range<O> implements CalcObj<O>, ReadableTrait<O>, ReferenceTrait<O> {
                         if (isPending(value)) {
                             return value;
                         }
-                        const reader = value.acquire(PrimordialTrait.Readable)
+                        const reader = value.acquire(PrimordialType.Readable)
                         if (reader) {
                             return reader.read(message, origin);
                         }
@@ -734,9 +734,9 @@ class Sheetlet implements ISheetlet {
 
     public readonly binder = initBinder();
 
-    public readonly rootContext: CalcObj<Point> & ReadableTrait<Point> = {
+    public readonly rootContext: CalcObj<Point> & ReadableType<Point> = {
         serialise: () => "TODO",
-        acquire: t => (t === PrimordialTrait.Readable ? this.rootContext : undefined) as any,
+        acquire: t => (t === PrimordialType.Readable ? this.rootContext : undefined) as any,
         read: (message: string, context: Point) => {
             if (message in funcs) {
                 return funcs[message];
@@ -755,9 +755,9 @@ class Sheetlet implements ISheetlet {
         },
     };
 
-    private readonly orphanFormulaContext: CalcObj<Point> & ReadableTrait<Point> = {
+    private readonly orphanFormulaContext: CalcObj<Point> & ReadableType<Point> = {
         serialise: () => "TODO",
-        acquire: t => (t === PrimordialTrait.Readable ? this.orphanFormulaContext : undefined) as any,
+        acquire: t => (t === PrimordialType.Readable ? this.orphanFormulaContext : undefined) as any,
         read: (message) => {
             if (message in funcs) {
                 return funcs[message];

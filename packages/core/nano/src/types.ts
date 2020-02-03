@@ -1,4 +1,4 @@
-export enum PrimordialTrait {
+export enum PrimordialType {
     Numeric = 1, // 1 << 0
     Error = 2, // 1 << 1
     Comparable = 4, // 1 << 2
@@ -6,18 +6,18 @@ export enum PrimordialTrait {
     Reference = 32 // 1 << 4
 }
 
-export interface TraitMap<C> {
-    [PrimordialTrait.Numeric]: NumericTrait<C>;
-    [PrimordialTrait.Error]: ErrorTrait<C>;
-    [PrimordialTrait.Comparable]: ComparableTrait<C>;
-    [PrimordialTrait.Readable]: ReadableTrait<C>;
-    [PrimordialTrait.Reference]: ReferenceTrait<C>;
+export interface TypeMap<C> {
+    [PrimordialType.Numeric]: NumericType<C>;
+    [PrimordialType.Error]: ErrorType<C>;
+    [PrimordialType.Comparable]: ComparableType<C>;
+    [PrimordialType.Readable]: ReadableType<C>;
+    [PrimordialType.Reference]: ReferenceType<C>;
 }
 
 export type Primitive = boolean | number | string;
 
 export interface CalcObj<C = void> {
-    acquire: <T extends PrimordialTrait>(t: T) => TraitMap<C>[T] | undefined;
+    acquire: <T extends PrimordialType>(t: T) => TypeMap<C>[T] | undefined;
     serialise: (context: C) => string;
 }
 
@@ -28,20 +28,20 @@ export interface CalcFun<CLex = void> {
 export type CalcValue<C = void> = Primitive | CalcObj<C> | CalcFun<C>;
 export type DataValue<C> = CalcObj<C> | Primitive;
 
-export interface ErrorTrait<C> {
-    enrich: (message: string) => ErrorTrait<C>
+export interface ErrorType<C> {
+    enrich: (message: string) => ErrorType<C>
 }
 
-export interface NumericTrait<C> {
-    plus: (left: boolean, other: NumericTrait<C> | number, context: C) => CalcValue<C>;
-    minus: (left: boolean, other: NumericTrait<C> | number, context: C) => CalcValue<C>;
-    times: (left: boolean, other: NumericTrait<C> | number, context: C) => CalcValue<C>;
-    div: (left: boolean, other: NumericTrait<C> | number, context: C) => CalcValue<C>;
+export interface NumericType<C> {
+    plus: (left: boolean, other: NumericType<C> | number, context: C) => CalcValue<C>;
+    minus: (left: boolean, other: NumericType<C> | number, context: C) => CalcValue<C>;
+    times: (left: boolean, other: NumericType<C> | number, context: C) => CalcValue<C>;
+    div: (left: boolean, other: NumericType<C> | number, context: C) => CalcValue<C>;
     negate: (context: C) => CalcValue<C>;
 }
 
-export interface ComparableTrait<C> {
-    compare: (left: boolean, other: ComparableTrait<C> | Primitive, context: C) => number | CalcObj<C>
+export interface ComparableType<C> {
+    compare: (left: boolean, other: ComparableType<C> | Primitive, context: C) => number | CalcObj<C>
 }
 
 export interface Pending<T> {
@@ -49,23 +49,23 @@ export interface Pending<T> {
     estimate?: T;
 }
 
-export interface ReadableTrait<C> {
+export interface ReadableType<C> {
     read: (property: string, context: C) => CalcValue<C> | Pending<CalcValue<C>>;
 }
 
-export interface ReferenceTrait<C> {
+export interface ReferenceType<C> {
     dereference: (context: C) => CalcValue<C> | Pending<CalcValue<C>>;
 }
 
 export interface TypedUnaryOp {
-    trait: PrimordialTrait,
+    type: PrimordialType,
     fn: <C>(context: C, expr: DataValue<C>) => CalcValue<C>,
     err: <C>(context: C, expr: CalcValue<C>) => CalcValue<C>,
 }
 
 export interface TypedBinOp {
-    trait1: PrimordialTrait,
-    trait2: PrimordialTrait,
+    type1: PrimordialType,
+    type2: PrimordialType,
     fn: <C>(context: C, l: DataValue<C>, r: DataValue<C>) => CalcValue<C>,
     err: <C>(context: C, expr: CalcValue<C>, pos: number) => CalcValue<C>,
 }

@@ -4,11 +4,11 @@ import {
     CalcObj,
     CalcValue,
     DataValue,
-    ErrorTrait,
-    NumericTrait,
+    ErrorType,
+    NumericType,
     Pending,
     Primitive,
-    PrimordialTrait,
+    PrimordialType,
     Runtime,
     TypedBinOp,
     TypedUnaryOp,
@@ -16,9 +16,9 @@ import {
 
 import { SyntaxKind } from "./parser"
 
-export function makeError(message: string): CalcObj<unknown> & ErrorTrait<unknown> {
-    const err: CalcObj<unknown> & ErrorTrait<unknown> = {
-        acquire: t => (t === PrimordialTrait.Error ? err : undefined) as any,
+export function makeError(message: string): CalcObj<unknown> & ErrorType<unknown> {
+    const err: CalcObj<unknown> & ErrorType<unknown> = {
+        acquire: t => (t === PrimordialType.Error ? err : undefined) as any,
         serialise: () => message,
         enrich: () => err
     }
@@ -85,14 +85,14 @@ export function isDelayed<T>(x: T | Delay): x is Delay {
 }
 
 function tryDeref<C>(trace: Trace, context: C, receiver: CalcObj<C>) {
-    const ref = receiver.acquire(PrimordialTrait.Reference);
+    const ref = receiver.acquire(PrimordialType.Reference);
     if (ref) {
         return trace(ref.dereference(context));
     }
     return undefined;
 }
 
-function typeCheckWithinRef<C>(trace: Trace, context: C, expected: PrimordialTrait, value: CalcObj<C>): Delayed<CalcValue<C>> {
+function typeCheckWithinRef<C>(trace: Trace, context: C, expected: PrimordialType, value: CalcObj<C>): Delayed<CalcValue<C>> {
     if (value.acquire(expected)) {
         return value;
     }
@@ -103,7 +103,7 @@ function typeCheckWithinRef<C>(trace: Trace, context: C, expected: PrimordialTra
     return derefed;
 }
 
-function isWellTyped<C>(value: CalcValue<C>, trait: PrimordialTrait): value is DataValue<C> {
+function isWellTyped<C>(value: CalcValue<C>, trait: PrimordialType): value is DataValue<C> {
     switch (typeof value) {
         case "object": return value.acquire(trait) !== undefined;
         default: return typeof value !== "function";
@@ -111,7 +111,7 @@ function isWellTyped<C>(value: CalcValue<C>, trait: PrimordialTrait): value is D
 }
 
 function errorOr<C, F>(value: CalcObj<C>, fallback: F): CalcObj<C> | F {
-    return value.acquire(PrimordialTrait.Error) ? value : fallback;
+    return value.acquire(PrimordialType.Error) ? value : fallback;
 }
 
 class CoreRuntime implements Runtime<Delay> {
@@ -120,7 +120,7 @@ class CoreRuntime implements Runtime<Delay> {
     read<C, F>(context: C, receiver: Delayed<CalcValue<C>>, prop: string, fallback: F): Delayed<CalcValue<C> | F> {
         if (isDelayed(receiver)) { return delay }
         if (typeof receiver === "object") {
-            let reader = receiver.acquire(PrimordialTrait.Readable);
+            let reader = receiver.acquire(PrimordialType.Readable);
             if (reader) {
                 return this.trace(reader.read(prop, context));
             }
@@ -130,7 +130,7 @@ class CoreRuntime implements Runtime<Delay> {
                 return errorOr(receiver, fallback);
             }
             if (typeof value === "object") {
-                reader = receiver.acquire(PrimordialTrait.Readable);
+                reader = receiver.acquire(PrimordialType.Readable);
                 if (reader) {
                     return this.trace(reader.read(prop, context));
                 }
@@ -148,28 +148,28 @@ class CoreRuntime implements Runtime<Delay> {
         if (isDelayed(expr)) { return delay; }
         let value: Delayed<CalcValue<C>> = expr;
         if (typeof value === "object") {
-            value = typeCheckWithinRef(this.trace, context, op.trait, value);
+            value = typeCheckWithinRef(this.trace, context, op.type, value);
             if (isDelayed(value)) {
                 return value;
             }
         }
-        return isWellTyped(value, op.trait) ? op.fn(context, value) : op.err(context, value);
+        return isWellTyped(value, op.type) ? op.fn(context, value) : op.err(context, value);
     }
 
     app2<C>(context: C, op: TypedBinOp, l: Delayed<CalcValue<C>>, r: Delayed<CalcValue<C>>): Delayed<CalcValue<C>> {
         let value1: Delayed<CalcValue<C>> = l;
         let value2: Delayed<CalcValue<C>> = r;
         if (!isDelayed(value1) && typeof value1 === "object") {
-            value1 = typeCheckWithinRef(this.trace, context, op.trait1, value1);
+            value1 = typeCheckWithinRef(this.trace, context, op.type1, value1);
         }
         if (!isDelayed(value2) && typeof value2 === "object") {
-            value2 = typeCheckWithinRef(this.trace, context, op.trait2, value2);
+            value2 = typeCheckWithinRef(this.trace, context, op.type2, value2);
         }
         if (isDelayed(value1) || isDelayed(value2)) {
             return delay;
         }
-        if (isWellTyped(value1, op.trait1)) {
-            if (isWellTyped(value2, op.trait2)) {
+        if (isWellTyped(value1, op.type1)) {
+            if (isWellTyped(value2, op.type2)) {
                 return op.fn(context, value1, value2);
             }
             return op.err(context, value2, 1);
@@ -199,7 +199,7 @@ class CoreRuntime implements Runtime<Delay> {
 }
 
 const basicErrorHandler = <C>(_context: unknown, value: CalcValue<C>) => {
-    if (typeof value === "object" && value.acquire(PrimordialTrait.Error)) {
+    if (typeof value === "object" && value.acquire(PrimordialType.Error)) {
         return value;
     }
     return typeError;
@@ -207,14 +207,14 @@ const basicErrorHandler = <C>(_context: unknown, value: CalcValue<C>) => {
 
 function createNumericBinOp(
     fnPrim: (l: Primitive, r: Primitive) => CalcValue<unknown>,
-    fnDispatch: Exclude<keyof NumericTrait<unknown>, 'negate'>
+    fnDispatch: Exclude<keyof NumericType<unknown>, 'negate'>
 ) {
     const op: TypedBinOp = {
-        trait1: PrimordialTrait.Numeric,
-        trait2: PrimordialTrait.Numeric,
+        type1: PrimordialType.Numeric,
+        type2: PrimordialType.Numeric,
         fn: (context, l, r) => {
-            const lTyped = typeof l === "object" ? l.acquire(PrimordialTrait.Numeric)! : l;
-            const rTyped = typeof r === "object" ? r.acquire(PrimordialTrait.Numeric)! : r;
+            const lTyped = typeof l === "object" ? l.acquire(PrimordialType.Numeric)! : l;
+            const rTyped = typeof r === "object" ? r.acquire(PrimordialType.Numeric)! : r;
             assert(lTyped !== undefined, 'Failed typeCheck invariant');
             assert(rTyped !== undefined, 'Failed typeCheck invariant');
             if (typeof lTyped === "object") {
@@ -239,12 +239,12 @@ function createNumericBinOp(
 
 function createNumericUnaryOp(
     fnPrim: (l: Primitive) => CalcValue<unknown>,
-    fnDispatch: Extract<keyof NumericTrait<unknown>, 'negate'> | undefined
+    fnDispatch: Extract<keyof NumericType<unknown>, 'negate'> | undefined
 ) {
     const op: TypedUnaryOp = {
-        trait: PrimordialTrait.Numeric,
+        type: PrimordialType.Numeric,
         fn: (context, value) => {
-            const vTyped = typeof value === "object" ? value.acquire(PrimordialTrait.Numeric)! : value;
+            const vTyped = typeof value === "object" ? value.acquire(PrimordialType.Numeric)! : value;
             assert(vTyped !== undefined, 'Failed typeCheck invariant');
             return typeof vTyped === "object" ?
                 fnDispatch === undefined ? value : vTyped[fnDispatch](context)
@@ -260,11 +260,11 @@ function createComparableBinOp(
     fnDispatch: <C>(result: number | CalcObj<C>) => CalcValue<C>
 ) {
     const op: TypedBinOp = {
-        trait1: PrimordialTrait.Comparable,
-        trait2: PrimordialTrait.Comparable,
+        type1: PrimordialType.Comparable,
+        type2: PrimordialType.Comparable,
         fn: (context, l, r) => {
-            const lTyped = typeof l === "object" ? l.acquire(PrimordialTrait.Comparable)! : l;
-            const rTyped = typeof r === "object" ? r.acquire(PrimordialTrait.Comparable)! : r;
+            const lTyped = typeof l === "object" ? l.acquire(PrimordialType.Comparable)! : l;
+            const rTyped = typeof r === "object" ? r.acquire(PrimordialType.Comparable)! : r;
             assert(lTyped !== undefined, 'Failed typeCheck invariant');
             assert(rTyped !== undefined, 'Failed typeCheck invariant');
             if (typeof lTyped === "object") {

@@ -2,9 +2,9 @@ const fetch = require("node-fetch");
 
 import {
     Pending,
-    ReadableTrait,
-    ReferenceTrait,
-    PrimordialTrait,
+    ReadableType,
+    ReferenceType,
+    PrimordialType,
     isDelayed,
     CalcObj,
     CalcValue,
@@ -19,27 +19,27 @@ interface PendingPromise extends Pending<CalcObj<unknown>> {
     promise: Promise<void>;
 }
 
-function createReadable(read: (prop: string) => Pending<CalcValue<unknown>> | CalcValue<unknown>): CalcObj<unknown> & ReadableTrait<unknown> {
-    const val: CalcObj<unknown> & ReadableTrait<unknown> = {
-        acquire: t => (t === PrimordialTrait.Readable ? val : undefined) as any,
+function createReadable(read: (prop: string) => Pending<CalcValue<unknown>> | CalcValue<unknown>): CalcObj<unknown> & ReadableType<unknown> {
+    const val: CalcObj<unknown> & ReadableType<unknown> = {
+        acquire: t => (t === PrimordialType.Readable ? val : undefined) as any,
         serialise: () => "TODO",
         read
     }
     return val;
 }
 
-function createRef(dereference: () => Pending<CalcValue<unknown>> | CalcValue<unknown>): CalcObj<unknown> & ReferenceTrait<unknown> {
-    const val: CalcObj<unknown> & ReferenceTrait<unknown> = {
-        acquire: t => (t === PrimordialTrait.Reference ? val : undefined) as any,
+function createRef(dereference: () => Pending<CalcValue<unknown>> | CalcValue<unknown>): CalcObj<unknown> & ReferenceType<unknown> {
+    const val: CalcObj<unknown> & ReferenceType<unknown> = {
+        acquire: t => (t === PrimordialType.Reference ? val : undefined) as any,
         serialise: () => "TODO",
         dereference
     }
     return val;
 }
 
-function createReadableFromDict(dict: Record<string, any>): CalcObj<unknown> & ReadableTrait<unknown> {
-    const val: CalcObj<unknown> & ReadableTrait<unknown> = {
-        acquire: t => (t === PrimordialTrait.Readable ? val : undefined) as any,
+function createReadableFromDict(dict: Record<string, any>): CalcObj<unknown> & ReadableType<unknown> {
+    const val: CalcObj<unknown> & ReadableType<unknown> = {
+        acquire: t => (t === PrimordialType.Readable ? val : undefined) as any,
         serialise: () => "TODO",
         read: prop => {
             const val = dict[prop];

@@ -4,8 +4,8 @@ import {
     IProducer,
     Formula,
     Primitive,
-    ReadableTrait,
-    PrimordialTrait,
+    ReadableType,
+    PrimordialType,
     CalcFun,
     CalcObj,
     CalcValue,
@@ -55,10 +55,10 @@ function createPending(v: Pending<Value>): Pending<CalcValue<FormulaHost>> {
     return { kind: "Pending", estimate: v.estimate }
 }
 
-function createCalcValue(v: Producer): CalcObj<FormulaHost> & ReadableTrait<FormulaHost> {
+function createCalcValue(v: Producer): CalcObj<FormulaHost> & ReadableType<FormulaHost> {
     const cache: Record<string, CalcValue<FormulaHost>> = {};
-    const calcVal: CalcObj<FormulaHost> & ReadableTrait<FormulaHost> = {
-        acquire: t => (t === PrimordialTrait.Readable ? calcVal : undefined) as any,
+    const calcVal: CalcObj<FormulaHost> & ReadableType<FormulaHost> = {
+        acquire: t => (t === PrimordialType.Readable ? calcVal : undefined) as any,
         serialise: () => "{ RECORD }",
         read: (message: string, consumer: IConsumer<Record<string, Value>>) => {
             if (cache[message] !== undefined) {
