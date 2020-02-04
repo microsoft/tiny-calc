@@ -2,7 +2,7 @@ import { parseFormula } from "../src/ast";
 import { createDiagnosticErrorHandler, createParser, SyntaxKind, ExpAlgebra } from "../src/parser";
 import { compile } from "../src/compiler";
 import { interpret } from "../src/interpreter";
-import { CalcValue, CalcObj, CalcFun, ComparableTrait, NumericTrait, ReadableTrait, ReferenceTrait, PrimordialTrait, Primitive, errors } from "../src/index";
+import { CalcValue, CalcObj, CalcFun, ComparableType, NumericType, ReadableType, ReferenceType, PrimordialType, Primitive, errors } from "../src/index";
 import * as assert from "assert";
 import "mocha";
 
@@ -38,10 +38,10 @@ export const astParse = createParser(astSink, createDiagnosticErrorHandler());
 const sum: CalcFun<unknown> = <O>(_rt: any, _origin: O, args: any[]) => args.reduce((prev, now) => prev + now, 0);
 const prod: CalcFun<unknown> = <O>(_rt: any, _origin: O, args: any[]) => args.reduce((prev, now) => prev * now, 1);
 
-function createReadableRef(value: CalcValue<unknown>, read: (prop: string) => CalcValue<unknown>): CalcObj<unknown> & ReferenceTrait<unknown> & ReadableTrait<unknown> {
-    const val: CalcObj<unknown> & ReferenceTrait<unknown> & ReadableTrait<unknown> = {
+function createReadableRef(value: CalcValue<unknown>, read: (prop: string) => CalcValue<unknown>): CalcObj<unknown> & ReferenceType<unknown> & ReadableType<unknown> {
+    const val: CalcObj<unknown> & ReferenceType<unknown> & ReadableType<unknown> = {
         acquire: t => {
-            if ((t & (PrimordialTrait.Readable | PrimordialTrait.Reference)) !== 0) {
+            if ((t & (PrimordialType.Readable | PrimordialType.Reference)) !== 0) {
                 return val as any;
             }
             return undefined;
@@ -53,30 +53,30 @@ function createReadableRef(value: CalcValue<unknown>, read: (prop: string) => Ca
     return val;
 }
 
-function createReadable(read: (prop: string) => CalcValue<unknown>): CalcObj<unknown> & ReadableTrait<unknown> {
-    const val: CalcObj<unknown> & ReadableTrait<unknown> = {
-        acquire: t => (t === PrimordialTrait.Readable ? val : undefined) as any,
+function createReadable(read: (prop: string) => CalcValue<unknown>): CalcObj<unknown> & ReadableType<unknown> {
+    const val: CalcObj<unknown> & ReadableType<unknown> = {
+        acquire: t => (t === PrimordialType.Readable ? val : undefined) as any,
         serialise: () => "TODO",
         read
     }
     return val;
 }
 
-class Currency implements CalcObj<unknown>, NumericTrait<unknown>, ComparableTrait<unknown> {
+class Currency implements CalcObj<unknown>, NumericType<unknown>, ComparableType<unknown> {
     constructor(public readonly value: number, public readonly currency: string) { }
     
     serialise() {
         return `${this.currency}${this.value.toString()}`;
     }
     
-    acquire(t: PrimordialTrait) {
-        if ((t & (PrimordialTrait.Numeric | PrimordialTrait.Comparable)) !== 0) {
+    acquire(t: PrimordialType) {
+        if ((t & (PrimordialType.Numeric | PrimordialType.Comparable)) !== 0) {
             return this as any;
         }
         return undefined;
     }
 
-    compare(left: boolean, other: ComparableTrait<unknown> | Primitive): number | CalcObj<unknown> {
+    compare(left: boolean, other: ComparableType<unknown> | Primitive): number | CalcObj<unknown> {
         if (other instanceof Currency) {
             return left ? this.value - other.value : other.value - this.value;
         }
@@ -84,7 +84,7 @@ class Currency implements CalcObj<unknown>, NumericTrait<unknown>, ComparableTra
 
     }
 
-    plus(left: boolean, other: NumericTrait<unknown> | number): CalcValue<unknown> {
+    plus(left: boolean, other: NumericType<unknown> | number): CalcValue<unknown> {
         if (typeof other === "number") {
             return new Currency(this.value + other, this.currency);
         }
@@ -98,7 +98,7 @@ class Currency implements CalcObj<unknown>, NumericTrait<unknown>, ComparableTra
         
     }
     
-    minus(left: boolean, other: NumericTrait<unknown> | number): CalcValue<unknown> {
+    minus(left: boolean, other: NumericType<unknown> | number): CalcValue<unknown> {
         if (typeof other === "number") {
             const val = left ? this.value - other : other - this.value;
             return new Currency(val, this.currency);
@@ -113,7 +113,7 @@ class Currency implements CalcObj<unknown>, NumericTrait<unknown>, ComparableTra
         return other.plus(!left, this.value, undefined);
     }
     
-    times(left: boolean, other: NumericTrait<unknown> | number): CalcValue<unknown> {
+    times(left: boolean, other: NumericType<unknown> | number): CalcValue<unknown> {
         if (typeof other === "number") {
             return new Currency(this.value * other, this.currency);
         }
@@ -123,7 +123,7 @@ class Currency implements CalcObj<unknown>, NumericTrait<unknown>, ComparableTra
         return other.times(!left, this.value, undefined);
     }
     
-    div(left: boolean, other: NumericTrait<unknown> | number): CalcValue<unknown> {
+    div(left: boolean, other: NumericType<unknown> | number): CalcValue<unknown> {
         if (typeof other === "number") {
             // TODO: incorrect units
             const val = left ? this.value / other : other / this.value;
@@ -147,8 +147,8 @@ class Currency implements CalcObj<unknown>, NumericTrait<unknown>, ComparableTra
 const a1 = createReadableRef(sum, _ => 0);
 const something = createReadable(prop => prop === "Property A" ? "A" : "B" );
 
-const testContext: CalcObj<unknown> & ReadableTrait<unknown> = {
-    acquire: t => (t === PrimordialTrait.Readable ? testContext : undefined) as any,
+const testContext: CalcObj<unknown> & ReadableType<unknown> = {
+    acquire: t => (t === PrimordialType.Readable ? testContext : undefined) as any,
     serialise: () => "TODO",
     read: (message: string) => {
         switch (message) {
