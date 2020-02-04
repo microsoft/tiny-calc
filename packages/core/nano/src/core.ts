@@ -97,10 +97,7 @@ function typeCheckWithinRef<C>(trace: Trace, context: C, expected: PrimordialTyp
         return value;
     }
     const derefed = tryDeref(trace, context, value);
-    if (derefed === undefined) {
-        return value;
-    }
-    return derefed;
+    return derefed === undefined ? value : derefed;
 }
 
 function isWellTyped<C>(value: CalcValue<C>, trait: PrimordialType): value is DataValue<C> {
@@ -130,7 +127,7 @@ class CoreRuntime implements Runtime<Delay> {
                 return errorOr(receiver, fallback);
             }
             if (typeof value === "object") {
-                reader = receiver.acquire(PrimordialType.Readable);
+                reader = value.acquire(PrimordialType.Readable);
                 if (reader) {
                     return this.trace(reader.read(prop, context));
                 }

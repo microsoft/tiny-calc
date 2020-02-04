@@ -63,10 +63,10 @@ function queryWiki(id: string): Promise<Record<string, any>> {
 }
 
 const read = (prop: string) => {
-    if (cache[prop] !== undefined) {
-        return cache[prop];
-    }
     const pending: () => (PendingPromise | CalcObj<unknown>) = () => {
+        if (cache[prop] !== undefined) {
+            return cache[prop];
+        }
         const obj: PendingPromise = {
             kind: "Pending",
             promise: queryWiki(prop).then(data => {
