@@ -1,17 +1,6 @@
 import { IConsumer, IVectorConsumer, IMatrixConsumer, IProducer, IVectorProducer, IMatrixProducer } from "../../src/types";
 import { strict as assert } from "assert";
 
-class NullConsumer<T> implements IConsumer<T>, IVectorConsumer<T>, IMatrixConsumer<T> {
-    public rowsChanged(): void { }
-    public colsChanged(): void { }
-    public cellsReplaced(): void { }
-    public valueChanged(): void {}
-    public itemsChanged(): void {}
-}
-
-/** A generic test consumer that ignores all change notifications. */
-export const nullConsumer: IConsumer<unknown> & IVectorConsumer<unknown> & IMatrixConsumer<unknown> = new NullConsumer<unknown>();
-
 export class LoggingConsumer<T> implements IConsumer<T>, IVectorConsumer<T>, IMatrixConsumer<T> {
     public readonly log: any[] = [];
 
@@ -31,15 +20,15 @@ export class LoggingConsumer<T> implements IConsumer<T>, IVectorConsumer<T>, IMa
     // #endregion IVectorConsumer<T>
     
     // #region IMatrixConsumer<T>
-    public rowsChanged(row: number, numRemoved: number, rowsInserted: T[], producer: IMatrixProducer<T>): void {
-        this.log.push({ row, numRemoved, rowsInserted, producer: this.getProducerId(producer) });
+    public rowsChanged(row: number, numRemoved: number, numInserted: number, producer: IMatrixProducer<T>): void {
+        this.log.push({ row, numRemoved, numInserted, producer: this.getProducerId(producer) });
     }
     
-    public colsChanged(col: number, numRemoved: number, colsInserted: T[], producer: IMatrixProducer<T>): void {
-        this.log.push({ col, numRemoved, colsInserted, producer: this.getProducerId(producer) });
+    public colsChanged(col: number, numRemoved: number, numInserted: number, producer: IMatrixProducer<T>): void {
+        this.log.push({ col, numRemoved, numInserted, producer: this.getProducerId(producer) });
     }
     
-    public cellsReplaced(row: number, col: number, numRows: number, numCols: number, values: T[], producer: IMatrixProducer<T>): void {
+    public cellsChanged(row: number, col: number, numRows: number, numCols: number, values: ReadonlyArray<T>, producer: IMatrixProducer<T>): void {
         this.log.push({ row, col, numRows, numCols, values, producer: this.getProducerId(producer) });
     }
     // #endregion IMatrixConsumer<T>
