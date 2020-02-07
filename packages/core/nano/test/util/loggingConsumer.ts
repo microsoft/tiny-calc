@@ -14,7 +14,7 @@ export class LoggingConsumer<T> implements IConsumer<T>, IVectorConsumer<T>, IMa
     // #endregion IConsumer<T>
     
     // #region IVectorConsumer<T>
-    public itemsChanged(index: number, numRemoved: number, itemsInserted: T[], producer: IVectorProducer<T>): void {
+    public itemsChanged(index: number, numRemoved: number, itemsInserted: ReadonlyArray<T>, producer: IVectorProducer<T>): void {
         this.log.push({ index, numRemoved, itemsInserted, producer: this.getProducerId(producer) });
     }
     // #endregion IVectorConsumer<T>

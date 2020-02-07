@@ -52,7 +52,7 @@ export interface IProducer<T> {
 
 export interface IVectorConsumer<T> {
     /** Notification that a range of items have been inserted, removed, and/or replaced in the given vector. */
-    itemsChanged(index: number, numRemoved: number, itemsInserted: T[], producer: IVectorProducer<T>): void;
+    itemsChanged(index: number, numRemoved: number, itemsInserted: ReadonlyArray<T>, producer: IVectorProducer<T>): void;
 }
 
 export interface IVectorReader<T> {
