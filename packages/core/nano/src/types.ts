@@ -52,7 +52,7 @@ export interface IProducer<T> {
 
 export interface IVectorConsumer<T> {
     /** Notification that a range of items have been inserted, removed, and/or replaced in the given vector. */
-    itemsChanged(index: number, numRemoved: number, itemsInserted: T[], producer: IVectorProducer<T>): void;
+    itemsChanged(index: number, numRemoved: number, itemsInserted: ReadonlyArray<T>, producer: IVectorProducer<T>): void;
 }
 
 export interface IVectorReader<T> {
@@ -73,13 +73,17 @@ export interface IVectorProducer<T> {
 
 export interface IMatrixConsumer<T> {
     /** Notification that rows have been inserted, removed, and/or replaced in the given matrix. */
-    rowsChanged(row: number, numRemoved: number, rowsInserted: T[], producer: IMatrixProducer<T>): void;
+    rowsChanged(row: number, numRemoved: number, numInserted: number, producer: IMatrixProducer<T>): void;
 
     /** Notification that cols have been inserted, removed, and/or replaced in the given matrix. */
-    colsChanged(col: number, numRemoved: number, colsInserted: T[], producer: IMatrixProducer<T>): void;
+    colsChanged(col: number, numRemoved: number, numInserted: number, producer: IMatrixProducer<T>): void;
 
-    /** Notification that a range of cells have been replaced in the given matrix. */
-    cellsReplaced(row: number, col: number, numRows: number, numCols: number, values: T[], producer: IMatrixProducer<T>): void;
+    /**
+     * Notification that a range of cells have been replaced in the given matrix.  If the source
+     * matrix has the new cell values already in an array, it may optionally pass these to consumers
+     * as an optimization.
+     */
+    cellsChanged(row: number, col: number, numRows: number, numCols: number, values: ReadonlyArray<T> | undefined, producer: IMatrixProducer<T>): void;
 }
 
 export interface IMatrixReader<T> {

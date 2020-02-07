@@ -30,8 +30,10 @@ export {
     IProducer,
     IVectorConsumer,
     IVectorProducer,
+    IVectorReader,
     IMatrixConsumer,
-    IMatrixProducer
+    IMatrixProducer,
+    IMatrixReader
 } from "./types";
 
 export {
