@@ -31,10 +31,12 @@ export {
     IConsumer,
     IMatrixConsumer,
     IMatrixProducer,
+    IMatrixReader,
     IProducer,
     IReader,
     IVectorConsumer,
     IVectorProducer,
+    IVectorReader,
     NumericType,
     Pending,
     Primitive,
@@ -42,7 +44,7 @@ export {
     ReferenceType,
     Runtime,
     TypeMap,
-    TypeName
+    TypeName,
 } from "./types";
 
 export {
