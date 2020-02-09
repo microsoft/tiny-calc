@@ -14,21 +14,14 @@ import { parseFormula } from "../src/ast";
 import { CoreRuntime, Delay } from "../src/core";
 import { evalContext, evaluate } from "../src/interpreter";
 import { TypeMap, CalcObj, TypeName, Pending, CalcValue, Runtime } from "../src/types";
+import { createObjFromMap, createReadMap } from "./util/objectTypes";
 
-function createRefMap(value: CalcValue<string>): TypeMap<CalcObj<string>, string> {
-    return { [TypeName.Reference]: { dereference: (_v, c) => ({ kind: "Pending", message: `Dereferencing from ${c}`, estimate: value }) } }
+function createTracingRefMap(value: CalcValue<string>): TypeMap<CalcObj<string>, string> {
+    return { [TypeName.Reference]: { dereference: (v, c) => ({ kind: "Pending", message: `Dereferencing ${v.serialise(c)} from ${c}`, estimate: value }) } }
 }
 
-function createReadMap(read: (prop: string, ctx: string) => CalcValue<string> | Pending<CalcValue<string>>): TypeMap<CalcObj<string>, string> {
-    return { [TypeName.Readable]: { read: (_v, p, c) => read(p, c) } }
-}
-
-function createObjFromMap(map: TypeMap<CalcObj<string>, string>): CalcObj<string> {
-    return { typeMap: () => map, serialise: () => "TODO" }
-}
-
-const cRef = createObjFromMap(createRefMap(30))
-const ctx = createObjFromMap(createReadMap((p, c) => {
+const cRef = createObjFromMap("C_ref", createTracingRefMap(30))
+const ctx = createObjFromMap("Root", createReadMap((p, c) => {
     const message = `Reading ${p} from ${c}`;
     switch (p) {
         case "A":
@@ -80,7 +73,7 @@ describe("writer monad example", () => {
                 "Reading A from My context",
                 "Reading B from My context",
                 "Reading C from My context",
-                "Dereferencing from My context",
+                "Dereferencing C_ref from My context",
             ]
         );
     });

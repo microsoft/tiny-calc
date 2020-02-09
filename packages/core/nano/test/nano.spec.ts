@@ -10,11 +10,11 @@ import {
     DispatchPattern,
     errors,
     makeError,
-    Pending,
     Primitive,
     TypeMap,
     TypeName
 } from "../src/index";
+import { createObjFromMap, createReadMap, createRefMap } from "./util/objectTypes";
 import * as assert from "assert";
 import "mocha";
 
@@ -49,18 +49,6 @@ export const astParse = createParser(astSink, createDiagnosticErrorHandler());
 
 const sum: CalcFun<unknown> = <O>(_rt: any, _origin: O, args: any[]) => args.reduce((prev, now) => prev + now, 0);
 const prod: CalcFun<unknown> = <O>(_rt: any, _origin: O, args: any[]) => args.reduce((prev, now) => prev * now, 1);
-
-function createRefMap(value: CalcValue<unknown>): TypeMap<CalcObj<unknown>, unknown> {
-    return { [TypeName.Reference]: { dereference: () => value } }
-}
-
-function createReadMap(read: (prop: string) => CalcValue<unknown> | Pending<CalcValue<unknown>>): TypeMap<CalcObj<unknown>, unknown> {
-    return { [TypeName.Readable]: { read: (_v, p, _c) => read(p) } }
-}
-
-function createObjFromMap(map: TypeMap<CalcObj<unknown>, unknown>): CalcObj<unknown> {
-    return { typeMap: () => map, serialise: () => "TODO" }
-}
 
 const currencyCompare: ComparableType<Currency, unknown> = {
     compare(pattern: DispatchPattern, l: Primitive | Currency, r: Primitive | Currency): number | CalcObj<unknown> {
@@ -153,9 +141,9 @@ class Currency implements CalcObj<unknown> {
 
 }
 
-const a1 = createObjFromMap(Object.assign(createReadMap(_ => 0), createRefMap(sum)));
-const something = createObjFromMap(createReadMap(prop => prop === "Property A" ? "A" : "B"));
-const testContext = createObjFromMap(createReadMap(
+const a1 = createObjFromMap("A1", Object.assign(createReadMap(_ => 0), createRefMap(sum)));
+const something = createObjFromMap("Something", createReadMap(prop => prop === "Property A" ? "A" : "B"));
+const testContext = createObjFromMap("root", createReadMap(
     (message: string) => {
         switch (message) {
             case "Foo": return 3;
