@@ -15,9 +15,9 @@ import {
 
 import { SyntaxKind } from "./parser"
 
-const errorMap: TypeMap<CalcObj<unknown>, unknown> = { [TypeName.Error]: { enrich: value => value } };
+const errorMap: TypeMap<CalcObj<any>, any> = { [TypeName.Error]: { enrich: value => value } };
 
-export function makeError(message: string): CalcObj<unknown> {
+export function makeError(message: string): CalcObj<any> {
     return { typeMap: () => errorMap, serialise: () => message };
 }
 
@@ -207,9 +207,9 @@ class CoreRuntime implements Runtime<Delay> {
     }
 }
 
-type NumberLike = number | TypedCalcObj<TypeName.Numeric, unknown>;
+type NumberLike = number | TypedCalcObj<TypeName.Numeric, any>;
 type CoercibleNumberLike = boolean | string | NumberLike;
-type ComparableLike = Primitive | TypedCalcObj<TypeName.Comparable, unknown>;
+type ComparableLike = Primitive | TypedCalcObj<TypeName.Comparable, any>;
 
 const checkNum: CheckFn<NumberLike> = (_context, value, _pos): value is NumberLike => {
     switch (typeof value) {
@@ -219,8 +219,8 @@ const checkNum: CheckFn<NumberLike> = (_context, value, _pos): value is NumberLi
     }
 }
 
-function createPrimObjCheck<T extends TypeName>(name: T): CheckFn<Primitive | TypedCalcObj<T, unknown>> {
-    return (_context, value, _pos): value is Primitive | TypedCalcObj<T, unknown> => {
+function createPrimObjCheck<T extends TypeName>(name: T): CheckFn<Primitive | TypedCalcObj<T, any>> {
+    return (_context, value, _pos): value is Primitive | TypedCalcObj<T, any> => {
         switch (typeof value) {
             case "number":
             case "boolean":
@@ -234,7 +234,7 @@ function createPrimObjCheck<T extends TypeName>(name: T): CheckFn<Primitive | Ty
 const checkNumericOrPrim = createPrimObjCheck(TypeName.Numeric);
 const checkComparable = createPrimObjCheck(TypeName.Comparable);
 
-const basicErrorHandler = <C>(_context: unknown, value: CalcValue<C>) => {
+const basicErrorHandler = <C>(_context: C, value: CalcValue<C>) => {
     if (typeof value === "object" && value.typeMap()[TypeName.Error]) {
         return value;
     }
@@ -242,8 +242,8 @@ const basicErrorHandler = <C>(_context: unknown, value: CalcValue<C>) => {
 }
 
 function createNumericBinOp(
-    fnPrim: (l: Primitive, r: Primitive) => CalcValue<unknown>,
-    fnDispatch: Exclude<keyof NumericType<unknown, unknown>, 'negate'>
+    fnPrim: (l: Primitive, r: Primitive) => CalcValue<any>,
+    fnDispatch: Exclude<keyof NumericType<any, any>, 'negate'>
 ) {
     const op: TypedBinOp<CoercibleNumberLike> = {
         check: checkNumericOrPrim,
@@ -275,8 +275,8 @@ function createNumericBinOp(
 }
 
 function createNumericUnaryOp(
-    fnPrim: (l: number) => CalcValue<unknown>,
-    fnDispatch: Extract<keyof NumericType<unknown, unknown>, 'negate'> | undefined
+    fnPrim: (l: number) => CalcValue<any>,
+    fnDispatch: Extract<keyof NumericType<any, any>, 'negate'> | undefined
 ) {
     const op: TypedUnaryOp<NumberLike> = {
         check: checkNum,
@@ -294,7 +294,7 @@ function createNumericUnaryOp(
 }
 
 function createComparableBinOp(
-    fnPrim: (l: Primitive, r: Primitive) => CalcValue<unknown>,
+    fnPrim: (l: Primitive, r: Primitive) => CalcValue<any>,
     fnDispatch: <C>(result: number | CalcObj<C>) => CalcValue<C>
 ) {
     const op: TypedBinOp<ComparableLike> = {
@@ -321,16 +321,46 @@ function createComparableBinOp(
 }
 
 export const binOps = {
-    [SyntaxKind.PlusToken]: createNumericBinOp((x, y) => <any>x + <any>y, "plus"),
-    [SyntaxKind.MinusToken]: createNumericBinOp((x, y) => <any>x - <any>y, "minus"),
-    [SyntaxKind.AsteriskToken]: createNumericBinOp((x, y) => <any>x * <any>y, "mult"),
-    [SyntaxKind.SlashToken]: createNumericBinOp((x: any, y: any) => y === 0 ? errors.div0 : x / y, "div"),
-    [SyntaxKind.EqualsToken]: createComparableBinOp((x: any, y: any) => x === y, result => typeof result === "object" ? result : result === 0),
-    [SyntaxKind.LessThanToken]: createComparableBinOp((x: any, y: any) => x < y, result => typeof result === "object" ? result : result < 0),
-    [SyntaxKind.GreaterThanToken]: createComparableBinOp((x: any, y: any) => x > y, result => typeof result === "object" ? result : result > 0),
-    [SyntaxKind.LessThanEqualsToken]: createComparableBinOp((x: any, y: any) => x <= y, result => typeof result === "object" ? result : result <= 0),
-    [SyntaxKind.GreaterThanEqualsToken]: createComparableBinOp((x: any, y: any) => x >= y, result => typeof result === "object" ? result : result >= 0),
-    [SyntaxKind.NotEqualsToken]: createComparableBinOp((x: any, y: any) => x !== y, result => typeof result === "object" ? result : result !== 0),
+    [SyntaxKind.PlusToken]: createNumericBinOp(
+        (x, y) => <any>x + <any>y,
+        "plus"
+    ) as TypedBinOp<CoercibleNumberLike | ComparableLike>,
+    [SyntaxKind.MinusToken]: createNumericBinOp(
+        (x, y) => <any>x - <any>y,
+        "minus"
+    ) as TypedBinOp<CoercibleNumberLike | ComparableLike>,
+    [SyntaxKind.AsteriskToken]: createNumericBinOp(
+        (x, y) => <any>x * <any>y,
+        "mult"
+    ) as TypedBinOp<CoercibleNumberLike | ComparableLike>,
+    [SyntaxKind.SlashToken]: createNumericBinOp(
+        (x: any, y: any) => y === 0 ? errors.div0 : x / y,
+        "div"
+    ) as TypedBinOp<CoercibleNumberLike | ComparableLike>,
+    [SyntaxKind.EqualsToken]: createComparableBinOp(
+        (x: any, y: any) => x === y,
+        result => typeof result === "object" ? result : result === 0
+    ) as TypedBinOp<CoercibleNumberLike | ComparableLike>,
+    [SyntaxKind.LessThanToken]: createComparableBinOp(
+        (x: any, y: any) => x < y,
+        result => typeof result === "object" ? result : result < 0
+    ) as TypedBinOp<CoercibleNumberLike | ComparableLike>,
+    [SyntaxKind.GreaterThanToken]: createComparableBinOp(
+        (x: any, y: any) => x > y,
+        result => typeof result === "object" ? result : result > 0
+    ) as TypedBinOp<CoercibleNumberLike | ComparableLike>,
+    [SyntaxKind.LessThanEqualsToken]: createComparableBinOp(
+        (x: any, y: any) => x <= y,
+        result => typeof result === "object" ? result : result <= 0
+    ) as TypedBinOp<CoercibleNumberLike | ComparableLike>,
+    [SyntaxKind.GreaterThanEqualsToken]: createComparableBinOp(
+        (x: any, y: any) => x >= y,
+        result => typeof result === "object" ? result : result >= 0
+    ) as TypedBinOp<CoercibleNumberLike | ComparableLike>,
+    [SyntaxKind.NotEqualsToken]: createComparableBinOp(
+        (x: any, y: any) => x !== y,
+        result => typeof result === "object" ? result : result !== 0
+    ) as TypedBinOp<CoercibleNumberLike | ComparableLike>,
 } as const;
 
 

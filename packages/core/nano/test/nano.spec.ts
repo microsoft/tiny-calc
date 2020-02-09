@@ -2,7 +2,19 @@ import { parseFormula } from "../src/ast";
 import { createDiagnosticErrorHandler, createParser, SyntaxKind, ExpAlgebra } from "../src/parser";
 import { compile } from "../src/compiler";
 import { interpret } from "../src/interpreter";
-import { CalcValue, CalcObj, CalcFun, ComparableType, errors, makeError, NumericType, Primitive, ReadableType, ReferenceType, TypeMap, TypeName } from "../src/index";
+import {
+    CalcValue,
+    CalcObj,
+    CalcFun,
+    ComparableType,
+    errors,
+    makeError,
+    NumericType,
+    Pending,
+    Primitive,
+    TypeMap,
+    TypeName
+} from "../src/index";
 import * as assert from "assert";
 import "mocha";
 
@@ -39,40 +51,19 @@ const sum: CalcFun<unknown> = <O>(_rt: any, _origin: O, args: any[]) => args.red
 const prod: CalcFun<unknown> = <O>(_rt: any, _origin: O, args: any[]) => args.reduce((prev, now) => prev * now, 1);
 
 function createRefMap(value: CalcValue<unknown>): TypeMap<CalcObj<unknown>, unknown> {
-    return {
-        [TypeName.Reference]: {
-            dereference: () => value
-        }
-    }
+    return { [TypeName.Reference]: { dereference: () => value } }
 }
 
-function createReadMap(read: (prop: string) => CalcValue<unknown>): TypeMap<CalcObj<unknown>, unknown> {
-    return {
-        [TypeName.Readable]: {
-            read: (_v, p, _c) => read(p),
-        }
-    }
+function createReadMap(read: (prop: string) => CalcValue<unknown> | Pending<CalcValue<unknown>>): TypeMap<CalcObj<unknown>, unknown> {
+    return { [TypeName.Readable]: { read: (_v, p, _c) => read(p) } }
 }
 
-function createObjFromMap(map: TypeMap<CalcObj<unknown>, unknown>): CalcObj<unknown>  {
+function createObjFromMap(map: TypeMap<CalcObj<unknown>, unknown>): CalcObj<unknown> {
     return { typeMap: () => map, serialise: () => "TODO" }
 }
 
-class Currency implements CalcObj<unknown>, NumericType<Currency, unknown>, ComparableType<Currency, unknown> {
-    constructor(public readonly value: number, public readonly currency: string) { }
-    
-    serialise() {
-        return `${this.currency}${this.value.toString()}`;
-    }
-    
-    typeMap() {
-        return {
-            [TypeName.Numeric]: this,
-            [TypeName.Comparable]: this,
-        }
-    }
-
-    public compare(pattern: -1 | 0 | 1, l: Primitive | Currency, r: Primitive | Currency): number | CalcObj<unknown> {
+const currencyCompare: ComparableType<Currency, unknown> = {
+    compare(pattern: -1 | 0 | 1, l: Primitive | Currency, r: Primitive | Currency): number | CalcObj<unknown> {
         switch (pattern) {
             case -1:
             case 1:
@@ -81,18 +72,33 @@ class Currency implements CalcObj<unknown>, NumericType<Currency, unknown>, Comp
                 return (<Currency>l).value - (<Currency>r).value;
         }
     }
+}
+
+class Currency implements CalcObj<unknown>, NumericType<Currency, unknown> {
+    constructor(public readonly value: number, public readonly currency: string) { }
+
+    serialise() {
+        return `${this.currency}${this.value.toString()}`;
+    }
+
+    typeMap(): TypeMap<this, unknown> {
+        return {
+            [TypeName.Numeric]: this,
+            [TypeName.Comparable]: currencyCompare
+        }
+    }
 
     plus(pattern: -1 | 0 | 1, l: number | Currency, r: number | Currency): number | CalcObj<unknown> {
         switch (pattern) {
             case -1:
-                return new Currency((<Currency>l).value + <number>r, (<Currency>l).currency) as any;
-                
+                return new Currency((<Currency>l).value + <number>r, (<Currency>l).currency);
+
             case 1:
-                return new Currency(<number>l + (<Currency>r).value, (<Currency>r).currency) as any;
+                return new Currency(<number>l + (<Currency>r).value, (<Currency>r).currency);
 
             case 0:
                 if ((<Currency>l).currency === (<Currency>r).currency) {
-                    return new Currency((<Currency>l).value + (<Currency>r).value, (<Currency>l).currency) as any;
+                    return new Currency((<Currency>l).value + (<Currency>r).value, (<Currency>l).currency);
                 }
                 return makeError("Incorrect currency addition!");
 
@@ -102,37 +108,37 @@ class Currency implements CalcObj<unknown>, NumericType<Currency, unknown>, Comp
     minus(pattern: -1 | 0 | 1, l: number | Currency, r: number | Currency): number | CalcObj<unknown> {
         switch (pattern) {
             case -1:
-                return new Currency((<Currency>l).value - <number>r, (<Currency>l).currency) as any;
-                
+                return new Currency((<Currency>l).value - <number>r, (<Currency>l).currency);
+
             case 1:
-                return new Currency(<number>l - (<Currency>r).value, (<Currency>r).currency) as any;
+                return new Currency(<number>l - (<Currency>r).value, (<Currency>r).currency);
 
             case 0:
                 if ((<Currency>l).currency === (<Currency>r).currency) {
-                    return new Currency((<Currency>l).value - (<Currency>r).value, (<Currency>l).currency) as any;
+                    return new Currency((<Currency>l).value - (<Currency>r).value, (<Currency>l).currency);
                 }
                 return makeError("Incorrect currency addition!");
 
         }
     }
-    
+
     mult(pattern: -1 | 0 | 1, l: number | Currency, r: number | Currency): number | CalcObj<unknown> {
         switch (pattern) {
             case -1:
-                return new Currency((<Currency>l).value * <number>r, (<Currency>l).currency) as any;
+                return new Currency((<Currency>l).value * <number>r, (<Currency>l).currency);
             case 1:
-                return new Currency(<number>l * (<Currency>r).value, (<Currency>r).currency) as any;
+                return new Currency(<number>l * (<Currency>r).value, (<Currency>r).currency);
             case 0:
-                return new Currency((<Currency>l).value * (<Currency>r).value, (<Currency>l).currency) as any;
+                return new Currency((<Currency>l).value * (<Currency>r).value, (<Currency>l).currency);
         }
     }
-    
+
     div(pattern: -1 | 0 | 1, l: number | Currency, r: number | Currency): number | CalcObj<unknown> {
         switch (pattern) {
             case -1:
                 return new Currency((<Currency>l).value / <number>r, (<Currency>l).currency);
             case 1:
-                return new Currency(<number>l / (<Currency>r).value, (<Currency>r).currency) as any;
+                return new Currency(<number>l / (<Currency>r).value, (<Currency>r).currency);
             case 0:
                 if ((<Currency>l).currency === (<Currency>r).currency) {
                     return (<Currency>l).value / (<Currency>r).value;
@@ -140,23 +146,23 @@ class Currency implements CalcObj<unknown>, NumericType<Currency, unknown>, Comp
                 return makeError("Incorrect currency addition!");
         }
     }
-    
+
     negate(value: Currency): CalcObj<unknown> {
-        return new Currency(-value.value, value.currency) as any;
+        return new Currency(-value.value, value.currency);
     }
-    
+
 }
 
-const a1 = createObjFromMap(Object.assign(createReadMap( _ => 0), createRefMap(sum)));
-const something = createObjFromMap(createReadMap(prop => prop === "Property A" ? "A" : "B" ));
+const a1 = createObjFromMap(Object.assign(createReadMap(_ => 0), createRefMap(sum)));
+const something = createObjFromMap(createReadMap(prop => prop === "Property A" ? "A" : "B"));
 const testContext = createObjFromMap(createReadMap(
     (message: string) => {
         switch (message) {
             case "Foo": return 3;
             case "I'm a property with a # of characters": return 100;
             case "Bar": return 5;
-            case "Baz": return { kind: "Pending" };
-            case "Qux": return { kind: "Pending" };
+            case "Baz": return { kind: "Pending" as const };
+            case "Qux": return { kind: "Pending" as const };
             case "A1": return a1;
             case "Something": return something;
             case "Sum": return sum;

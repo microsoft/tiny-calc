@@ -17,12 +17,12 @@ export interface TypeMap<A, C> {
 export type Primitive = boolean | number | string;
 
 export interface CalcObj<C> {
-    typeMap: () => TypeMap<this, C>;
-    serialise: (context: C) => string;
+    typeMap(): TypeMap<this, C>;
+    serialise(context: C): string;
 }
 
 export interface TypedCalcObj<T extends TypeName, C> {
-    typeMap: () => Required<Pick<TypeMap<this, C>, T>>;
+    typeMap: () => Pick<Required<TypeMap<this, C>>, T>;
     serialise: (context: C) => string;
 }
 
@@ -34,9 +34,9 @@ export type CalcValue<C> = Primitive | CalcObj<C> | CalcFun<C>;
 export type DataValue<C> = Primitive | CalcObj<C>;
 
 export interface ComparableType<A, C> {
-    compare(pattern: -1, l: A, r: Primitive, context: C): number | CalcObj<unknown>;
-    compare(pattern: 0, l: A, r: A, context: C): number | CalcObj<unknown>;
-    compare(pattern: 1, l: Primitive, r: A, context: C): number | CalcObj<unknown>;
+    compare(pattern: -1, l: A, r: Primitive, context: C): number | CalcObj<C>;
+    compare(pattern: 0, l: A, r: A, context: C): number | CalcObj<C>;
+    compare(pattern: 1, l: Primitive, r: A, context: C): number | CalcObj<C>;
 }
 
 export interface ErrorType<A, C> {
@@ -75,7 +75,6 @@ export interface ReadableType<A, C> {
 export interface ReferenceType<A, C> {
     dereference(value: A, context: C): CalcValue<C> | Pending<CalcValue<C>>;
 }
-
 
 export type CheckFn<A> = <C>(context: C, value: DataValue<C>, pos: number) => value is DataValue<C> & A;
 export type BlameFn = <C>(context: C, value: CalcValue<C>, pos: number) => CalcValue<C>;

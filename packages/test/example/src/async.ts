@@ -2,9 +2,8 @@ const fetch = require("node-fetch");
 
 import {
     Pending,
-    ReadableType,
-    ReferenceType,
-    PrimordialType,
+    TypeMap,
+    TypeName,
     isDelayed,
     CalcObj,
     CalcValue,
@@ -19,40 +18,29 @@ interface PendingPromise extends Pending<CalcObj<unknown>> {
     promise: Promise<void>;
 }
 
-function createReadable(read: (prop: string) => Pending<CalcValue<unknown>> | CalcValue<unknown>): CalcObj<unknown> & ReadableType<unknown> {
-    const val: CalcObj<unknown> & ReadableType<unknown> = {
-        acquire: t => (t === PrimordialType.Readable ? val : undefined) as any,
-        serialise: () => "TODO",
-        read
-    }
-    return val;
+function createRefMap(getter: () => CalcValue<unknown> | Pending<CalcValue<unknown>>): TypeMap<CalcObj<unknown>, unknown> {
+    return { [TypeName.Reference]: { dereference: getter } }
 }
 
-function createRef(dereference: () => Pending<CalcValue<unknown>> | CalcValue<unknown>): CalcObj<unknown> & ReferenceType<unknown> {
-    const val: CalcObj<unknown> & ReferenceType<unknown> = {
-        acquire: t => (t === PrimordialType.Reference ? val : undefined) as any,
-        serialise: () => "TODO",
-        dereference
-    }
-    return val;
+function createReadMap(read: (prop: string) => CalcValue<unknown> | Pending<CalcValue<unknown>>): TypeMap<CalcObj<unknown>, unknown> {
+    return { [TypeName.Readable]: { read: (_v, p, _c) => read(p) } }
 }
 
-function createReadableFromDict(dict: Record<string, any>): CalcObj<unknown> & ReadableType<unknown> {
-    const val: CalcObj<unknown> & ReadableType<unknown> = {
-        acquire: t => (t === PrimordialType.Readable ? val : undefined) as any,
-        serialise: () => "TODO",
-        read: prop => {
-            const val = dict[prop];
-            if (val === undefined) {
-                return "#MISSING!";
-            }
-            switch (typeof val) {
-                case "object": return createReadableFromDict(val);
-                default: return val;
-            }
+function createObjFromMap(map: TypeMap<CalcObj<unknown>, unknown>): CalcObj<unknown> {
+    return { typeMap: () => map, serialise: () => "TODO" }
+}
+
+function createReadableFromDict(dict: Record<string, any>): CalcObj<unknown> {
+    return createObjFromMap(createReadMap(prop => {
+        const val = dict[prop];
+        if (val === undefined) {
+            return "#MISSING!";
         }
-    }
-    return val;
+        switch (typeof val) {
+            case "object": return createReadableFromDict(val);
+            default: return val;
+        }
+    }));
 }
 
 
@@ -76,10 +64,10 @@ const read = (prop: string) => {
         };
         return cache[prop] = obj;
     }
-    return createRef(pending);
+    return createObjFromMap(createRefMap(pending));
 }
 
-const delayedCalcValue: CalcObj<unknown> = createReadable(read);
+const delayedCalcValue: CalcObj<unknown> = createObjFromMap(createReadMap(read));
 
 
 const f = parseFormula(`Q978185.labels.en.value + ' was last modified ' + Q978185.modified + '. ' +
@@ -92,12 +80,12 @@ const g = parseFormula("Q5")[1];
  * Care needs to be taken when using promise loops as they have a
  * tendency to leak memory.
  */
-async function runFormula(f: FormulaNode, attempts: number): Promise<CalcValue<undefined>> {
-    let [pendings, value] = interpret(undefined, delayedCalcValue, f);
+async function runFormula(f: FormulaNode, attempts: number): Promise<CalcValue<unknown>> {
+    let [pendings, value] = interpret(undefined as unknown, delayedCalcValue, f);
     while (isDelayed(value)) {
         if (attempts > 0) {
             await Promise.all(pendings.map((p: any) => p.promise));
-            [pendings, value] = interpret(undefined, delayedCalcValue, f)
+            [pendings, value] = interpret(undefined as unknown, delayedCalcValue, f)
             attempts--;
             continue;
         }
@@ -108,8 +96,8 @@ async function runFormula(f: FormulaNode, attempts: number): Promise<CalcValue<u
 
 console.time('go');
 
-const cb = (x: CalcValue<undefined>) => { console.timeEnd('go'); console.log(x) };
-const cb2 = (x: CalcValue<undefined>) => { console.timeEnd('go2'); console.log(x) };
+const cb = (x: CalcValue<unknown>) => { console.timeEnd('go'); console.log(x) };
+const cb2 = (x: CalcValue<unknown>) => { console.timeEnd('go2'); console.log(x) };
 runFormula(f, 5)
     .then(cb).catch(cb)
     .then(() => setTimeout(() => { return console.time('go2'), runFormula(g, 5).then(cb2).catch(cb2) }, 5000));

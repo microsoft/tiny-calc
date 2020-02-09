@@ -5,7 +5,8 @@ import {
     Formula,
     Primitive,
     ReadableType,
-    PrimordialType,
+    TypeMap,
+    TypeName,
     CalcFun,
     CalcObj,
     CalcValue,
@@ -55,12 +56,18 @@ function createPending(v: Pending<Value>): Pending<CalcValue<FormulaHost>> {
     return { kind: "Pending", estimate: v.estimate }
 }
 
-function createCalcValue(v: Producer): CalcObj<FormulaHost> & ReadableType<FormulaHost> {
+type ReadableCV = CalcObj<FormulaHost> & ReadableType<CalcObj<FormulaHost>, FormulaHost>;
+
+function createCalcValue(v: Producer): ReadableCV {
     const cache: Record<string, CalcValue<FormulaHost>> = {};
-    const calcVal: CalcObj<FormulaHost> & ReadableType<FormulaHost> = {
-        acquire: t => (t === PrimordialType.Readable ? calcVal : undefined) as any,
+    const calcVal: ReadableCV = {
+        typeMap(): TypeMap<ReadableCV, FormulaHost> {
+            return {
+                [TypeName.Readable]: this,
+            }
+        },
         serialise: () => "{ RECORD }",
-        read: (message: string, consumer: IConsumer<Record<string, Value>>) => {
+        read: (_value: CalcObj<FormulaHost>, message: string, consumer: IConsumer<Record<string, Value>>) => {
             if (cache[message] !== undefined) {
                 return cache[message];
             }
