@@ -2,7 +2,7 @@ import { parseFormula } from "../src/ast";
 import { createDiagnosticErrorHandler, createParser, SyntaxKind, ExpAlgebra } from "../src/parser";
 import { compile } from "../src/compiler";
 import { interpret } from "../src/interpreter";
-import { CalcValue, CalcObj, CalcFun, ComparableType, NumericType, ReadableType, ReferenceType, PrimordialType, Primitive, errors } from "../src/index";
+import { CalcValue, CalcObj, CalcFun, ComparableType, errors, makeError, NumericType, Primitive, ReadableType, ReferenceType, TypeMap, TypeName } from "../src/index";
 import * as assert from "assert";
 import "mocha";
 
@@ -38,119 +38,119 @@ export const astParse = createParser(astSink, createDiagnosticErrorHandler());
 const sum: CalcFun<unknown> = <O>(_rt: any, _origin: O, args: any[]) => args.reduce((prev, now) => prev + now, 0);
 const prod: CalcFun<unknown> = <O>(_rt: any, _origin: O, args: any[]) => args.reduce((prev, now) => prev * now, 1);
 
-function createReadableRef(value: CalcValue<unknown>, read: (prop: string) => CalcValue<unknown>): CalcObj<unknown> & ReferenceType<unknown> & ReadableType<unknown> {
-    const val: CalcObj<unknown> & ReferenceType<unknown> & ReadableType<unknown> = {
-        acquire: t => {
-            if ((t & (PrimordialType.Readable | PrimordialType.Reference)) !== 0) {
-                return val as any;
-            }
-            return undefined;
-        },
-        serialise: () => "TODO",
-        read,
-        dereference: () => value,
+function createRefMap(value: CalcValue<unknown>): TypeMap<CalcObj<unknown>, unknown> {
+    return {
+        [TypeName.Reference]: {
+            dereference: () => value
+        }
     }
-    return val;
 }
 
-function createReadable(read: (prop: string) => CalcValue<unknown>): CalcObj<unknown> & ReadableType<unknown> {
-    const val: CalcObj<unknown> & ReadableType<unknown> = {
-        acquire: t => (t === PrimordialType.Readable ? val : undefined) as any,
-        serialise: () => "TODO",
-        read
+function createReadMap(read: (prop: string) => CalcValue<unknown>): TypeMap<CalcObj<unknown>, unknown> {
+    return {
+        [TypeName.Readable]: {
+            read: (_v, p, _c) => read(p),
+        }
     }
-    return val;
 }
 
-class Currency implements CalcObj<unknown>, NumericType<unknown>, ComparableType<unknown> {
+function createObjFromMap(map: TypeMap<CalcObj<unknown>, unknown>): CalcObj<unknown>  {
+    return { typeMap: () => map, serialise: () => "TODO" }
+}
+
+class Currency implements CalcObj<unknown>, NumericType<Currency, unknown>, ComparableType<Currency, unknown> {
     constructor(public readonly value: number, public readonly currency: string) { }
     
     serialise() {
         return `${this.currency}${this.value.toString()}`;
     }
     
-    acquire(t: PrimordialType) {
-        if ((t & (PrimordialType.Numeric | PrimordialType.Comparable)) !== 0) {
-            return this as any;
+    typeMap() {
+        return {
+            [TypeName.Numeric]: this,
+            [TypeName.Comparable]: this,
         }
-        return undefined;
     }
 
-    compare(left: boolean, other: ComparableType<unknown> | Primitive): number | CalcObj<unknown> {
-        if (other instanceof Currency) {
-            return left ? this.value - other.value : other.value - this.value;
+    public compare(pattern: -1 | 0 | 1, l: Primitive | Currency, r: Primitive | Currency): number | CalcObj<unknown> {
+        switch (pattern) {
+            case -1:
+            case 1:
+                return errors.typeError;
+            case 0:
+                return (<Currency>l).value - (<Currency>r).value;
         }
-        return errors.typeError;
-
     }
 
-    plus(left: boolean, other: NumericType<unknown> | number): CalcValue<unknown> {
-        if (typeof other === "number") {
-            return new Currency(this.value + other, this.currency);
+    plus(pattern: -1 | 0 | 1, l: number | Currency, r: number | Currency): number | CalcObj<unknown> {
+        switch (pattern) {
+            case -1:
+                return new Currency((<Currency>l).value + <number>r, (<Currency>l).currency) as any;
+                
+            case 1:
+                return new Currency(<number>l + (<Currency>r).value, (<Currency>r).currency) as any;
+
+            case 0:
+                if ((<Currency>l).currency === (<Currency>r).currency) {
+                    return new Currency((<Currency>l).value + (<Currency>r).value, (<Currency>l).currency) as any;
+                }
+                return makeError("Incorrect currency addition!");
+
         }
-        if (other instanceof Currency) {
-            if (other.currency === this.currency) {
-                return new Currency(this.value + other.value, this.currency);
-            }
-            return "Incorrect currency addition!";
+    }
+
+    minus(pattern: -1 | 0 | 1, l: number | Currency, r: number | Currency): number | CalcObj<unknown> {
+        switch (pattern) {
+            case -1:
+                return new Currency((<Currency>l).value - <number>r, (<Currency>l).currency) as any;
+                
+            case 1:
+                return new Currency(<number>l - (<Currency>r).value, (<Currency>r).currency) as any;
+
+            case 0:
+                if ((<Currency>l).currency === (<Currency>r).currency) {
+                    return new Currency((<Currency>l).value - (<Currency>r).value, (<Currency>l).currency) as any;
+                }
+                return makeError("Incorrect currency addition!");
+
         }
-        return other.plus(!left, this.value, undefined);
-        
     }
     
-    minus(left: boolean, other: NumericType<unknown> | number): CalcValue<unknown> {
-        if (typeof other === "number") {
-            const val = left ? this.value - other : other - this.value;
-            return new Currency(val, this.currency);
+    mult(pattern: -1 | 0 | 1, l: number | Currency, r: number | Currency): number | CalcObj<unknown> {
+        switch (pattern) {
+            case -1:
+                return new Currency((<Currency>l).value * <number>r, (<Currency>l).currency) as any;
+            case 1:
+                return new Currency(<number>l * (<Currency>r).value, (<Currency>r).currency) as any;
+            case 0:
+                return new Currency((<Currency>l).value * (<Currency>r).value, (<Currency>l).currency) as any;
         }
-        if (other instanceof Currency) {
-            if (other.currency === this.currency) {
-                const val = left ? this.value - other.value : other.value - this.value;
-                return new Currency(val, this.currency);
-            }
-            return "Incorrect currency addition!";
-        }
-        return other.plus(!left, this.value, undefined);
     }
     
-    times(left: boolean, other: NumericType<unknown> | number): CalcValue<unknown> {
-        if (typeof other === "number") {
-            return new Currency(this.value * other, this.currency);
+    div(pattern: -1 | 0 | 1, l: number | Currency, r: number | Currency): number | CalcObj<unknown> {
+        switch (pattern) {
+            case -1:
+                return new Currency((<Currency>l).value / <number>r, (<Currency>l).currency);
+            case 1:
+                return new Currency(<number>l / (<Currency>r).value, (<Currency>r).currency) as any;
+            case 0:
+                if ((<Currency>l).currency === (<Currency>r).currency) {
+                    return (<Currency>l).value / (<Currency>r).value;
+                }
+                return makeError("Incorrect currency addition!");
         }
-        if (other instanceof Currency) {
-            return this.value * other.value;
-        }
-        return other.times(!left, this.value, undefined);
     }
     
-    div(left: boolean, other: NumericType<unknown> | number): CalcValue<unknown> {
-        if (typeof other === "number") {
-            // TODO: incorrect units
-            const val = left ? this.value / other : other / this.value;
-            return new Currency(val, this.currency);
-        }
-        if (other instanceof Currency) {
-            if (other.currency === this.currency) {
-                return left ? this.value / other.value : other.value / this.value;
-            }
-            return "Incorrect currency addition!";
-        }
-        return other.div(!left, this.value, undefined);
-    }
-    
-    negate(): CalcValue<unknown> {
-        return new Currency(-this.value, this.currency);
+    negate(value: Currency): CalcObj<unknown> {
+        return new Currency(-value.value, value.currency) as any;
     }
     
 }
 
-const a1 = createReadableRef(sum, _ => 0);
-const something = createReadable(prop => prop === "Property A" ? "A" : "B" );
-
-const testContext: CalcObj<unknown> & ReadableType<unknown> = {
-    acquire: t => (t === PrimordialType.Readable ? testContext : undefined) as any,
-    serialise: () => "TODO",
-    read: (message: string) => {
+const a1 = createObjFromMap(Object.assign(createReadMap( _ => 0), createRefMap(sum)));
+const something = createObjFromMap(createReadMap(prop => prop === "Property A" ? "A" : "B" ));
+const testContext = createObjFromMap(createReadMap(
+    (message: string) => {
         switch (message) {
             case "Foo": return 3;
             case "I'm a property with a # of characters": return 100;
@@ -166,8 +166,8 @@ const testContext: CalcObj<unknown> & ReadableType<unknown> = {
             case "300 GBP": return new Currency(300, "GBP");
             default: return 0;
         }
-    }
-}
+    }));
+
 
 describe("nano", () => {
     function parseTest(expression: string, expected: object, errorCount: number) {

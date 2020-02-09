@@ -1,14 +1,13 @@
-import { assert } from "./debug"
-
 import {
     CalcObj,
     CalcValue,
-    DataValue,
-    ErrorType,
+    CheckFn,
     NumericType,
     Pending,
     Primitive,
-    PrimordialType,
+    TypedCalcObj,
+    TypeMap,
+    TypeName,
     Runtime,
     TypedBinOp,
     TypedUnaryOp,
@@ -16,13 +15,10 @@ import {
 
 import { SyntaxKind } from "./parser"
 
-export function makeError(message: string): CalcObj<unknown> & ErrorType<unknown> {
-    const err: CalcObj<unknown> & ErrorType<unknown> = {
-        acquire: t => (t === PrimordialType.Error ? err : undefined) as any,
-        serialise: () => message,
-        enrich: () => err
-    }
-    return err;
+const errorMap: TypeMap<CalcObj<unknown>, unknown> = { [TypeName.Error]: { enrich: value => value } };
+
+export function makeError(message: string): CalcObj<unknown> {
+    return { typeMap: () => errorMap, serialise: () => message };
 }
 
 const appOnNonFunction = makeError("The target of an application must be a calc function.");
@@ -85,51 +81,51 @@ export function isDelayed<T>(x: T | Delay): x is Delay {
 }
 
 function tryDeref<C>(trace: Trace, context: C, receiver: CalcObj<C>) {
-    const ref = receiver.acquire(PrimordialType.Reference);
+    const ref = receiver.typeMap()[TypeName.Reference];
     if (ref) {
-        return trace(ref.dereference(context));
+        return trace(ref.dereference(receiver, context));
     }
     return undefined;
 }
 
-function typeCheckWithinRef<C>(trace: Trace, context: C, expected: PrimordialType, value: CalcObj<C>): Delayed<CalcValue<C>> {
-    if (value.acquire(expected)) {
-        return value;
-    }
-    const derefed = tryDeref(trace, context, value);
-    return derefed === undefined ? value : derefed;
-}
-
-function isWellTyped<C>(value: CalcValue<C>, trait: PrimordialType): value is DataValue<C> {
-    switch (typeof value) {
-        case "object": return value.acquire(trait) !== undefined;
-        default: return typeof value !== "function";
-    }
-}
+// function typeCheckWithinRef<C>(trace: Trace, context: C, check: (v: CalcObj<C>) => boolean, value: CalcObj<C>): Delayed<CalcValue<C>> {
+//     if (check(value)) {
+//         return value;
+//     }
+//     const derefed = tryDeref(trace, context, value);
+//     return derefed === undefined ? value : derefed;
+// }
+// 
+// function isWellTyped<C>(value: CalcValue<C>, trait: TypeName): value is DataValue<C> {
+//     switch (typeof value) {
+//         case "object": return value.typeMap()[trait] !== undefined;
+//         default: return typeof value !== "function";
+//     }
+// }
 
 function errorOr<C, F>(value: CalcObj<C>, fallback: F): CalcObj<C> | F {
-    return value.acquire(PrimordialType.Error) ? value : fallback;
+    return value.typeMap()[TypeName.Error] ? value : fallback;
 }
 
 class CoreRuntime implements Runtime<Delay> {
     constructor(public trace: Trace) { }
 
     read<C, F>(context: C, receiver: Delayed<CalcValue<C>>, prop: string, fallback: F): Delayed<CalcValue<C> | F> {
-        if (isDelayed(receiver)) { return delay }
+        if (isDelayed(receiver)) { return receiver; }
         if (typeof receiver === "object") {
-            let reader = receiver.acquire(PrimordialType.Readable);
+            let reader = receiver.typeMap()[TypeName.Readable];
             if (reader) {
-                return this.trace(reader.read(prop, context));
+                return this.trace(reader.read(receiver, prop, context));
             }
             const value = tryDeref(this.trace, context, receiver);
-            if (isDelayed(value)) { return delay }
+            if (isDelayed(value)) { return receiver; }
             if (value === undefined) {
                 return errorOr(receiver, fallback);
             }
             if (typeof value === "object") {
-                reader = value.acquire(PrimordialType.Readable);
+                reader = value.typeMap()[TypeName.Readable];
                 if (reader) {
-                    return this.trace(reader.read(prop, context));
+                    return this.trace(reader.read(value, prop, context));
                 }
                 return errorOr(value, fallback);
             }
@@ -141,41 +137,57 @@ class CoreRuntime implements Runtime<Delay> {
         return isDelayed(cond) ? cond : cont(cond);
     }
 
-    app1<C>(context: C, op: TypedUnaryOp, expr: Delayed<CalcValue<C>>): Delayed<CalcValue<C>> {
-        if (isDelayed(expr)) { return delay; }
-        let value: Delayed<CalcValue<C>> = expr;
+    app1<A, C>(context: C, op: TypedUnaryOp<A>, expr: Delayed<CalcValue<C>>): Delayed<CalcValue<C>> {
+        if (isDelayed(expr)) { return expr; }
+        let value: CalcValue<C> = expr;
         if (typeof value === "object") {
-            value = typeCheckWithinRef(this.trace, context, op.type, value);
-            if (isDelayed(value)) {
-                return value;
+            if (op.check(context, value, 0)) {
+                return op.fn(context, value);
             }
+            const redemption = tryDeref(this.trace, context, value);
+            if (redemption === undefined) {
+                return op.blame(context, value, 0);
+            }
+            if (isDelayed(redemption)) {
+                return redemption;
+            }
+            value = redemption;
         }
-        return isWellTyped(value, op.type) ? op.fn(context, value) : op.err(context, value);
+        if (typeof value === "function" || !op.check(context, value, 0)) {
+            return op.blame(context, value, 0);
+        }
+        return op.fn(context, value)
     }
 
-    app2<C>(context: C, op: TypedBinOp, l: Delayed<CalcValue<C>>, r: Delayed<CalcValue<C>>): Delayed<CalcValue<C>> {
-        let value1: Delayed<CalcValue<C>> = l;
-        let value2: Delayed<CalcValue<C>> = r;
-        if (!isDelayed(value1) && typeof value1 === "object") {
-            value1 = typeCheckWithinRef(this.trace, context, op.type1, value1);
+    app2<A, C>(context: C, op: TypedBinOp<A>, l: Delayed<CalcValue<C>>, r: Delayed<CalcValue<C>>): Delayed<CalcValue<C>> {
+        let value1: Delayed<CalcValue<C>> | undefined = l;
+        let value2: Delayed<CalcValue<C>> | undefined = r;
+        if (!isDelayed(value1) && typeof value1 === "object" && !op.check(context, value1, 0)) {
+            value1 = tryDeref(this.trace, context, value1);
         }
-        if (!isDelayed(value2) && typeof value2 === "object") {
-            value2 = typeCheckWithinRef(this.trace, context, op.type2, value2);
+        if (!isDelayed(value2) && typeof value2 === "object" && !op.check(context, value2, 1)) {
+            value2 = tryDeref(this.trace, context, value2);
         }
-        if (isDelayed(value1) || isDelayed(value2)) {
-            return delay;
+        if (isDelayed(value1)) { return value1; }
+        if (isDelayed(value2)) { return value2; }
+        if (value1 === undefined) {
+            // This cast is safe because value1 can only be undefined if !isDelayed(l) is true.
+            return op.blame(context, l as CalcValue<C>, 0);
         }
-        if (isWellTyped(value1, op.type1)) {
-            if (isWellTyped(value2, op.type2)) {
-                return op.fn(context, value1, value2);
-            }
-            return op.err(context, value2, 1);
+        if (value2 === undefined) {
+            return op.blame(context, r as CalcValue<C>, 1);
         }
-        return op.err(context, value1, 0);
+        if (typeof value1 === "function" || !op.check(context, value1, 0)) {
+            return op.blame(context, value1, 0);
+        }
+        if (typeof value2 === "function" || !op.check(context, value2, 1)) {
+            return op.blame(context, value2, 1);
+        }
+        return op.fn(context, value1, value2);
     }
 
     appN<C, F>(context: C, fn: Delayed<CalcValue<C>>, args: Delayed<CalcValue<C>>[], fallback: F): Delayed<CalcValue<C> | F> {
-        if (isDelayed(fn)) { return delay };
+        if (isDelayed(fn)) { return fn };
         let target: Delayed<CalcValue<C>> | undefined = fn;
         if (typeof fn === "object") {
             target = tryDeref(this.trace, context, fn);
@@ -183,9 +195,9 @@ class CoreRuntime implements Runtime<Delay> {
                 return errorOr(fn, fallback);
             }
         }
-        if (isDelayed(target)) { return delay; }
+        if (isDelayed(target)) { return target; }
         for (let i = 0; i < args.length; i += 1) {
-            if (isDelayed(args[i])) { return delay };
+            if (isDelayed(args[i])) { return args[i] };
         }
         switch (typeof target) {
             case "object": return errorOr(target, fallback);
@@ -195,8 +207,35 @@ class CoreRuntime implements Runtime<Delay> {
     }
 }
 
+type NumberLike = number | TypedCalcObj<TypeName.Numeric, unknown>;
+type CoercibleNumberLike = boolean | string | NumberLike;
+type ComparableLike = Primitive | TypedCalcObj<TypeName.Comparable, unknown>;
+
+const checkNum: CheckFn<NumberLike> = (_context, value, _pos): value is NumberLike => {
+    switch (typeof value) {
+        case "number": return true;
+        case "object": return value.typeMap()[TypeName.Numeric] !== undefined;
+        default: return false;
+    }
+}
+
+function createPrimObjCheck<T extends TypeName>(name: T): CheckFn<Primitive | TypedCalcObj<T, unknown>> {
+    return (_context, value, _pos): value is Primitive | TypedCalcObj<T, unknown> => {
+        switch (typeof value) {
+            case "number":
+            case "boolean":
+            case "string": return true;
+            case "object": return value.typeMap()[name] !== undefined;
+            default: return false;
+        }
+    }
+}
+
+const checkNumericOrPrim = createPrimObjCheck(TypeName.Numeric);
+const checkComparable = createPrimObjCheck(TypeName.Comparable);
+
 const basicErrorHandler = <C>(_context: unknown, value: CalcValue<C>) => {
-    if (typeof value === "object" && value.acquire(PrimordialType.Error)) {
+    if (typeof value === "object" && value.typeMap()[TypeName.Error]) {
         return value;
     }
     return typeError;
@@ -204,50 +243,52 @@ const basicErrorHandler = <C>(_context: unknown, value: CalcValue<C>) => {
 
 function createNumericBinOp(
     fnPrim: (l: Primitive, r: Primitive) => CalcValue<unknown>,
-    fnDispatch: Exclude<keyof NumericType<unknown>, 'negate'>
+    fnDispatch: Exclude<keyof NumericType<unknown, unknown>, 'negate'>
 ) {
-    const op: TypedBinOp = {
-        type1: PrimordialType.Numeric,
-        type2: PrimordialType.Numeric,
+    const op: TypedBinOp<CoercibleNumberLike> = {
+        check: checkNumericOrPrim,
         fn: (context, l, r) => {
-            const lTyped = typeof l === "object" ? l.acquire(PrimordialType.Numeric)! : l;
-            const rTyped = typeof r === "object" ? r.acquire(PrimordialType.Numeric)! : r;
-            assert(lTyped !== undefined, 'Failed typeCheck invariant');
-            assert(rTyped !== undefined, 'Failed typeCheck invariant');
-            if (typeof lTyped === "object") {
-                if (typeof rTyped === "object" || typeof rTyped === "number") {
-                    return lTyped[fnDispatch](/* left */ true, rTyped, context);
+            if (typeof l === "object") {
+                const m1 = l.typeMap()[TypeName.Numeric];
+                if (typeof r === "object") {
+                    // const m2 = r.typeMap()[TypeName.Numeric];
+                    // TODO: I need to check these maps are the same.
+                    return m1[fnDispatch](0, l, r, context);
+                }
+                if (typeof r === "number") {
+                    return m1[fnDispatch](-1, l, r, context);
                 }
                 return typeError;
             }
-            if (typeof rTyped === "object") {
-                if (typeof lTyped === "object" || typeof lTyped === "number") {
-                    return rTyped[fnDispatch](/* left */ false, lTyped, context);
+            if (typeof r === "object") {
+                const m2 = r.typeMap()[TypeName.Numeric];
+                if (typeof l === "number") {
+                    return m2[fnDispatch](1, l, r, context);
                 }
                 return typeError;
             }
-            // TODO: checking
-            return fnPrim(lTyped, rTyped);
+            return fnPrim(l, r);
         },
-        err: basicErrorHandler
+        blame: basicErrorHandler
     };
     return op;
 }
 
 function createNumericUnaryOp(
-    fnPrim: (l: Primitive) => CalcValue<unknown>,
-    fnDispatch: Extract<keyof NumericType<unknown>, 'negate'> | undefined
+    fnPrim: (l: number) => CalcValue<unknown>,
+    fnDispatch: Extract<keyof NumericType<unknown, unknown>, 'negate'> | undefined
 ) {
-    const op: TypedUnaryOp = {
-        type: PrimordialType.Numeric,
+    const op: TypedUnaryOp<NumberLike> = {
+        check: checkNum,
         fn: (context, value) => {
-            const vTyped = typeof value === "object" ? value.acquire(PrimordialType.Numeric)! : value;
-            assert(vTyped !== undefined, 'Failed typeCheck invariant');
-            return typeof vTyped === "object" ?
-                fnDispatch === undefined ? value : vTyped[fnDispatch](context)
-                : fnPrim(vTyped);
+            if (typeof value === "number") {
+                return fnPrim(value);
+            }
+            if (fnDispatch === undefined) { return value; }
+            const tm = value.typeMap()[TypeName.Numeric];
+            return tm[fnDispatch](value, context);
         },
-        err: basicErrorHandler
+        blame: basicErrorHandler
     };
     return op;
 }
@@ -256,30 +297,25 @@ function createComparableBinOp(
     fnPrim: (l: Primitive, r: Primitive) => CalcValue<unknown>,
     fnDispatch: <C>(result: number | CalcObj<C>) => CalcValue<C>
 ) {
-    const op: TypedBinOp = {
-        type1: PrimordialType.Comparable,
-        type2: PrimordialType.Comparable,
+    const op: TypedBinOp<ComparableLike> = {
+        check: checkComparable,
         fn: (context, l, r) => {
-            const lTyped = typeof l === "object" ? l.acquire(PrimordialType.Comparable)! : l;
-            const rTyped = typeof r === "object" ? r.acquire(PrimordialType.Comparable)! : r;
-            assert(lTyped !== undefined, 'Failed typeCheck invariant');
-            assert(rTyped !== undefined, 'Failed typeCheck invariant');
-            if (typeof lTyped === "object") {
-                if (typeof rTyped === "object" || typeof rTyped === "number") {
-                    return fnDispatch(lTyped.compare(/* left */ true, rTyped, context));
+            if (typeof l === "object") {
+                const m1 = l.typeMap()[TypeName.Comparable];
+                if (typeof r === "object") {
+                    // const m2 = r.typeMap()[TypeName.Numeric];
+                    // TODO: I need to check these maps are the same.
+                    return fnDispatch(m1.compare(0, l, r, context));
                 }
-                return typeError;
+                return fnDispatch(m1.compare(-1, l, r, context));
             }
-            if (typeof rTyped === "object") {
-                if (typeof lTyped === "object" || typeof lTyped === "number") {
-                    return fnDispatch(rTyped.compare(/* left */ false, lTyped, context));
-                }
-                return typeError;
+            if (typeof r === "object") {
+                const m2 = r.typeMap()[TypeName.Comparable];
+                return fnDispatch(m2.compare(1, l, r, context));
             }
-            // TODO: checking
-            return fnPrim(lTyped, rTyped);
+            return fnPrim(l, r);
         },
-        err: basicErrorHandler
+        blame: basicErrorHandler
     };
     return op;
 }
@@ -287,7 +323,7 @@ function createComparableBinOp(
 export const binOps = {
     [SyntaxKind.PlusToken]: createNumericBinOp((x, y) => <any>x + <any>y, "plus"),
     [SyntaxKind.MinusToken]: createNumericBinOp((x, y) => <any>x - <any>y, "minus"),
-    [SyntaxKind.AsteriskToken]: createNumericBinOp((x, y) => <any>x * <any>y, "times"),
+    [SyntaxKind.AsteriskToken]: createNumericBinOp((x, y) => <any>x * <any>y, "mult"),
     [SyntaxKind.SlashToken]: createNumericBinOp((x: any, y: any) => y === 0 ? errors.div0 : x / y, "div"),
     [SyntaxKind.EqualsToken]: createComparableBinOp((x: any, y: any) => x === y, result => typeof result === "object" ? result : result === 0),
     [SyntaxKind.LessThanToken]: createComparableBinOp((x: any, y: any) => x < y, result => typeof result === "object" ? result : result < 0),

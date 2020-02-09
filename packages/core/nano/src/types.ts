@@ -1,47 +1,66 @@
-export enum PrimordialType {
-    Numeric = 1, // 1 << 0
-    Error = 2, // 1 << 1
-    Comparable = 4, // 1 << 2
-    Readable = 16, // 1 << 3
-    Reference = 32 // 1 << 4
+export enum TypeName {
+    Comparable,
+    Error,
+    Numeric,
+    Readable,
+    Reference,
 }
 
-export interface TypeMap<C> {
-    [PrimordialType.Numeric]: NumericType<C>;
-    [PrimordialType.Error]: ErrorType<C>;
-    [PrimordialType.Comparable]: ComparableType<C>;
-    [PrimordialType.Readable]: ReadableType<C>;
-    [PrimordialType.Reference]: ReferenceType<C>;
+export interface TypeMap<A, C> {
+    [TypeName.Comparable]?: ComparableType<A, C>;
+    [TypeName.Error]?: ErrorType<A, C>;
+    [TypeName.Numeric]?: NumericType<A, C>;
+    [TypeName.Readable]?: ReadableType<A, C>;
+    [TypeName.Reference]?: ReferenceType<A, C>;
 }
 
 export type Primitive = boolean | number | string;
 
-export interface CalcObj<C = void> {
-    acquire: <T extends PrimordialType>(t: T) => TypeMap<C>[T] | undefined;
+export interface CalcObj<C> {
+    typeMap: () => TypeMap<this, C>;
     serialise: (context: C) => string;
 }
 
-export interface CalcFun<CLex = void> {
+export interface TypedCalcObj<T extends TypeName, C> {
+    typeMap: () => Required<Pick<TypeMap<this, C>, T>>;
+    serialise: (context: C) => string;
+}
+
+export interface CalcFun<CLex> {
     <CDyn extends CLex, Delay>(runtime: Runtime<Delay>, context: CDyn, args: CalcValue<CDyn>[]): CalcValue<CDyn> | Delay;
 }
 
-export type CalcValue<C = void> = Primitive | CalcObj<C> | CalcFun<C>;
-export type DataValue<C> = CalcObj<C> | Primitive;
+export type CalcValue<C> = Primitive | CalcObj<C> | CalcFun<C>;
+export type DataValue<C> = Primitive | CalcObj<C>;
 
-export interface ErrorType<C> {
-    enrich: (message: string) => ErrorType<C>
+export interface ComparableType<A, C> {
+    compare(pattern: -1, l: A, r: Primitive, context: C): number | CalcObj<unknown>;
+    compare(pattern: 0, l: A, r: A, context: C): number | CalcObj<unknown>;
+    compare(pattern: 1, l: Primitive, r: A, context: C): number | CalcObj<unknown>;
 }
 
-export interface NumericType<C> {
-    plus: (left: boolean, other: NumericType<C> | number, context: C) => CalcValue<C>;
-    minus: (left: boolean, other: NumericType<C> | number, context: C) => CalcValue<C>;
-    times: (left: boolean, other: NumericType<C> | number, context: C) => CalcValue<C>;
-    div: (left: boolean, other: NumericType<C> | number, context: C) => CalcValue<C>;
-    negate: (context: C) => CalcValue<C>;
+export interface ErrorType<A, C> {
+    enrich(value: A, message: string, context: C): A;
 }
 
-export interface ComparableType<C> {
-    compare: (left: boolean, other: ComparableType<C> | Primitive, context: C) => number | CalcObj<C>
+export interface NumericType<A, C> {
+    plus(pattern: -1, l: A, r: number, context: C): CalcValue<C>;
+    plus(pattern: 0, l: A, r: A, context: C): CalcValue<C>;
+    plus(pattern: 1, l: number, r: A, context: C): CalcValue<C>;
+
+    minus(pattern: -1, l: A, r: number, context: C): CalcValue<C>;
+    minus(pattern: 0, l: A, r: A, context: C): CalcValue<C>;
+    minus(pattern: 1, l: number, r: A, context: C): CalcValue<C>;
+
+    mult(pattern: -1, l: A, r: number, context: C): CalcValue<C>;
+    mult(pattern: 0, l: A, r: A, context: C): CalcValue<C>;
+    mult(pattern: 1, l: number, r: A, context: C): CalcValue<C>;
+
+    div(pattern: -1, l: A, r: number, context: C): CalcValue<C>;
+    div(pattern: 0, l: A, r: A, context: C): CalcValue<C>;
+    div(pattern: 1, l: number, r: A, context: C): CalcValue<C>;
+
+    negate(value: A, context: C): CalcValue<C>;
 }
 
 export interface Pending<T> {
@@ -49,37 +68,39 @@ export interface Pending<T> {
     estimate?: T;
 }
 
-export interface ReadableType<C> {
-    read: (property: string, context: C) => CalcValue<C> | Pending<CalcValue<C>>;
+export interface ReadableType<A, C> {
+    read(value: A, property: string, context: C): CalcValue<C> | Pending<CalcValue<C>>
 }
 
-export interface ReferenceType<C> {
-    dereference: (context: C) => CalcValue<C> | Pending<CalcValue<C>>;
+export interface ReferenceType<A, C> {
+    dereference(value: A, context: C): CalcValue<C> | Pending<CalcValue<C>>;
 }
 
-export interface TypedUnaryOp {
-    type: PrimordialType,
-    fn: <C>(context: C, expr: DataValue<C>) => CalcValue<C>,
-    err: <C>(context: C, expr: CalcValue<C>) => CalcValue<C>,
+
+export type CheckFn<A> = <C>(context: C, value: DataValue<C>, pos: number) => value is DataValue<C> & A;
+export type BlameFn = <C>(context: C, value: CalcValue<C>, pos: number) => CalcValue<C>;
+
+export interface TypedUnaryOp<A> {
+    check: CheckFn<A>;
+    fn: <C>(context: C, value: A) => CalcValue<C>,
+    blame: BlameFn;
 }
 
-export interface TypedBinOp {
-    type1: PrimordialType,
-    type2: PrimordialType,
-    fn: <C>(context: C, l: DataValue<C>, r: DataValue<C>) => CalcValue<C>,
-    err: <C>(context: C, expr: CalcValue<C>, pos: number) => CalcValue<C>,
+export interface TypedBinOp<A> {
+    check: CheckFn<A>;
+    fn: <C>(context: C, value1: A, value2: A) => CalcValue<C>,
+    blame: BlameFn;
 }
 
 /**
- * Expression runtime that implements collection and propagation
- * of potentially unavailable resources.
+ * Evaluation Runtime
  */
 export interface Runtime<Delay> {
-//    isDelayed: (x: unknown) => x is Delay;
+//    typeEquality: <A, C>(map1: TypeMap<A, C>, map2: TypeMap<unknown, C>) => map2 is TypeMap<A, C>;
     read: <C, F>(context: C, receiver: CalcValue<C> | Delay, prop: string, fallback: F) => CalcValue<C> | F | Delay;
     ifS: <T>(cond: boolean | Delay, cont: (cond: boolean) => T | Delay) => T | Delay;
-    app1: <C>(context: C, op: TypedUnaryOp, expr: CalcValue<C> | Delay ) => CalcValue<C> | Delay;
-    app2: <C>(context: C, op: TypedBinOp, l: CalcValue<C> | Delay, r: CalcValue<C> | Delay) => CalcValue<C> | Delay;
+    app1: <A, C>(context: C, op: TypedUnaryOp<A>, expr: CalcValue<C> | Delay ) => CalcValue<C> | Delay;
+    app2: <A, C>(context: C, op: TypedBinOp<A>, l: CalcValue<C> | Delay, r: CalcValue<C> | Delay) => CalcValue<C> | Delay;
     appN: <C, F>(context: C, fn: CalcValue<C> | Delay, args: (CalcValue<C> | Delay)[], fallback: F) => CalcValue<C> | F | Delay;
 }
 
