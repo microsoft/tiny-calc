@@ -245,10 +245,23 @@ function pack<T, U>(op: TypedBinOp<T>): TypedBinOp<U> {
     return op as any;
 }
 
-function createNumericBinOp(
-    fnPrim: (l: Primitive, r: Primitive) => CalcValue<any>,
-    fnDispatch: Exclude<keyof NumericType<any, any>, 'negate'>
-) {
+function createNumericUnaryOp(fnPrim: (l: number) => CalcValue<any>, fnDispatch: Extract<keyof NumericType<any, any>, 'negate'> | undefined) {
+    const op: TypedUnaryOp<NumberLike> = {
+        check: checkNum,
+        fn: (context, value) => {
+            if (typeof value === "number") {
+                return fnPrim(value);
+            }
+            if (fnDispatch === undefined) { return value; }
+            const tm = value.typeMap()[TypeName.Numeric];
+            return tm[fnDispatch](value, context);
+        },
+        blame: basicErrorHandler
+    };
+    return op as unknown as TypedUnaryOp<Skolem>;
+}
+
+function createNumericBinOp(fnPrim: (l: Primitive, r: Primitive) => CalcValue<any>, fnDispatch: Exclude<keyof NumericType<any, any>, 'negate'>) {
     const op: TypedBinOp<CoercibleNumberLike> = {
         check: checkNumericOrPrim,
         fn: (context, l, r) => {
@@ -278,29 +291,7 @@ function createNumericBinOp(
     return pack<CoercibleNumberLike, Skolem>(op);
 }
 
-function createNumericUnaryOp(
-    fnPrim: (l: number) => CalcValue<any>,
-    fnDispatch: Extract<keyof NumericType<any, any>, 'negate'> | undefined
-) {
-    const op: TypedUnaryOp<NumberLike> = {
-        check: checkNum,
-        fn: (context, value) => {
-            if (typeof value === "number") {
-                return fnPrim(value);
-            }
-            if (fnDispatch === undefined) { return value; }
-            const tm = value.typeMap()[TypeName.Numeric];
-            return tm[fnDispatch](value, context);
-        },
-        blame: basicErrorHandler
-    };
-    return op as unknown as TypedUnaryOp<Skolem>;
-}
-
-function createComparableBinOp(
-    fnPrim: (l: Primitive, r: Primitive) => CalcValue<any>,
-    fnDispatch: <C>(result: number | CalcObj<C>) => CalcValue<C>
-) {
+function createComparableBinOp(fnPrim: (l: Primitive, r: Primitive) => CalcValue<any>, fnDispatch: <C>(result: number | CalcObj<C>) => CalcValue<C>) {
     const op: TypedBinOp<ComparableLike> = {
         check: checkComparable,
         fn: (context, l, r) => {

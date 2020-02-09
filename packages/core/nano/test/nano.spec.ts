@@ -88,7 +88,7 @@ class Currency implements CalcObj<unknown> {
                 if ((<Currency>l).currency === (<Currency>r).currency) {
                     return new Currency((<Currency>l).value + (<Currency>r).value, (<Currency>l).currency);
                 }
-                return makeError("Incorrect currency addition!");
+                return makeError(`#CURRENCY! [combining ${(<Currency>l).currency} with ${(<Currency>r).currency}]`);
 
         }
     }
@@ -105,7 +105,7 @@ class Currency implements CalcObj<unknown> {
                 if ((<Currency>l).currency === (<Currency>r).currency) {
                     return new Currency((<Currency>l).value - (<Currency>r).value, (<Currency>l).currency);
                 }
-                return makeError("Incorrect currency addition!");
+                return makeError(`#CURRENCY! [combining ${(<Currency>l).currency} with ${(<Currency>r).currency}]`);
 
         }
     }
@@ -131,7 +131,7 @@ class Currency implements CalcObj<unknown> {
                 if ((<Currency>l).currency === (<Currency>r).currency) {
                     return (<Currency>l).value / (<Currency>r).value;
                 }
-                return makeError("Incorrect currency addition!");
+                return errors.typeError; // TODO: bit of a hack
         }
     }
 
@@ -1067,7 +1067,7 @@ Product(1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
         { expression: "FUN(g, f, FUN(x, g(f(x))))(FUN(x, x + 1), FUN(x, x - 1))(10)=10", expected: true },
         { expression: "{$200} + {$200} + {$200} + {$200} + {$200}", expected: "$1000", serialise: true },
         { expression: "{$100} + {$100} + {$100} + {$100} + {$100}", expected: "$500", serialise: true },
-        { expression: "{$100} + {300 GBP}", expected: "Incorrect currency addition!", serialise: true },
+        { expression: "{$100} + {300 GBP}", expected: "#CURRENCY! [combining $ with GBP]", serialise: true },
         { expression: "{300 GBP} / {300 GBP}", expected: 1 },
         { expression: "10 * {300 GBP}", expected: "GBP3000", serialise: true },
         { expression: "{300 GBP} = {300 GBP}", expected: "true", serialise: true },
@@ -1121,12 +1121,15 @@ Product(1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
         { expression: "(1/0)", expected: "#DIV/0!", serialise: true },
         { expression: "{$200} + {$200} + {$200} + {$200} + {$200}", expected: "$1000", serialise: true },
         { expression: "{$100} + {$100} + {$100} + {$100} + {$100}", expected: "$500", serialise: true },
-        { expression: "{$100} + {300 GBP}", expected: "Incorrect currency addition!", serialise: true },
+        { expression: "{$100} + {300 GBP}", expected: "#CURRENCY! [combining $ with GBP]", serialise: true },
+        { expression: "{300 GBP} + {$100} + 10", expected: "#CURRENCY! [combining GBP with $]", serialise: true },
         { expression: "{300 GBP} / {300 GBP}", expected: 1 },
         { expression: "{300 GBP} = {300 GBP}", expected: "true", serialise: true },
         { expression: "{$100} < {$200}", expected: "true", serialise: true },
         { expression: "{$100} > {$200}", expected: "false", serialise: true },
-        { expression: "10 * {300 GBP}", expected: "GBP3000", serialise: true }
+        { expression: "10 * {300 GBP}", expected: "GBP3000", serialise: true },
+        { expression: "4 - 2 + 100", expected: 102 },
+        { expression: "4 - (2 + 100)", expected: -98 },
     ];
 
     const compilationFailureCases = [
