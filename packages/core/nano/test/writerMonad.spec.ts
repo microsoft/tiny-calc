@@ -1,3 +1,12 @@
+/**
+ * This test illustrates how to use the pending and estimate mechanism
+ * to implement a tracing evaluator that records reads and
+ * dereferences.
+ *
+ * Using this mechanism we can reconstruct the dependency graph of the
+ * expression after evaluating it.
+ */
+
 import "mocha";
 import { strict as assert } from "assert";
 
@@ -5,8 +14,6 @@ import { parseFormula } from "../src/ast";
 import { CoreRuntime, Delay } from "../src/core";
 import { evalContext, evaluate } from "../src/interpreter";
 import { TypeMap, CalcObj, TypeName, Pending, CalcValue, Runtime } from "../src/types";
-
-
 
 function createRefMap(value: CalcValue<string>): TypeMap<CalcObj<string>, string> {
     return { [TypeName.Reference]: { dereference: (_v, c) => ({ kind: "Pending", message: `Dereferencing from ${c}`, estimate: value }) } }
@@ -20,8 +27,6 @@ function createObjFromMap(map: TypeMap<CalcObj<string>, string>): CalcObj<string
     return { typeMap: () => map, serialise: () => "TODO" }
 }
 
-
-const formula = parseFormula("A + B + C");
 const cRef = createObjFromMap(createRefMap(30))
 const ctx = createObjFromMap(createReadMap((p, c) => {
     const message = `Reading ${p} from ${c}`;
@@ -61,6 +66,7 @@ export const createTracingRuntime = (): [string[], Runtime<Delay>] => {
 
 
 describe("writer monad example", () => {
+    const formula = parseFormula("A + B + C");
     const rt = createTracingRuntime();
     const result = evaluate(evalContext, "My context", rt[1], ctx, formula[1])
     it("should return an evaluated result", () => {
