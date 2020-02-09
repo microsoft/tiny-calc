@@ -3,6 +3,7 @@ import { assert, assertNever } from "./debug";
 import {
     CalcObj,
     CalcValue,
+    Pending,
     Runtime,
 } from "./types";
 
@@ -20,7 +21,6 @@ import {
     Delay,
     Delayed,
     errors,
-    Formula,
     createRuntime,
     unaryOps,
     UnaryOps,
@@ -159,6 +159,8 @@ function compileAST(gensym: () => number, scope: Record<string, string>, f: Form
 }
 
 type RawFormula = <O>(ef: Runtime<Delay>, err: typeof errors, origin: O, context: CalcObj<O>, binOps: BinaryOps, unaryOps: UnaryOps) => Delayed<CalcValue<O>>;
+export type Formula = <C>(context: C, root: CalcObj<C>) => [Pending<unknown>[], Delayed<CalcValue<C>>];
+
 
 const parse = createParser(simpleSink, errorHandler);
 

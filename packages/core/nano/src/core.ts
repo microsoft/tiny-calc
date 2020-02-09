@@ -16,6 +16,11 @@ import {
 
 import { SyntaxKind } from "./parser"
 
+/**
+ *  Default error implementations for the runtime.
+ *  These do not support enrichment.
+ */
+
 const errorMap: TypeMap<CalcObj<any>, any> = { [TypeName.Error]: { enrich: value => value } };
 
 export function makeError(message: string): CalcObj<any> {
@@ -40,7 +45,196 @@ export const errors = {
     typeError
 } as const;
 
-export type Errors = typeof errors;
+/**
+ *  Default operator implementations for the runtime.
+ *  These support type-based overloading.
+ */
+
+type NumberLike = number | TypedCalcObj<TypeName.Numeric, any>;
+type CoercibleNumberLike = boolean | string | NumberLike;
+type ComparableLike = Primitive | TypedCalcObj<TypeName.Comparable, any>;
+
+const checkNum: CheckFn<NumberLike> = (_context, value, _pos): value is NumberLike => {
+    switch (typeof value) {
+        case "number": return true;
+        case "object": return value.typeMap()[TypeName.Numeric] !== undefined;
+        default: return false;
+    }
+}
+
+function createPrimObjCheck<T extends TypeName>(name: T): CheckFn<Primitive | TypedCalcObj<T, any>> {
+    return (_context, value, _pos): value is Primitive | TypedCalcObj<T, any> => {
+        switch (typeof value) {
+            case "number":
+            case "boolean":
+            case "string": return true;
+            case "object": return value.typeMap()[name] !== undefined;
+            default: return false;
+        }
+    }
+}
+
+const checkNumericOrPrim = createPrimObjCheck(TypeName.Numeric);
+const checkComparable = createPrimObjCheck(TypeName.Comparable);
+const typeErrorOrForward = <C>(_: C, value: CalcValue<C>) => (typeof value === "object" && value.typeMap()[TypeName.Error]) ? value : typeError;
+
+/**
+ * We use the following to fake an existential type. We really want to
+ * have something like: exists U. TypedBinOp<U>, where the `check`
+ * function of the typed op is used produces values of sealed type.
+ * Once a value is checked, it can then be passed to the op.
+ *
+ * We can't do this so we just forge some unique type that at least
+ * lets us store all binary operations in a single map.
+ */
+
+declare const $skolem: unique symbol;
+export type Skolem = { [$skolem]: never };
+function pack<T, U>(op: TypedBinOp<T>): TypedBinOp<U> {
+    return op as any;
+}
+
+function createNumericUnaryOp(fnPrim: (l: number) => CalcValue<any>, fnDispatch: Extract<keyof NumericType<any, any>, 'negate'> | undefined) {
+    const op: TypedUnaryOp<NumberLike> = {
+        check: checkNum,
+        fn: (context, value) => {
+            if (typeof value === "number") {
+                return fnPrim(value);
+            }
+            if (fnDispatch === undefined) { return value; }
+            const tm = value.typeMap()[TypeName.Numeric];
+            return tm[fnDispatch](value, context);
+        },
+        blame: typeErrorOrForward
+    };
+    return op as unknown as TypedUnaryOp<Skolem>;
+}
+
+function createNumericBinOp(fnPrim: (l: Primitive, r: Primitive) => CalcValue<any>, fnDispatch: Exclude<keyof NumericType<any, any>, 'negate'>) {
+    const op: TypedBinOp<CoercibleNumberLike> = {
+        check: checkNumericOrPrim,
+        fn: (context, l, r) => {
+            if (typeof l === "object") {
+                const m1 = l.typeMap()[TypeName.Numeric];
+                if (typeof r === "object") {
+                    return m1 === r.typeMap()[TypeName.Numeric] ?
+                        m1[fnDispatch](DispatchPattern.Both, l, r, context) :
+                        typeError;
+                }
+                if (typeof r === "number") {
+                    return m1[fnDispatch](DispatchPattern.L, l, r, context);
+                }
+                return typeError;
+            }
+            if (typeof r === "object") {
+                const m2 = r.typeMap()[TypeName.Numeric];
+                if (typeof l === "number") {
+                    return m2[fnDispatch](DispatchPattern.R, l, r, context);
+                }
+                return typeError;
+            }
+            return fnPrim(l, r);
+        },
+        blame: typeErrorOrForward
+    };
+    return pack<CoercibleNumberLike, Skolem>(op);
+}
+
+function createComparableBinOp(fnPrim: (l: Primitive, r: Primitive) => CalcValue<any>, fnDispatch: <C>(result: number | CalcObj<C>) => CalcValue<C>) {
+    const op: TypedBinOp<ComparableLike> = {
+        check: checkComparable,
+        fn: (context, l, r) => {
+            if (typeof l === "object") {
+                const m1 = l.typeMap()[TypeName.Comparable];
+                if (typeof r === "object") {
+                    return fnDispatch(
+                        m1 === r.typeMap()[TypeName.Comparable] ?
+                            m1.compare(DispatchPattern.Both, l, r, context) :
+                            typeError
+                    );
+                }
+                return fnDispatch(m1.compare(DispatchPattern.L, l, r, context));
+            }
+            if (typeof r === "object") {
+                const m2 = r.typeMap()[TypeName.Comparable];
+                return fnDispatch(m2.compare(DispatchPattern.R, l, r, context));
+            }
+            return fnPrim(l, r);
+        },
+        blame: typeErrorOrForward
+    };
+    return pack<ComparableLike, Skolem>(op);
+}
+
+export const binOps = {
+    [SyntaxKind.PlusToken]: createNumericBinOp(
+        (x, y) => <any>x + <any>y,
+        "plus"
+    ),
+    [SyntaxKind.MinusToken]: createNumericBinOp(
+        (x, y) => <any>x - <any>y,
+        "minus"
+    ),
+    [SyntaxKind.AsteriskToken]: createNumericBinOp(
+        (x, y) => <any>x * <any>y,
+        "mult"
+    ),
+    [SyntaxKind.SlashToken]: createNumericBinOp(
+        (x: any, y: any) => y === 0 ? errors.div0 : x / y,
+        "div"
+    ),
+    [SyntaxKind.EqualsToken]: createComparableBinOp(
+        (x: any, y: any) => x === y,
+        result => typeof result === "object" ? result : result === 0
+    ),
+    [SyntaxKind.LessThanToken]: createComparableBinOp(
+        (x: any, y: any) => x < y,
+        result => typeof result === "object" ? result : result < 0
+    ),
+    [SyntaxKind.GreaterThanToken]: createComparableBinOp(
+        (x: any, y: any) => x > y,
+        result => typeof result === "object" ? result : result > 0
+    ),
+    [SyntaxKind.LessThanEqualsToken]: createComparableBinOp(
+        (x: any, y: any) => x <= y,
+        result => typeof result === "object" ? result : result <= 0
+    ),
+    [SyntaxKind.GreaterThanEqualsToken]: createComparableBinOp(
+        (x: any, y: any) => x >= y,
+        result => typeof result === "object" ? result : result >= 0
+    ),
+    [SyntaxKind.NotEqualsToken]: createComparableBinOp(
+        (x: any, y: any) => x !== y,
+        result => typeof result === "object" ? result : result !== 0
+    ),
+} as const;
+
+export const unaryOps = {
+    [SyntaxKind.PlusToken]: createNumericUnaryOp((x: any) => x, undefined),
+    [SyntaxKind.MinusToken]: createNumericUnaryOp((x: any) => -x, "negate"),
+} as const;
+
+/**
+ *  Default runtime implementation.  This supports applicative tracing
+ *  of pending values and will attempt to find all pending
+ *  computations before exiting. 
+ */
+
+declare const $effect: unique symbol;
+export type Delay = { [$effect]: never };
+const delay: Delay = {} as any;
+
+/**
+ * A expression of type `Delayed<T>` represents a computation that
+ * either delivers a value of type `T`, or is blocked on multiple
+ * requests. A tracer is used to lift a single blocked request
+ * (`Pending<T>`) into the `Delayed` effect.
+ */
+export type Delayed<T> = T | Delay;
+
+export function isDelayed<T>(x: T | Delay): x is Delay {
+    return x === delay;
+}
 
 /** 
  * A `Trace` function lifts possibly pending values into `Delayed` and
@@ -65,22 +259,6 @@ function makeTracer(): [Pending<unknown>[], Trace] {
     return [data, fn];
 }
 
-declare const $effect: unique symbol;
-export type Delay = { [$effect]: never };
-const delay: Delay = {} as any;
-
-/**
- * A expression of type `Delayed<T>` represents a computation that
- * either delivers a value of type `T`, or is blocked on multiple
- * requests. A tracer is used to lift a single blocked request
- * (`Pending<T>`) into the `Delayed` effect.
- */
-export type Delayed<T> = T | Delay;
-
-export function isDelayed<T>(x: T | Delay): x is Delay {
-    return x === delay;
-}
-
 function tryDeref<C>(trace: Trace, context: C, receiver: CalcObj<C>) {
     const ref = receiver.typeMap()[TypeName.Reference];
     if (ref) {
@@ -93,6 +271,12 @@ function errorOr<C, F>(value: CalcObj<C>, fallback: F): CalcObj<C> | F {
     return value.typeMap()[TypeName.Error] ? value : fallback;
 }
 
+/** 
+ * Core Tracing Runtime
+ * 
+ * Returns evaluated calc values or the sentinel `Delay` value.
+ * To find the actual `Pending` values see the results of `trace`.
+ */
 export class CoreRuntime implements Runtime<Delay> {
     constructor(public trace: Trace) { }
 
@@ -195,180 +379,16 @@ export class CoreRuntime implements Runtime<Delay> {
     }
 }
 
-type NumberLike = number | TypedCalcObj<TypeName.Numeric, any>;
-type CoercibleNumberLike = boolean | string | NumberLike;
-type ComparableLike = Primitive | TypedCalcObj<TypeName.Comparable, any>;
-
-const checkNum: CheckFn<NumberLike> = (_context, value, _pos): value is NumberLike => {
-    switch (typeof value) {
-        case "number": return true;
-        case "object": return value.typeMap()[TypeName.Numeric] !== undefined;
-        default: return false;
-    }
-}
-
-function createPrimObjCheck<T extends TypeName>(name: T): CheckFn<Primitive | TypedCalcObj<T, any>> {
-    return (_context, value, _pos): value is Primitive | TypedCalcObj<T, any> => {
-        switch (typeof value) {
-            case "number":
-            case "boolean":
-            case "string": return true;
-            case "object": return value.typeMap()[name] !== undefined;
-            default: return false;
-        }
-    }
-}
-
-const checkNumericOrPrim = createPrimObjCheck(TypeName.Numeric);
-const checkComparable = createPrimObjCheck(TypeName.Comparable);
-
-const basicErrorHandler = <C>(_context: C, value: CalcValue<C>) => {
-    if (typeof value === "object" && value.typeMap()[TypeName.Error]) {
-        return value;
-    }
-    return typeError;
-}
-
 /**
- * We use the following to fake an existential type. We really want to
- * have something like: exists U. TypedBinOp<U>, where the `check`
- * function of the typed op is used produces values of sealed type.
- * Once a value is checked, it can then be passed to the op.
- *
- * We can't do this so we just forge some unique type that at least
- * lets us store all binary operations in a single map.
+ * Exports the basic building blocks of a formula runtime.
+ * - Error values
+ * - Operator implementations.
+ * - An effect-handling runtime.
  */
 
-declare const $skolem: unique symbol;
-export type Skolem = { [$skolem]: never };
-function pack<T, U>(op: TypedBinOp<T>): TypedBinOp<U> {
-    return op as any;
-}
-
-function createNumericUnaryOp(fnPrim: (l: number) => CalcValue<any>, fnDispatch: Extract<keyof NumericType<any, any>, 'negate'> | undefined) {
-    const op: TypedUnaryOp<NumberLike> = {
-        check: checkNum,
-        fn: (context, value) => {
-            if (typeof value === "number") {
-                return fnPrim(value);
-            }
-            if (fnDispatch === undefined) { return value; }
-            const tm = value.typeMap()[TypeName.Numeric];
-            return tm[fnDispatch](value, context);
-        },
-        blame: basicErrorHandler
-    };
-    return op as unknown as TypedUnaryOp<Skolem>;
-}
-
-function createNumericBinOp(fnPrim: (l: Primitive, r: Primitive) => CalcValue<any>, fnDispatch: Exclude<keyof NumericType<any, any>, 'negate'>) {
-    const op: TypedBinOp<CoercibleNumberLike> = {
-        check: checkNumericOrPrim,
-        fn: (context, l, r) => {
-            if (typeof l === "object") {
-                const m1 = l.typeMap()[TypeName.Numeric];
-                if (typeof r === "object") {
-                    return m1 === r.typeMap()[TypeName.Numeric] ?
-                        m1[fnDispatch](DispatchPattern.Both, l, r, context) :
-                        typeError;
-                }
-                if (typeof r === "number") {
-                    return m1[fnDispatch](DispatchPattern.L, l, r, context);
-                }
-                return typeError;
-            }
-            if (typeof r === "object") {
-                const m2 = r.typeMap()[TypeName.Numeric];
-                if (typeof l === "number") {
-                    return m2[fnDispatch](DispatchPattern.R, l, r, context);
-                }
-                return typeError;
-            }
-            return fnPrim(l, r);
-        },
-        blame: basicErrorHandler
-    };
-    return pack<CoercibleNumberLike, Skolem>(op);
-}
-
-function createComparableBinOp(fnPrim: (l: Primitive, r: Primitive) => CalcValue<any>, fnDispatch: <C>(result: number | CalcObj<C>) => CalcValue<C>) {
-    const op: TypedBinOp<ComparableLike> = {
-        check: checkComparable,
-        fn: (context, l, r) => {
-            if (typeof l === "object") {
-                const m1 = l.typeMap()[TypeName.Comparable];
-                if (typeof r === "object") {
-                    return fnDispatch(
-                        m1 === r.typeMap()[TypeName.Comparable] ?
-                            m1.compare(DispatchPattern.Both, l, r, context) :
-                            typeError
-                    );
-                }
-                return fnDispatch(m1.compare(DispatchPattern.L, l, r, context));
-            }
-            if (typeof r === "object") {
-                const m2 = r.typeMap()[TypeName.Comparable];
-                return fnDispatch(m2.compare(DispatchPattern.R, l, r, context));
-            }
-            return fnPrim(l, r);
-        },
-        blame: basicErrorHandler
-    };
-    return pack<ComparableLike, Skolem>(op);
-}
-
-export const binOps = {
-    [SyntaxKind.PlusToken]: createNumericBinOp(
-        (x, y) => <any>x + <any>y,
-        "plus"
-    ),
-    [SyntaxKind.MinusToken]: createNumericBinOp(
-        (x, y) => <any>x - <any>y,
-        "minus"
-    ),
-    [SyntaxKind.AsteriskToken]: createNumericBinOp(
-        (x, y) => <any>x * <any>y,
-        "mult"
-    ),
-    [SyntaxKind.SlashToken]: createNumericBinOp(
-        (x: any, y: any) => y === 0 ? errors.div0 : x / y,
-        "div"
-    ),
-    [SyntaxKind.EqualsToken]: createComparableBinOp(
-        (x: any, y: any) => x === y,
-        result => typeof result === "object" ? result : result === 0
-    ),
-    [SyntaxKind.LessThanToken]: createComparableBinOp(
-        (x: any, y: any) => x < y,
-        result => typeof result === "object" ? result : result < 0
-    ),
-    [SyntaxKind.GreaterThanToken]: createComparableBinOp(
-        (x: any, y: any) => x > y,
-        result => typeof result === "object" ? result : result > 0
-    ),
-    [SyntaxKind.LessThanEqualsToken]: createComparableBinOp(
-        (x: any, y: any) => x <= y,
-        result => typeof result === "object" ? result : result <= 0
-    ),
-    [SyntaxKind.GreaterThanEqualsToken]: createComparableBinOp(
-        (x: any, y: any) => x >= y,
-        result => typeof result === "object" ? result : result >= 0
-    ),
-    [SyntaxKind.NotEqualsToken]: createComparableBinOp(
-        (x: any, y: any) => x !== y,
-        result => typeof result === "object" ? result : result !== 0
-    ),
-} as const;
-
-export const unaryOps = {
-    [SyntaxKind.PlusToken]: createNumericUnaryOp((x: any) => x, undefined),
-    [SyntaxKind.MinusToken]: createNumericUnaryOp((x: any) => -x, "negate"),
-} as const;
-
+export type Errors = typeof errors;
 export type BinaryOps = typeof binOps;
 export type UnaryOps = typeof unaryOps;
-
-export type Formula = <C>(context: C, root: CalcObj<C>) => [Pending<unknown>[], Delayed<CalcValue<C>>];
 
 export const createRuntime = (): [Pending<unknown>[], Runtime<Delay>] => {
     const [data, trace] = makeTracer();

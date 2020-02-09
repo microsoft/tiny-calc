@@ -8,13 +8,13 @@ export {
     Delay,
     Delayed,
     errors,
-    Formula,
     isDelayed,
     makeError,
 } from "./core";
 
 export {
     compile,
+    Formula,
 } from "./compiler";
 
 export {

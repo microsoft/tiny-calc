@@ -80,10 +80,8 @@ class Currency implements CalcObj<unknown> {
         switch (pattern) {
             case DispatchPattern.L:
                 return new Currency((<Currency>l).value + <number>r, (<Currency>l).currency);
-
             case DispatchPattern.R:
                 return new Currency(<number>l + (<Currency>r).value, (<Currency>r).currency);
-
             case DispatchPattern.Both:
                 if ((<Currency>l).currency === (<Currency>r).currency) {
                     return new Currency((<Currency>l).value + (<Currency>r).value, (<Currency>l).currency);
@@ -97,10 +95,8 @@ class Currency implements CalcObj<unknown> {
         switch (pattern) {
             case DispatchPattern.L:
                 return new Currency((<Currency>l).value - <number>r, (<Currency>l).currency);
-
             case DispatchPattern.R:
                 return new Currency(<number>l - (<Currency>r).value, (<Currency>r).currency);
-
             case DispatchPattern.Both:
                 if ((<Currency>l).currency === (<Currency>r).currency) {
                     return new Currency((<Currency>l).value - (<Currency>r).value, (<Currency>l).currency);
