@@ -26,22 +26,23 @@ export {
     CalcFun,
     CalcObj,
     CalcValue,
-    Runtime,
     ComparableType,
+    DispatchPattern,
+    IConsumer,
+    IMatrixConsumer,
+    IMatrixProducer,
+    IProducer,
+    IReader,
+    IVectorConsumer,
+    IVectorProducer,
     NumericType,
     Pending,
     Primitive,
     ReadableType,
     ReferenceType,
+    Runtime,
     TypeMap,
-    TypeName,
-    IConsumer,
-    IReader,
-    IProducer,
-    IVectorConsumer,
-    IVectorProducer,
-    IMatrixConsumer,
-    IMatrixProducer
+    TypeName
 } from "./types";
 
 export {

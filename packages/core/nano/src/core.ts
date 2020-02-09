@@ -2,6 +2,7 @@ import {
     CalcObj,
     CalcValue,
     CheckFn,
+    DispatchPattern,
     NumericType,
     Pending,
     Primitive,
@@ -88,28 +89,15 @@ function tryDeref<C>(trace: Trace, context: C, receiver: CalcObj<C>) {
     return undefined;
 }
 
-// function typeCheckWithinRef<C>(trace: Trace, context: C, check: (v: CalcObj<C>) => boolean, value: CalcObj<C>): Delayed<CalcValue<C>> {
-//     if (check(value)) {
-//         return value;
-//     }
-//     const derefed = tryDeref(trace, context, value);
-//     return derefed === undefined ? value : derefed;
-// }
-// 
-// function isWellTyped<C>(value: CalcValue<C>, trait: TypeName): value is DataValue<C> {
-//     switch (typeof value) {
-//         case "object": return value.typeMap()[trait] !== undefined;
-//         default: return typeof value !== "function";
-//     }
-// }
-
 function errorOr<C, F>(value: CalcObj<C>, fallback: F): CalcObj<C> | F {
     return value.typeMap()[TypeName.Error] ? value : fallback;
 }
 
-class CoreRuntime implements Runtime<Delay> {
+export class CoreRuntime implements Runtime<Delay> {
     constructor(public trace: Trace) { }
 
+    isDelayed = isDelayed
+    
     read<C, F>(context: C, receiver: Delayed<CalcValue<C>>, prop: string, fallback: F): Delayed<CalcValue<C> | F> {
         if (isDelayed(receiver)) { return receiver; }
         if (typeof receiver === "object") {
@@ -241,6 +229,22 @@ const basicErrorHandler = <C>(_context: C, value: CalcValue<C>) => {
     return typeError;
 }
 
+/**
+ * We use the following to fake an existential type. We really want to
+ * have something like: exists U. TypedBinOp<U>, where the `check`
+ * function of the typed op is used produces values of sealed type.
+ * Once a value is checked, it can then be passed to the op.
+ *
+ * We can't do this so we just forge some unique type that at least
+ * lets us store all binary operations in a single map.
+ */
+
+declare const $skolem: unique symbol;
+export type Skolem = { [$skolem]: never };
+function pack<T, U>(op: TypedBinOp<T>): TypedBinOp<U> {
+    return op as any;
+}
+
 function createNumericBinOp(
     fnPrim: (l: Primitive, r: Primitive) => CalcValue<any>,
     fnDispatch: Exclude<keyof NumericType<any, any>, 'negate'>
@@ -251,19 +255,19 @@ function createNumericBinOp(
             if (typeof l === "object") {
                 const m1 = l.typeMap()[TypeName.Numeric];
                 if (typeof r === "object") {
-                    // const m2 = r.typeMap()[TypeName.Numeric];
-                    // TODO: I need to check these maps are the same.
-                    return m1[fnDispatch](0, l, r, context);
+                    return m1 === r.typeMap()[TypeName.Numeric] ?
+                        m1[fnDispatch](DispatchPattern.Both, l, r, context) :
+                        typeError;
                 }
                 if (typeof r === "number") {
-                    return m1[fnDispatch](-1, l, r, context);
+                    return m1[fnDispatch](DispatchPattern.L, l, r, context);
                 }
                 return typeError;
             }
             if (typeof r === "object") {
                 const m2 = r.typeMap()[TypeName.Numeric];
                 if (typeof l === "number") {
-                    return m2[fnDispatch](1, l, r, context);
+                    return m2[fnDispatch](DispatchPattern.R, l, r, context);
                 }
                 return typeError;
             }
@@ -271,7 +275,7 @@ function createNumericBinOp(
         },
         blame: basicErrorHandler
     };
-    return op;
+    return pack<CoercibleNumberLike, Skolem>(op);
 }
 
 function createNumericUnaryOp(
@@ -290,7 +294,7 @@ function createNumericUnaryOp(
         },
         blame: basicErrorHandler
     };
-    return op;
+    return op as unknown as TypedUnaryOp<Skolem>;
 }
 
 function createComparableBinOp(
@@ -303,66 +307,67 @@ function createComparableBinOp(
             if (typeof l === "object") {
                 const m1 = l.typeMap()[TypeName.Comparable];
                 if (typeof r === "object") {
-                    // const m2 = r.typeMap()[TypeName.Numeric];
-                    // TODO: I need to check these maps are the same.
-                    return fnDispatch(m1.compare(0, l, r, context));
+                    return fnDispatch(
+                        m1 === r.typeMap()[TypeName.Comparable] ?
+                            m1.compare(DispatchPattern.Both, l, r, context) :
+                            typeError
+                    );
                 }
-                return fnDispatch(m1.compare(-1, l, r, context));
+                return fnDispatch(m1.compare(DispatchPattern.L, l, r, context));
             }
             if (typeof r === "object") {
                 const m2 = r.typeMap()[TypeName.Comparable];
-                return fnDispatch(m2.compare(1, l, r, context));
+                return fnDispatch(m2.compare(DispatchPattern.R, l, r, context));
             }
             return fnPrim(l, r);
         },
         blame: basicErrorHandler
     };
-    return op;
+    return pack<ComparableLike, Skolem>(op);
 }
 
 export const binOps = {
     [SyntaxKind.PlusToken]: createNumericBinOp(
         (x, y) => <any>x + <any>y,
         "plus"
-    ) as TypedBinOp<CoercibleNumberLike | ComparableLike>,
+    ),
     [SyntaxKind.MinusToken]: createNumericBinOp(
         (x, y) => <any>x - <any>y,
         "minus"
-    ) as TypedBinOp<CoercibleNumberLike | ComparableLike>,
+    ),
     [SyntaxKind.AsteriskToken]: createNumericBinOp(
         (x, y) => <any>x * <any>y,
         "mult"
-    ) as TypedBinOp<CoercibleNumberLike | ComparableLike>,
+    ),
     [SyntaxKind.SlashToken]: createNumericBinOp(
         (x: any, y: any) => y === 0 ? errors.div0 : x / y,
         "div"
-    ) as TypedBinOp<CoercibleNumberLike | ComparableLike>,
+    ),
     [SyntaxKind.EqualsToken]: createComparableBinOp(
         (x: any, y: any) => x === y,
         result => typeof result === "object" ? result : result === 0
-    ) as TypedBinOp<CoercibleNumberLike | ComparableLike>,
+    ),
     [SyntaxKind.LessThanToken]: createComparableBinOp(
         (x: any, y: any) => x < y,
         result => typeof result === "object" ? result : result < 0
-    ) as TypedBinOp<CoercibleNumberLike | ComparableLike>,
+    ),
     [SyntaxKind.GreaterThanToken]: createComparableBinOp(
         (x: any, y: any) => x > y,
         result => typeof result === "object" ? result : result > 0
-    ) as TypedBinOp<CoercibleNumberLike | ComparableLike>,
+    ),
     [SyntaxKind.LessThanEqualsToken]: createComparableBinOp(
         (x: any, y: any) => x <= y,
         result => typeof result === "object" ? result : result <= 0
-    ) as TypedBinOp<CoercibleNumberLike | ComparableLike>,
+    ),
     [SyntaxKind.GreaterThanEqualsToken]: createComparableBinOp(
         (x: any, y: any) => x >= y,
         result => typeof result === "object" ? result : result >= 0
-    ) as TypedBinOp<CoercibleNumberLike | ComparableLike>,
+    ),
     [SyntaxKind.NotEqualsToken]: createComparableBinOp(
         (x: any, y: any) => x !== y,
         result => typeof result === "object" ? result : result !== 0
-    ) as TypedBinOp<CoercibleNumberLike | ComparableLike>,
+    ),
 } as const;
-
 
 export const unaryOps = {
     [SyntaxKind.PlusToken]: createNumericUnaryOp((x: any) => x, undefined),

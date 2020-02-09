@@ -7,11 +7,11 @@ export enum TypeName {
 }
 
 export interface TypeMap<A, C> {
-    [TypeName.Comparable]?: ComparableType<A, C>;
-    [TypeName.Error]?: ErrorType<A, C>;
-    [TypeName.Numeric]?: NumericType<A, C>;
-    [TypeName.Readable]?: ReadableType<A, C>;
-    [TypeName.Reference]?: ReferenceType<A, C>;
+    readonly [TypeName.Comparable]?: ComparableType<A, C>;
+    readonly [TypeName.Error]?: ErrorType<A, C>;
+    readonly [TypeName.Numeric]?: NumericType<A, C>;
+    readonly [TypeName.Readable]?: ReadableType<A, C>;
+    readonly [TypeName.Reference]?: ReferenceType<A, C>;
 }
 
 export type Primitive = boolean | number | string;
@@ -33,10 +33,14 @@ export interface CalcFun<CLex> {
 export type CalcValue<C> = Primitive | CalcObj<C> | CalcFun<C>;
 export type DataValue<C> = Primitive | CalcObj<C>;
 
+export enum DispatchPattern {
+    L = -1,
+    R = 1,
+    Both = 0,
+}
+
 export interface ComparableType<A, C> {
-    compare(pattern: -1, l: A, r: Primitive, context: C): number | CalcObj<C>;
-    compare(pattern: 0, l: A, r: A, context: C): number | CalcObj<C>;
-    compare(pattern: 1, l: Primitive, r: A, context: C): number | CalcObj<C>;
+    compare(pattern: DispatchPattern, l: A | Primitive, r: A | Primitive, context: C): number | CalcObj<C>;
 }
 
 export interface ErrorType<A, C> {
@@ -44,22 +48,10 @@ export interface ErrorType<A, C> {
 }
 
 export interface NumericType<A, C> {
-    plus(pattern: -1, l: A, r: number, context: C): CalcValue<C>;
-    plus(pattern: 0, l: A, r: A, context: C): CalcValue<C>;
-    plus(pattern: 1, l: number, r: A, context: C): CalcValue<C>;
-
-    minus(pattern: -1, l: A, r: number, context: C): CalcValue<C>;
-    minus(pattern: 0, l: A, r: A, context: C): CalcValue<C>;
-    minus(pattern: 1, l: number, r: A, context: C): CalcValue<C>;
-
-    mult(pattern: -1, l: A, r: number, context: C): CalcValue<C>;
-    mult(pattern: 0, l: A, r: A, context: C): CalcValue<C>;
-    mult(pattern: 1, l: number, r: A, context: C): CalcValue<C>;
-
-    div(pattern: -1, l: A, r: number, context: C): CalcValue<C>;
-    div(pattern: 0, l: A, r: A, context: C): CalcValue<C>;
-    div(pattern: 1, l: number, r: A, context: C): CalcValue<C>;
-
+    plus(pattern: DispatchPattern, l: A | number, r: A | number, context: C): CalcValue<C>;
+    minus(pattern: DispatchPattern, l: A | number, r: A | number, context: C): CalcValue<C>;
+    mult(pattern: DispatchPattern, l: A | number, r: A | number, context: C): CalcValue<C>;
+    div(pattern: DispatchPattern, l: A | number, r: A | number, context: C): CalcValue<C>;
     negate(value: A, context: C): CalcValue<C>;
 }
 
@@ -95,7 +87,7 @@ export interface TypedBinOp<A> {
  * Evaluation Runtime
  */
 export interface Runtime<Delay> {
-//    typeEquality: <A, C>(map1: TypeMap<A, C>, map2: TypeMap<unknown, C>) => map2 is TypeMap<A, C>;
+    isDelayed(v: unknown): v is Delay;
     read: <C, F>(context: C, receiver: CalcValue<C> | Delay, prop: string, fallback: F) => CalcValue<C> | F | Delay;
     ifS: <T>(cond: boolean | Delay, cont: (cond: boolean) => T | Delay) => T | Delay;
     app1: <A, C>(context: C, op: TypedUnaryOp<A>, expr: CalcValue<C> | Delay ) => CalcValue<C> | Delay;

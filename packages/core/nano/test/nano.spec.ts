@@ -7,9 +7,9 @@ import {
     CalcObj,
     CalcFun,
     ComparableType,
+    DispatchPattern,
     errors,
     makeError,
-    NumericType,
     Pending,
     Primitive,
     TypeMap,
@@ -63,19 +63,19 @@ function createObjFromMap(map: TypeMap<CalcObj<unknown>, unknown>): CalcObj<unkn
 }
 
 const currencyCompare: ComparableType<Currency, unknown> = {
-    compare(pattern: -1 | 0 | 1, l: Primitive | Currency, r: Primitive | Currency): number | CalcObj<unknown> {
+    compare(pattern: DispatchPattern, l: Primitive | Currency, r: Primitive | Currency): number | CalcObj<unknown> {
         switch (pattern) {
-            case -1:
-            case 1:
+            case DispatchPattern.L:
+            case DispatchPattern.R:
                 return errors.typeError;
-            case 0:
+            case DispatchPattern.Both:
                 return (<Currency>l).value - (<Currency>r).value;
         }
     }
 }
 
-class Currency implements CalcObj<unknown>, NumericType<Currency, unknown> {
-    constructor(public readonly value: number, public readonly currency: string) { }
+class Currency implements CalcObj<unknown> {
+    constructor(public readonly value: number, private readonly currency: string) { }
 
     serialise() {
         return `${this.currency}${this.value.toString()}`;
@@ -83,20 +83,20 @@ class Currency implements CalcObj<unknown>, NumericType<Currency, unknown> {
 
     typeMap(): TypeMap<this, unknown> {
         return {
-            [TypeName.Numeric]: this,
+            [TypeName.Numeric]: Currency,
             [TypeName.Comparable]: currencyCompare
         }
     }
 
-    plus(pattern: -1 | 0 | 1, l: number | Currency, r: number | Currency): number | CalcObj<unknown> {
+    static plus(pattern: DispatchPattern, l: number | Currency, r: number | Currency): number | CalcObj<unknown> {
         switch (pattern) {
-            case -1:
+            case DispatchPattern.L:
                 return new Currency((<Currency>l).value + <number>r, (<Currency>l).currency);
 
-            case 1:
+            case DispatchPattern.R:
                 return new Currency(<number>l + (<Currency>r).value, (<Currency>r).currency);
 
-            case 0:
+            case DispatchPattern.Both:
                 if ((<Currency>l).currency === (<Currency>r).currency) {
                     return new Currency((<Currency>l).value + (<Currency>r).value, (<Currency>l).currency);
                 }
@@ -105,15 +105,15 @@ class Currency implements CalcObj<unknown>, NumericType<Currency, unknown> {
         }
     }
 
-    minus(pattern: -1 | 0 | 1, l: number | Currency, r: number | Currency): number | CalcObj<unknown> {
+    static minus(pattern: DispatchPattern, l: number | Currency, r: number | Currency): number | CalcObj<unknown> {
         switch (pattern) {
-            case -1:
+            case DispatchPattern.L:
                 return new Currency((<Currency>l).value - <number>r, (<Currency>l).currency);
 
-            case 1:
+            case DispatchPattern.R:
                 return new Currency(<number>l - (<Currency>r).value, (<Currency>r).currency);
 
-            case 0:
+            case DispatchPattern.Both:
                 if ((<Currency>l).currency === (<Currency>r).currency) {
                     return new Currency((<Currency>l).value - (<Currency>r).value, (<Currency>l).currency);
                 }
@@ -122,24 +122,24 @@ class Currency implements CalcObj<unknown>, NumericType<Currency, unknown> {
         }
     }
 
-    mult(pattern: -1 | 0 | 1, l: number | Currency, r: number | Currency): number | CalcObj<unknown> {
+    static mult(pattern: DispatchPattern, l: number | Currency, r: number | Currency): number | CalcObj<unknown> {
         switch (pattern) {
-            case -1:
+            case DispatchPattern.L:
                 return new Currency((<Currency>l).value * <number>r, (<Currency>l).currency);
-            case 1:
+            case DispatchPattern.R:
                 return new Currency(<number>l * (<Currency>r).value, (<Currency>r).currency);
-            case 0:
+            case DispatchPattern.Both:
                 return new Currency((<Currency>l).value * (<Currency>r).value, (<Currency>l).currency);
         }
     }
 
-    div(pattern: -1 | 0 | 1, l: number | Currency, r: number | Currency): number | CalcObj<unknown> {
+    static div(pattern: DispatchPattern, l: number | Currency, r: number | Currency): number | CalcObj<unknown> {
         switch (pattern) {
-            case -1:
+            case DispatchPattern.L:
                 return new Currency((<Currency>l).value / <number>r, (<Currency>l).currency);
-            case 1:
+            case DispatchPattern.R:
                 return new Currency(<number>l / (<Currency>r).value, (<Currency>r).currency);
-            case 0:
+            case DispatchPattern.Both:
                 if ((<Currency>l).currency === (<Currency>r).currency) {
                     return (<Currency>l).value / (<Currency>r).value;
                 }
@@ -147,7 +147,7 @@ class Currency implements CalcObj<unknown>, NumericType<Currency, unknown> {
         }
     }
 
-    negate(value: Currency): CalcObj<unknown> {
+    static negate(value: Currency): CalcObj<unknown> {
         return new Currency(-value.value, value.currency);
     }
 
