@@ -1,5 +1,5 @@
 {
-    "extends": "../../common/tool-config/tsconfig.json",
+    "extends": "@tiny-calc/tool-config/tsconfig.json",
     "compilerOptions": {
         "declarationDir": "./dist",
         "rootDir": "./src",
