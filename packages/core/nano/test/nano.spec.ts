@@ -206,8 +206,8 @@ describe("nano", () => {
 
     function interpretTest(expression: string, expected: CalcValue<any>, serialise: boolean | undefined) {
         it(`Interpret: ${expression}`, () => {
-            const [ok, formula] = parseFormula(expression);
-            assert.strictEqual(ok, false);
+            const [errors, formula] = parseFormula(expression);
+            assert.strictEqual(errors, false);
             const [pending, actual] = interpret(undefined, testContext, formula);
             assert.deepEqual(pending, []);
             if (serialise) {

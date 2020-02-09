@@ -1,16 +1,16 @@
 import {
+    parseFormula,
     Pending,
     IConsumer,
     IProducer,
-    Formula,
+    FormulaNode,
+    interpret,
     Primitive,
-    ReadableType,
     TypeMap,
     TypeName,
     CalcFun,
     CalcObj,
     CalcValue,
-    compile
 } from "@tiny-calc/nano";
 
 
@@ -56,18 +56,18 @@ function createPending(v: Pending<Value>): Pending<CalcValue<FormulaHost>> {
     return { kind: "Pending", estimate: v.estimate }
 }
 
-type ReadableCV = CalcObj<FormulaHost> & ReadableType<CalcObj<FormulaHost>, FormulaHost>;
+function createReadMap<O>(read: (prop: string, context: O) => CalcValue<O> | Pending<CalcValue<O>>): TypeMap<CalcObj<O>, O> {
+    return { [TypeName.Readable]: { read: (_v, p, c) => read(p, c) } }
+}
 
-function createCalcValue(v: Producer): ReadableCV {
+function createObjFromMap<O>(map: TypeMap<CalcObj<O>, O>): CalcObj<O> {
+    return { typeMap: () => map, serialise: () => "TODO" }
+}
+
+function createCalcValue(v: Producer) {
     const cache: Record<string, CalcValue<FormulaHost>> = {};
-    const calcVal: ReadableCV = {
-        typeMap(): TypeMap<ReadableCV, FormulaHost> {
-            return {
-                [TypeName.Readable]: this,
-            }
-        },
-        serialise: () => "{ RECORD }",
-        read: (_value: CalcObj<FormulaHost>, message: string, consumer: IConsumer<Record<string, Value>>) => {
+    const calcVal: CalcObj<FormulaHost> = createObjFromMap(createReadMap(
+        (message: string, consumer: IConsumer<Record<string, Value>>) => {
             if (cache[message] !== undefined) {
                 return cache[message];
             }
@@ -84,23 +84,22 @@ function createCalcValue(v: Producer): ReadableCV {
                     }
                     return cache[message] = createCalcValue(value);
             }
-        }
-    }
+        }));
     return calcVal;
 }
 
 export class ListFormula implements FormulaHost {
-    private formulas: Formula[];
+    private formulas: FormulaNode[];
     constructor(
         private scope: Producer,
         private formulaText: string,
         private withValue: (v: any[]) => void
     ) {
         this.formulas = [];
-        const f = compile(this.formulaText);
-        if (f !== undefined) {
+        const [errors, formula] = parseFormula(this.formulaText);
+        if (!errors) {
             for (let i = 0; i < 1000000; i += 1) {
-                this.formulas.push(f);
+                this.formulas.push(formula);
             }
         }
     }
@@ -110,7 +109,7 @@ export class ListFormula implements FormulaHost {
         const scope = createCalcValue(this.scope);
         const values = [];
         for (let i = 0; i < 1000000; i += 1) {
-            values.push(this.formulas[i](this, scope));
+            values.push(interpret(this, scope, this.formulas[i]));
         }
         console.timeEnd("recalc");
         // TODO: export delayed type
