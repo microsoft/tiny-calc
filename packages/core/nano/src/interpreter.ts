@@ -2,19 +2,20 @@ import { FormulaNode, NodeKind } from "./ast";
 import {
     binOps,
     BinaryOps,
-    CalcObj,
-    CalcValue,
     createRuntime,
     Delayed,
     errors,
     Errors,
-    isDelayed,
-    Runtime,
     unaryOps,
     UnaryOps,
 } from "./core";
 
-import { Pending } from "./types";
+import {
+    CalcObj,
+    CalcValue,
+    Pending,
+    Runtime,
+} from "./types";
 
 interface EvalContext {
     readonly errors: Errors;
@@ -22,7 +23,7 @@ interface EvalContext {
     readonly unaryOps: UnaryOps;
 }
 
-function evaluate<O>(ctx: EvalContext, origin: O, rt: Runtime, root: CalcObj<O>, formula: FormulaNode): Delayed<CalcValue<O>> {
+export function evaluate<O, Delay>(ctx: EvalContext, origin: O, rt: Runtime<Delay>, root: CalcObj<O>, formula: FormulaNode): CalcValue<O> | Delay {
     switch (formula.kind) {
         case NodeKind.Literal:
             return formula.value;
@@ -42,7 +43,7 @@ function evaluate<O>(ctx: EvalContext, origin: O, rt: Runtime, root: CalcObj<O>,
                 return ctx.errors.functionArity;
             }
             const head = evaluate(ctx, origin, rt, root, appArgs[0]);
-            const evaluatedArgs: Delayed<CalcValue<O>>[] = [];
+            const evaluatedArgs: (CalcValue<O> | Delay)[] = [];
             for (let i = 1; i < appArgs.length; i += 1) {
                 evaluatedArgs.push(evaluate(ctx, origin, rt, root, appArgs[i]));
             }
@@ -54,7 +55,7 @@ function evaluate<O>(ctx: EvalContext, origin: O, rt: Runtime, root: CalcObj<O>,
                 return ctx.errors.functionArity;
             }
             const cond = evaluate(ctx, origin, rt, root, condArgs[0]);
-            if (isDelayed(cond)) {
+            if (rt.isDelayed(cond)) {
                 return cond;
             }
             // TODO: coercion
@@ -96,7 +97,7 @@ function evaluate<O>(ctx: EvalContext, origin: O, rt: Runtime, root: CalcObj<O>,
 
 export type Interpreter = <O>(origin: O, context: CalcObj<O>, formula: FormulaNode) => [Pending<unknown>[], Delayed<CalcValue<O>>];
 
-const evalContext: EvalContext = { errors, binOps, unaryOps };
+export const evalContext: EvalContext = { errors, binOps, unaryOps };
 
 export const interpret: Interpreter = (origin, context, formula) => {
     const [data, rt] = createRuntime();

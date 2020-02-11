@@ -1,29 +1,30 @@
-import { Pending, Primitive } from "./types";
-import { SyntaxKind } from "./parser";
+import {
+    CalcObj,
+    CalcValue,
+    CheckFn,
+    DispatchPattern,
+    NumericType,
+    Pending,
+    Primitive,
+    TypedCalcObj,
+    TypeMap,
+    TypeName,
+    Runtime,
+    TypedBinOp,
+    TypedUnaryOp,
+} from "./types";
 
-// TODO: Support Completions
-export interface CalcObj<O> {
-    read: (property: string, origin: O, ...args: any[]) => CalcValue<O> | Pending<CalcValue<O>>;
-}
+import { SyntaxKind } from "./parser"
 
-export interface CalcFun<ODef> {
-    <OCall extends ODef>(runtime: Runtime, origin: OCall, args: CalcValue<OCall>[]): Delayed<CalcValue<OCall>>;
-}
+/**
+ *  Default error implementations for the runtime.
+ *  These do not support enrichment.
+ */
 
-export type CalcValue<O> = Primitive | CalcObj<O> | CalcFun<O>;
+const errorMap: TypeMap<CalcObj<any>, any> = { [TypeName.Error]: { enrich: value => value } };
 
-export const enum ObjProps {
-    AsString = "stringify",
-    AsPrimitive = "value",
-}
-
-export function makeError(message: string): CalcObj<unknown> {
-    return {
-        read(property) {
-            if (property === ObjProps.AsString) { return message };
-            return this;
-        }
-    };
+export function makeError(message: string): CalcObj<any> {
+    return { typeMap: () => errorMap, serialise: () => message };
 }
 
 const appOnNonFunction = makeError("The target of an application must be a calc function.");
@@ -32,6 +33,7 @@ const functionArity = makeError("#ARITY!");
 const functionAsOpArgument = makeError("Operator argument must be a primitive.");
 const nonStringField = makeError("A field expression must be of type string");
 const readOnNonObject = makeError("The target of a dot-operation must be a calc object.");
+const typeError = makeError("#TYPE!");
 
 export const errors = {
     appOnNonFunction,
@@ -40,9 +42,183 @@ export const errors = {
     functionAsOpArgument,
     nonStringField,
     readOnNonObject,
+    typeError
 } as const;
 
-export type Errors = typeof errors;
+/**
+ *  Default operator implementations for the runtime.
+ *  These support type-based overloading.
+ */
+
+type NumberLike = number | TypedCalcObj<TypeName.Numeric, any>;
+type CoercibleNumberLike = boolean | string | NumberLike;
+type ComparableLike = Primitive | TypedCalcObj<TypeName.Comparable, any>;
+
+const checkNum: CheckFn<NumberLike> = (_context, value, _pos): value is NumberLike => {
+    switch (typeof value) {
+        case "number": return true;
+        case "object": return value.typeMap()[TypeName.Numeric] !== undefined;
+        default: return false;
+    }
+}
+
+function createPrimObjCheck<T extends TypeName>(name: T): CheckFn<Primitive | TypedCalcObj<T, any>> {
+    return (_context, value, _pos): value is Primitive | TypedCalcObj<T, any> => {
+        switch (typeof value) {
+            case "number":
+            case "boolean":
+            case "string": return true;
+            case "object": return value.typeMap()[name] !== undefined;
+            default: return false;
+        }
+    }
+}
+
+const checkNumericOrPrim = createPrimObjCheck(TypeName.Numeric);
+const checkComparable = createPrimObjCheck(TypeName.Comparable);
+const typeErrorOrForward = <C>(_: C, value: CalcValue<C>) => (typeof value === "object" && value.typeMap()[TypeName.Error]) ? value : typeError;
+
+/**
+ * We use the following to fake an existential type. We really want to
+ * have something like: exists U. TypedBinOp<U>, where the `check`
+ * function of the typed op is used produces values of sealed type.
+ * Once a value is checked, it can then be passed to the op.
+ *
+ * We can't do this so we just forge some unique type that at least
+ * lets us store all binary operations in a single map.
+ */
+
+declare const $skolem: unique symbol;
+export type Skolem = { [$skolem]: never };
+function pack<T, U>(op: TypedBinOp<T>): TypedBinOp<U> {
+    return op as any;
+}
+
+function createNumericUnaryOp(fnPrim: (l: number) => CalcValue<any>, fnDispatch: Extract<keyof NumericType<any, any>, 'negate'> | undefined) {
+    const op: TypedUnaryOp<NumberLike> = {
+        check: checkNum,
+        fn: (context, value) => {
+            if (typeof value === "number") {
+                return fnPrim(value);
+            }
+            if (fnDispatch === undefined) { return value; }
+            const tm = value.typeMap()[TypeName.Numeric];
+            return tm[fnDispatch](value, context);
+        },
+        blame: typeErrorOrForward
+    };
+    return op as unknown as TypedUnaryOp<Skolem>;
+}
+
+function createNumericBinOp(fnPrim: (l: Primitive, r: Primitive) => CalcValue<any>, fnDispatch: Exclude<keyof NumericType<any, any>, 'negate'>) {
+    const op: TypedBinOp<CoercibleNumberLike> = {
+        check: checkNumericOrPrim,
+        fn: (context, l, r) => {
+            if (typeof l === "object") {
+                const m1 = l.typeMap()[TypeName.Numeric];
+                if (typeof r === "object") {
+                    return m1 === r.typeMap()[TypeName.Numeric] ?
+                        m1[fnDispatch](DispatchPattern.Both, l, r, context) :
+                        typeError;
+                }
+                if (typeof r === "number") {
+                    return m1[fnDispatch](DispatchPattern.L, l, r, context);
+                }
+                return typeError;
+            }
+            if (typeof r === "object") {
+                const m2 = r.typeMap()[TypeName.Numeric];
+                if (typeof l === "number") {
+                    return m2[fnDispatch](DispatchPattern.R, l, r, context);
+                }
+                return typeError;
+            }
+            return fnPrim(l, r);
+        },
+        blame: typeErrorOrForward
+    };
+    return pack<CoercibleNumberLike, Skolem>(op);
+}
+
+function createComparableBinOp(fnPrim: (l: Primitive, r: Primitive) => CalcValue<any>, fnDispatch: <C>(result: number | CalcObj<C>) => CalcValue<C>) {
+    const op: TypedBinOp<ComparableLike> = {
+        check: checkComparable,
+        fn: (context, l, r) => {
+            if (typeof l === "object") {
+                const m1 = l.typeMap()[TypeName.Comparable];
+                if (typeof r === "object") {
+                    return fnDispatch(
+                        m1 === r.typeMap()[TypeName.Comparable] ?
+                            m1.compare(DispatchPattern.Both, l, r, context) :
+                            typeError
+                    );
+                }
+                return fnDispatch(m1.compare(DispatchPattern.L, l, r, context));
+            }
+            if (typeof r === "object") {
+                const m2 = r.typeMap()[TypeName.Comparable];
+                return fnDispatch(m2.compare(DispatchPattern.R, l, r, context));
+            }
+            return fnPrim(l, r);
+        },
+        blame: typeErrorOrForward
+    };
+    return pack<ComparableLike, Skolem>(op);
+}
+
+export const binOps = {
+    [SyntaxKind.PlusToken]: createNumericBinOp(
+        (x, y) => <any>x + <any>y,
+        "plus"
+    ),
+    [SyntaxKind.MinusToken]: createNumericBinOp(
+        (x, y) => <any>x - <any>y,
+        "minus"
+    ),
+    [SyntaxKind.AsteriskToken]: createNumericBinOp(
+        (x, y) => <any>x * <any>y,
+        "mult"
+    ),
+    [SyntaxKind.SlashToken]: createNumericBinOp(
+        (x: any, y: any) => y === 0 ? errors.div0 : x / y,
+        "div"
+    ),
+    [SyntaxKind.EqualsToken]: createComparableBinOp(
+        (x: any, y: any) => x === y,
+        result => typeof result === "object" ? result : result === 0
+    ),
+    [SyntaxKind.LessThanToken]: createComparableBinOp(
+        (x: any, y: any) => x < y,
+        result => typeof result === "object" ? result : result < 0
+    ),
+    [SyntaxKind.GreaterThanToken]: createComparableBinOp(
+        (x: any, y: any) => x > y,
+        result => typeof result === "object" ? result : result > 0
+    ),
+    [SyntaxKind.LessThanEqualsToken]: createComparableBinOp(
+        (x: any, y: any) => x <= y,
+        result => typeof result === "object" ? result : result <= 0
+    ),
+    [SyntaxKind.GreaterThanEqualsToken]: createComparableBinOp(
+        (x: any, y: any) => x >= y,
+        result => typeof result === "object" ? result : result >= 0
+    ),
+    [SyntaxKind.NotEqualsToken]: createComparableBinOp(
+        (x: any, y: any) => x !== y,
+        result => typeof result === "object" ? result : result !== 0
+    ),
+} as const;
+
+export const unaryOps = {
+    [SyntaxKind.PlusToken]: createNumericUnaryOp((x: any) => x, undefined),
+    [SyntaxKind.MinusToken]: createNumericUnaryOp((x: any) => -x, "negate"),
+} as const;
+
+/**
+ *  Default runtime implementation.  This supports applicative tracing
+ *  of pending values and will attempt to find all pending
+ *  computations before exiting. 
+ */
 
 declare const $effect: unique symbol;
 export type Delay = { [$effect]: never };
@@ -56,7 +232,7 @@ const delay: Delay = {} as any;
  */
 export type Delayed<T> = T | Delay;
 
-export function isDelayed<T>(x: Delayed<T>): x is Delay {
+export function isDelayed<T>(x: T | Delay): x is Delay {
     return x === delay;
 }
 
@@ -83,107 +259,138 @@ function makeTracer(): [Pending<unknown>[], Trace] {
     return [data, fn];
 }
 
-/**
- * Core expression runtime that implements collection and propagation
- * of potentially unavailable resources.
- */
-export interface Runtime {
-    read: <O, F>(origin: O, context: Delayed<CalcValue<O>>, prop: string, fallback: F) => Delayed<CalcValue<O> | F>;
-    ifS: <A>(cond: Delayed<boolean>, cont: (cond: boolean) => Delayed<A>) => Delayed<A>;
-    app1: <O, A, B>(origin: O, op: (runtime: Runtime, origin: O, expr: A) => B, expr: Delayed<A>) => Delayed<B>;
-    app2: <O, A, B, C>(origin: O, op: (runtime: Runtime, origin: O, l: A, r: B) => C, l: Delayed<A>, r: Delayed<B>) => Delayed<C>;
-    appN: <O, F>(origin: O, fn: Delayed<CalcValue<O>>, args: Delayed<CalcValue<O>>[], fallback: F) => Delayed<CalcValue<O> | F>;
+function tryDeref<C>(trace: Trace, context: C, receiver: CalcObj<C>) {
+    const ref = receiver.typeMap()[TypeName.Reference];
+    if (ref) {
+        return trace(ref.dereference(receiver, context));
+    }
+    return undefined;
 }
 
-class CoreRuntime {
+function errorOr<C, F>(value: CalcObj<C>, fallback: F): CalcObj<C> | F {
+    return value.typeMap()[TypeName.Error] ? value : fallback;
+}
+
+/** 
+ * Core Tracing Runtime
+ * 
+ * Returns evaluated calc values or the sentinel `Delay` value.
+ * To find the actual `Pending` values see the results of `trace`.
+ */
+export class CoreRuntime implements Runtime<Delay> {
     constructor(public trace: Trace) { }
 
-    read<O, F>(origin: O, context: Delayed<CalcValue<O>>, prop: string, fallback: F): Delayed<CalcValue<O> | F> {
-        if (isDelayed(context)) { return delay }
-        return typeof context === "object" ? this.trace(context.read(prop, origin)) : fallback;
+    isDelayed = isDelayed
+    
+    read<C, F>(context: C, receiver: Delayed<CalcValue<C>>, prop: string, fallback: F): Delayed<CalcValue<C> | F> {
+        if (isDelayed(receiver)) { return receiver; }
+        if (typeof receiver === "object") {
+            let reader = receiver.typeMap()[TypeName.Readable];
+            if (reader) {
+                return this.trace(reader.read(receiver, prop, context));
+            }
+            const value = tryDeref(this.trace, context, receiver);
+            if (isDelayed(value)) { return receiver; }
+            if (value === undefined) {
+                return errorOr(receiver, fallback);
+            }
+            if (typeof value === "object") {
+                reader = value.typeMap()[TypeName.Readable];
+                if (reader) {
+                    return this.trace(reader.read(value, prop, context));
+                }
+                return errorOr(value, fallback);
+            }
+        }
+        return fallback;
     }
 
-    ifS<A>(cond: Delayed<boolean>, cont: (cond: boolean) => Delayed<A>): Delayed<A> {
+    ifS<R>(cond: Delayed<boolean>, cont: (cond: boolean) => Delayed<R>): Delayed<R> {
         return isDelayed(cond) ? cond : cont(cond);
     }
 
-    app1<O, A, B>(origin: O, op: (runtime: Runtime, origin: O, expr: A) => B, expr: Delayed<A>): Delayed<B> {
-        return isDelayed(expr) ? delay : op(this, origin, expr);
-    }
-
-    app2<O, A, B, C>(origin: O, op: (runtime: Runtime, origin: O, l: A, r: B) => C, l: Delayed<A>, r: Delayed<B>): Delayed<C> {
-        return isDelayed(l) || isDelayed(r) ? delay : op(this, origin, l, r);
-    }
-
-    appN<O, F>(origin: O, fn: Delayed<CalcValue<O>>, args: Delayed<CalcValue<O>>[], fallback: F): Delayed<CalcValue<O> | F> {
-        if (isDelayed(fn)) { return delay };
-        let target: Delayed<CalcValue<O>> = fn;
-        if (typeof target === "object") {
-            target = this.trace(target.read(ObjProps.AsPrimitive, origin));
+    app1<A, C>(context: C, op: TypedUnaryOp<A>, expr: Delayed<CalcValue<C>>): Delayed<CalcValue<C>> {
+        if (isDelayed(expr)) { return expr; }
+        let value: CalcValue<C> = expr;
+        if (typeof value === "object") {
+            if (op.check(context, value, 0)) {
+                return op.fn(context, value);
+            }
+            const redemption = tryDeref(this.trace, context, value);
+            if (redemption === undefined) {
+                return op.blame(context, value, 0);
+            }
+            if (isDelayed(redemption)) {
+                return redemption;
+            }
+            value = redemption;
         }
-        if (isDelayed(target)) { return delay; }
-        if (typeof target !== "function") { return fallback; }
+        if (typeof value === "function" || !op.check(context, value, 0)) {
+            return op.blame(context, value, 0);
+        }
+        return op.fn(context, value)
+    }
+
+    app2<A, C>(context: C, op: TypedBinOp<A>, l: Delayed<CalcValue<C>>, r: Delayed<CalcValue<C>>): Delayed<CalcValue<C>> {
+        let value1: Delayed<CalcValue<C>> | undefined = l;
+        let value2: Delayed<CalcValue<C>> | undefined = r;
+        if (!isDelayed(value1) && typeof value1 === "object" && !op.check(context, value1, 0)) {
+            value1 = tryDeref(this.trace, context, value1);
+        }
+        if (!isDelayed(value2) && typeof value2 === "object" && !op.check(context, value2, 1)) {
+            value2 = tryDeref(this.trace, context, value2);
+        }
+        if (isDelayed(value1)) { return value1; }
+        if (isDelayed(value2)) { return value2; }
+        if (value1 === undefined) {
+            // This cast is safe because value1 can only be undefined if !isDelayed(l) is true.
+            return op.blame(context, l as CalcValue<C>, 0);
+        }
+        if (value2 === undefined) {
+            return op.blame(context, r as CalcValue<C>, 1);
+        }
+        if (typeof value1 === "function" || !op.check(context, value1, 0)) {
+            return op.blame(context, value1, 0);
+        }
+        if (typeof value2 === "function" || !op.check(context, value2, 1)) {
+            return op.blame(context, value2, 1);
+        }
+        return op.fn(context, value1, value2);
+    }
+
+    appN<C, F>(context: C, fn: Delayed<CalcValue<C>>, args: Delayed<CalcValue<C>>[], fallback: F): Delayed<CalcValue<C> | F> {
+        if (isDelayed(fn)) { return fn };
+        let target: Delayed<CalcValue<C>> | undefined = fn;
+        if (typeof fn === "object") {
+            target = tryDeref(this.trace, context, fn);
+            if (target === undefined) {
+                return errorOr(fn, fallback);
+            }
+        }
+        if (isDelayed(target)) { return target; }
         for (let i = 0; i < args.length; i += 1) {
-            if (isDelayed(args[i])) { return delay };
+            if (isDelayed(args[i])) { return args[i] };
         }
-        return target(this, origin, args as CalcValue<O>[]);
+        switch (typeof target) {
+            case "object": return errorOr(target, fallback);
+            case "function": return target(this, context, args as CalcValue<C>[]);
+            default: return fallback;
+        }
     }
 }
 
-type CoreBinOp = <O>(runtime: Runtime, origin: O, l: CalcValue<O>, r: CalcValue<O>) => Delayed<CalcValue<O>>;
-type CoreUnaryOp = <O>(runtime: Runtime, origin: O, expr: CalcValue<O>) => Delayed<CalcValue<O>>;
+/**
+ * Exports the basic building blocks of a formula runtime.
+ * - Error values
+ * - Operator implementations.
+ * - An effect-handling runtime.
+ */
 
-function liftBinOp(fn: (l: Primitive, r: Primitive) => CalcValue<unknown>): CoreBinOp {
-    return (runtime, origin, l, r) => {
-        const lAsValue = runtime.read(origin, l, ObjProps.AsPrimitive, l);
-        const rAsValue = runtime.read(origin, r, ObjProps.AsPrimitive, r);
-        if (isDelayed(lAsValue) || isDelayed(rAsValue)) { return delay; }
-        if (typeof lAsValue === "object") { return lAsValue; }
-        if (typeof lAsValue === "function") { return functionAsOpArgument; }
-        if (typeof rAsValue === "function") { return functionAsOpArgument; }
-        if (typeof rAsValue === "object") { return rAsValue; }
-        return fn(lAsValue, rAsValue);
-    };
-}
-
-function liftUnaryOp(fn: (expr: Primitive) => Primitive): CoreUnaryOp {
-    return (runtime, origin, expr) => {
-        const exprAsValue = runtime.read(origin, expr, ObjProps.AsPrimitive, expr);
-        switch (typeof exprAsValue) {
-            case "object":
-                return exprAsValue;
-            case "function":
-                return functionAsOpArgument;
-            default:
-                return fn(exprAsValue);
-        }
-    };
-}
-
-export const binOps = {
-    [SyntaxKind.PlusToken]: liftBinOp((x: any, y: any) => x + y),
-    [SyntaxKind.MinusToken]: liftBinOp((x: any, y: any) => x - y),
-    [SyntaxKind.AsteriskToken]: liftBinOp((x: any, y: any) => x * y),
-    [SyntaxKind.SlashToken]: liftBinOp((x: any, y: any) => y === 0 ? errors.div0 : x / y),
-    [SyntaxKind.EqualsToken]: liftBinOp((x: any, y: any) => x === y),
-    [SyntaxKind.LessThanToken]: liftBinOp((x: any, y: any) => x < y),
-    [SyntaxKind.GreaterThanToken]: liftBinOp((x: any, y: any) => x > y),
-    [SyntaxKind.LessThanEqualsToken]: liftBinOp((x: any, y: any) => x <= y),
-    [SyntaxKind.GreaterThanEqualsToken]: liftBinOp((x: any, y: any) => x >= y),
-    [SyntaxKind.NotEqualsToken]: liftBinOp((x: any, y: any) => x !== y)
-} as const;
-
-export const unaryOps = {
-    [SyntaxKind.PlusToken]: ((_rt: any, _o: any, x: any) => x) as CoreUnaryOp,
-    [SyntaxKind.MinusToken]: liftUnaryOp((x: any) => -x)
-} as const;
-
+export type Errors = typeof errors;
 export type BinaryOps = typeof binOps;
 export type UnaryOps = typeof unaryOps;
 
-export type Formula = <O>(origin: O, context: CalcObj<O>) => [Pending<unknown>[], Delayed<CalcValue<O>>];
-
-export const createRuntime = (): [Pending<unknown>[], Runtime] => {
+export const createRuntime = (): [Pending<unknown>[], Runtime<Delay>] => {
     const [data, trace] = makeTracer();
     return [data, new CoreRuntime(trace)];
 }

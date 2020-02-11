@@ -1,20 +1,20 @@
 export {
-    CalcFun,
-    CalcObj,
-    CalcValue,
+    parseFormula,
+    FormulaNode
+} from "./ast"
+
+export {
     createRuntime,
     Delay,
     Delayed,
     errors,
-    Formula,
     isDelayed,
     makeError,
-    ObjProps,
-    Runtime,
 } from "./core";
 
 export {
     compile,
+    Formula,
 } from "./compiler";
 
 export {
@@ -23,17 +23,28 @@ export {
 } from "./interpreter";
 
 export {
-    Pending,
-    Primitive,
+    CalcFun,
+    CalcObj,
+    CalcValue,
+    ComparableType,
+    DispatchPattern,
     IConsumer,
-    IReader,
+    IMatrixConsumer,
+    IMatrixProducer,
+    IMatrixReader,
     IProducer,
+    IReader,
     IVectorConsumer,
     IVectorProducer,
     IVectorReader,
-    IMatrixConsumer,
-    IMatrixProducer,
-    IMatrixReader
+    NumericType,
+    Pending,
+    Primitive,
+    ReadableType,
+    ReferenceType,
+    Runtime,
+    TypeMap,
+    TypeName,
 } from "./types";
 
 export {

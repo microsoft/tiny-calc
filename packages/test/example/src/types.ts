@@ -1,13 +1,16 @@
 import {
+    parseFormula,
     Pending,
     IConsumer,
     IProducer,
-    Formula,
+    FormulaNode,
+    interpret,
     Primitive,
+    TypeMap,
+    TypeName,
     CalcFun,
     CalcObj,
     CalcValue,
-    compile
 } from "@tiny-calc/nano";
 
 
@@ -53,42 +56,50 @@ function createPending(v: Pending<Value>): Pending<CalcValue<FormulaHost>> {
     return { kind: "Pending", estimate: v.estimate }
 }
 
-function createCalcValue(v: Producer): CalcObj<FormulaHost> {
+function createReadMap<O>(read: (prop: string, context: O) => CalcValue<O> | Pending<CalcValue<O>>): TypeMap<CalcObj<O>, O> {
+    return { [TypeName.Readable]: { read: (_v, p, c) => read(p, c) } }
+}
+
+function createObjFromMap<O>(map: TypeMap<CalcObj<O>, O>): CalcObj<O> {
+    return { typeMap: () => map, serialise: () => "TODO" }
+}
+
+function createCalcValue(v: Producer) {
     const cache: Record<string, CalcValue<FormulaHost>> = {};
-    return {
-        read: (prop: string, consumer: IConsumer<Record<string, Value>>) => {
-            if (cache[prop] !== undefined) {
-                return cache[prop];
+    const calcVal: CalcObj<FormulaHost> = createObjFromMap(createReadMap(
+        (message: string, consumer: IConsumer<Record<string, Value>>) => {
+            if (cache[message] !== undefined) {
+                return cache[message];
             }
-            const value = v.open(consumer).read(prop);
+            const value = v.open(consumer).read(message);
             switch (typeof value) {
                 case "string":
                 case "number":
                 case "boolean":
                 case "function":
-                    return cache[prop] = value;
+                    return cache[message] = value;
                 default:
                     if ("kind" in value) {
                         return createPending(value);
                     }
-                    return cache[prop] = createCalcValue(value);
+                    return cache[message] = createCalcValue(value);
             }
-        }
-    }
+        }));
+    return calcVal;
 }
 
 export class ListFormula implements FormulaHost {
-    private formulas: Formula[];
+    private formulas: FormulaNode[];
     constructor(
         private scope: Producer,
         private formulaText: string,
         private withValue: (v: any[]) => void
     ) {
         this.formulas = [];
-        const f = compile(this.formulaText);
-        if (f !== undefined) {
+        const [errors, formula] = parseFormula(this.formulaText);
+        if (!errors) {
             for (let i = 0; i < 1000000; i += 1) {
-                this.formulas.push(f);
+                this.formulas.push(formula);
             }
         }
     }
@@ -98,7 +109,7 @@ export class ListFormula implements FormulaHost {
         const scope = createCalcValue(this.scope);
         const values = [];
         for (let i = 0; i < 1000000; i += 1) {
-            values.push(this.formulas[i](this, scope));
+            values.push(interpret(this, scope, this.formulas[i]));
         }
         console.timeEnd("recalc");
         // TODO: export delayed type

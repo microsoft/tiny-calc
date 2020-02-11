@@ -2,7 +2,19 @@ import { parseFormula } from "../src/ast";
 import { createDiagnosticErrorHandler, createParser, SyntaxKind, ExpAlgebra } from "../src/parser";
 import { compile } from "../src/compiler";
 import { interpret } from "../src/interpreter";
-import { CalcValue, CalcObj, CalcFun, errors } from "../src/core";
+import {
+    CalcValue,
+    CalcObj,
+    CalcFun,
+    ComparableType,
+    DispatchPattern,
+    errors,
+    makeError,
+    Primitive,
+    TypeMap,
+    TypeName
+} from "../src/index";
+import { createObjFromMap, createReadMap, createRefMap } from "./util/objectTypes";
 import * as assert from "assert";
 import "mocha";
 
@@ -38,22 +50,114 @@ export const astParse = createParser(astSink, createDiagnosticErrorHandler());
 const sum: CalcFun<unknown> = <O>(_rt: any, _origin: O, args: any[]) => args.reduce((prev, now) => prev + now, 0);
 const prod: CalcFun<unknown> = <O>(_rt: any, _origin: O, args: any[]) => args.reduce((prev, now) => prev * now, 1);
 
-const testContext: CalcObj<undefined> = {
-    read: (property: string) => {
-        switch (property) {
-            case "Foo": return 3;
-            case "I'm a property with a # of characters": return 100;
-            case "Bar": return 5;
-            case "Baz": return { kind: "Pending" };
-            case "Qux": return { kind: "Pending" };
-            case "A1": return { read(prop) { return prop === "value" ? sum : 0 } };
-            case "Something": return { read(prop) { return prop === "Property A" ? "A" : "B" } };
-            case "Sum": return sum;
-            case "Product": return prod;
-            default: return 0;
+const currencyCompare: ComparableType<Currency, unknown> = {
+    compare(pattern: DispatchPattern, l: Primitive | Currency, r: Primitive | Currency): number | CalcObj<unknown> {
+        switch (pattern) {
+            case DispatchPattern.L:
+            case DispatchPattern.R:
+                return errors.typeError;
+            case DispatchPattern.Both:
+                return (<Currency>l).value - (<Currency>r).value;
         }
     }
 }
+
+class Currency implements CalcObj<unknown> {
+    constructor(public readonly value: number, private readonly currency: string) { }
+
+    serialise() {
+        return `${this.currency}${this.value.toString()}`;
+    }
+
+    typeMap(): TypeMap<this, unknown> {
+        return {
+            [TypeName.Numeric]: Currency,
+            [TypeName.Comparable]: currencyCompare
+        }
+    }
+
+    static plus(pattern: DispatchPattern, l: number | Currency, r: number | Currency): number | CalcObj<unknown> {
+        switch (pattern) {
+            case DispatchPattern.L:
+                return new Currency((<Currency>l).value + <number>r, (<Currency>l).currency);
+            case DispatchPattern.R:
+                return new Currency(<number>l + (<Currency>r).value, (<Currency>r).currency);
+            case DispatchPattern.Both:
+                if ((<Currency>l).currency === (<Currency>r).currency) {
+                    return new Currency((<Currency>l).value + (<Currency>r).value, (<Currency>l).currency);
+                }
+                return makeError(`#CURRENCY! [combining ${(<Currency>l).currency} with ${(<Currency>r).currency}]`);
+
+        }
+    }
+
+    static minus(pattern: DispatchPattern, l: number | Currency, r: number | Currency): number | CalcObj<unknown> {
+        switch (pattern) {
+            case DispatchPattern.L:
+                return new Currency((<Currency>l).value - <number>r, (<Currency>l).currency);
+            case DispatchPattern.R:
+                return new Currency(<number>l - (<Currency>r).value, (<Currency>r).currency);
+            case DispatchPattern.Both:
+                if ((<Currency>l).currency === (<Currency>r).currency) {
+                    return new Currency((<Currency>l).value - (<Currency>r).value, (<Currency>l).currency);
+                }
+                return makeError(`#CURRENCY! [combining ${(<Currency>l).currency} with ${(<Currency>r).currency}]`);
+
+        }
+    }
+
+    static mult(pattern: DispatchPattern, l: number | Currency, r: number | Currency): number | CalcObj<unknown> {
+        switch (pattern) {
+            case DispatchPattern.L:
+                return new Currency((<Currency>l).value * <number>r, (<Currency>l).currency);
+            case DispatchPattern.R:
+                return new Currency(<number>l * (<Currency>r).value, (<Currency>r).currency);
+            case DispatchPattern.Both:
+                return new Currency((<Currency>l).value * (<Currency>r).value, (<Currency>l).currency);
+        }
+    }
+
+    static div(pattern: DispatchPattern, l: number | Currency, r: number | Currency): number | CalcObj<unknown> {
+        switch (pattern) {
+            case DispatchPattern.L:
+                return new Currency((<Currency>l).value / <number>r, (<Currency>l).currency);
+            case DispatchPattern.R:
+                return new Currency(<number>l / (<Currency>r).value, (<Currency>r).currency);
+            case DispatchPattern.Both:
+                if ((<Currency>l).currency === (<Currency>r).currency) {
+                    return (<Currency>l).value / (<Currency>r).value;
+                }
+                return errors.typeError; // TODO: bit of a hack
+        }
+    }
+
+    static negate(value: Currency): CalcObj<unknown> {
+        return new Currency(-value.value, value.currency);
+    }
+
+}
+
+const a1 = createObjFromMap("A1", Object.assign(createReadMap(_ => 0), createRefMap(sum)));
+const something = createObjFromMap("Something", createReadMap(prop => prop === "Property A" ? "A" : "B"));
+const testContext = createObjFromMap("root", createReadMap(
+    (message: string) => {
+        switch (message) {
+            case "Foo": return 3;
+            case "I'm a property with a # of characters": return 100;
+            case "Bar": return 5;
+            case "Baz": return { kind: "Pending" as const };
+            case "Qux": return { kind: "Pending" as const };
+            case "A1": return a1;
+            case "Something": return something;
+            case "Sum": return sum;
+            case "Product": return prod;
+            case "$100": return new Currency(100, "$");
+            case "$200": return new Currency(200, "$");
+            case "300 GBP": return new Currency(300, "GBP");
+            default: return 0;
+        }
+    }));
+
 
 describe("nano", () => {
     function parseTest(expression: string, expected: object, errorCount: number) {
@@ -64,23 +168,43 @@ describe("nano", () => {
         });
     }
 
-    function evalTest(expression: string, expected: CalcValue<any>) {
+    function evalTest(expression: string, expected: CalcValue<any>, serialise: boolean | undefined) {
         it(`Eval: ${expression}`, () => {
             const f = compile(expression);
             assert.notEqual(f, undefined)
             const [pending, actual] = f!(undefined, testContext);
             assert.deepEqual(pending, []);
-            assert.strictEqual(actual, expected);
+            if (serialise) {
+                if (typeof actual === "object") {
+                    assert.strictEqual((actual as CalcObj<void>).serialise(), expected);
+                }
+                else {
+                    assert.strictEqual(actual.toString(), expected);
+                }
+            }
+            else {
+                assert.strictEqual(actual, expected);
+            }
         });
     }
 
-    function interpretTest(expression: string, expected: CalcValue<any>) {
+    function interpretTest(expression: string, expected: CalcValue<any>, serialise: boolean | undefined) {
         it(`Interpret: ${expression}`, () => {
-            const [ok, formula] = parseFormula(expression);
-            assert.strictEqual(ok, false);
+            const [errors, formula] = parseFormula(expression);
+            assert.strictEqual(errors, false);
             const [pending, actual] = interpret(undefined, testContext, formula);
             assert.deepEqual(pending, []);
-            assert.strictEqual(actual, expected);
+            if (serialise) {
+                if (typeof actual === "object") {
+                    assert.strictEqual((actual as CalcObj<void>).serialise(), expected);
+                }
+                else {
+                    assert.strictEqual(actual.toString(), expected);
+                }
+            }
+            else {
+                assert.strictEqual(actual, expected);
+            }
         });
     }
 
@@ -919,27 +1043,35 @@ Product(1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
         { expression: "4*1*(2+3)*4", expected: 80 },
         { expression: "Foo + Bar", expected: 8 },
         { expression: "IF(Foo * Bar > 10000, 'left', 'right')", expected: "right" },
-        { expression: "4(3,2).stringify", expected: "The target of an application must be a calc function." },
-        { expression: "(Sum + 3).stringify", expected: "Operator argument must be a primitive." },
+        { expression: "4(3,2)", expected: "The target of an application must be a calc function.", serialise: true },
         {
-            expression: "(Sum + 3).prop.prop.prop.prop.prop.prop.prop.prop.prop.prop.prop.prop.prop.prop.prop.prop.stringify",
-            expected: "Operator argument must be a primitive."
+            expression: "(Sum + 3)",
+            expected: "#TYPE!",
+            serialise: true
         },
         { expression: "42.", expected: 42 },
         { expression: "42.01", expected: 42.01 },
         { expression: "1/1", expected: 1 },
         { expression: "1/0", expected: errors.div0 },
-        { expression: "(1/0).stringify", expected: "#DIV/0!" },
+        { expression: "(1/0)", expected: "#DIV/0!", serialise: true },
         { expression: "FUN(42)()", expected: 42 },
         { expression: "A1(1, 2, 3, FUN(42)())", expected: 48 },
-        { expression: "FUN(x, y, x + y)(1).stringify", expected: "#ARITY!" },
+        { expression: "FUN(x, y, x + y)(1)", expected: "#ARITY!", serialise: true },
         { expression: "FUN(x, y, z, x + y + z)(1, 2, 3) + FUN(x, y, z, x + y + z)(4, 5, 6) + FUN(x, y, z, x + y + z)(7, 8, 9) + FUN(x, y, z, x + y + z)(10, 11, 12)", expected: 78 },
         { expression: "FUN(f, f(1, 2, 3) + f(4, 5, 6) + f(7, 8, 9) + f(10, 11, 12))(FUN(x, y, z, x + y + z))", expected: 78 },
         { expression: "FUN(x, y, z, x + FUN(x, x*x)(y) + z)(2, 3, 4)", expected: 15 },
-        { expression: "FUN(g, f, FUN(x, g(f(x))))(FUN(x, x + 1), FUN(x, x - 1))(10)=10", expected: true }
+        { expression: "FUN(g, f, FUN(x, g(f(x))))(FUN(x, x + 1), FUN(x, x - 1))(10)=10", expected: true },
+        { expression: "{$200} + {$200} + {$200} + {$200} + {$200}", expected: "$1000", serialise: true },
+        { expression: "{$100} + {$100} + {$100} + {$100} + {$100}", expected: "$500", serialise: true },
+        { expression: "{$100} + {300 GBP}", expected: "#CURRENCY! [combining $ with GBP]", serialise: true },
+        { expression: "{300 GBP} / {300 GBP}", expected: 1 },
+        { expression: "10 * {300 GBP}", expected: "GBP3000", serialise: true },
+        { expression: "{300 GBP} = {300 GBP}", expected: "true", serialise: true },
+        { expression: "{$100} < {$200}", expected: "true", serialise: true },
+        { expression: "{$100} > {$200}", expected: "false", serialise: true },
     ];
 
-        const interpretCases = [
+    const interpretCases = [
         { expression: "{I'm a property with a # of characters}", expected: 100 },
         { expression: "{I'm a property with a # of characters}*10", expected: 1000 },
         { expression: "Something.{Property A}", expected: "A" },
@@ -972,17 +1104,28 @@ Product(1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
         { expression: "4*1*(2+3)*4", expected: 80 },
         { expression: "Foo + Bar", expected: 8 },
         { expression: "IF(Foo * Bar > 10000, 'left', 'right')", expected: "right" },
-        { expression: "4(3,2).stringify", expected: "The target of an application must be a calc function." },
-        { expression: "(Sum + 3).stringify", expected: "Operator argument must be a primitive." },
+        { expression: "4(3,2)", expected: "The target of an application must be a calc function.", serialise: true },
         {
-            expression: "(Sum + 3).prop.prop.prop.prop.prop.prop.prop.prop.prop.prop.prop.prop.prop.prop.prop.prop.stringify",
-            expected: "Operator argument must be a primitive."
+            expression: "(Sum + 3)",
+            expected: "#TYPE!",
+            serialise: true
         },
         { expression: "42.", expected: 42 },
         { expression: "42.01", expected: 42.01 },
         { expression: "1/1", expected: 1 },
         { expression: "1/0", expected: errors.div0 },
-        { expression: "(1/0).stringify", expected: "#DIV/0!" }
+        { expression: "(1/0)", expected: "#DIV/0!", serialise: true },
+        { expression: "{$200} + {$200} + {$200} + {$200} + {$200}", expected: "$1000", serialise: true },
+        { expression: "{$100} + {$100} + {$100} + {$100} + {$100}", expected: "$500", serialise: true },
+        { expression: "{$100} + {300 GBP}", expected: "#CURRENCY! [combining $ with GBP]", serialise: true },
+        { expression: "{300 GBP} + {$100} + 10", expected: "#CURRENCY! [combining GBP with $]", serialise: true },
+        { expression: "{300 GBP} / {300 GBP}", expected: 1 },
+        { expression: "{300 GBP} = {300 GBP}", expected: "true", serialise: true },
+        { expression: "{$100} < {$200}", expected: "true", serialise: true },
+        { expression: "{$100} > {$200}", expected: "false", serialise: true },
+        { expression: "10 * {300 GBP}", expected: "GBP3000", serialise: true },
+        { expression: "4 - 2 + 100", expected: 102 },
+        { expression: "4 - (2 + 100)", expected: -98 },
     ];
 
     const compilationFailureCases = [
@@ -997,15 +1140,15 @@ Product(1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
         parseTest(expression, expected, errorCount);
     }
 
-    for (const { expression, expected } of evalCases) {
-        evalTest(expression, expected);
+    for (const { expression, expected, serialise } of evalCases) {
+        evalTest(expression, expected, serialise);
     }
 
     for (const { expression } of compilationFailureCases) {
         compilationFailureTest(expression);
     }
 
-    for (const { expression, expected } of interpretCases) {
-        interpretTest(expression, expected);
+    for (const { expression, expected, serialise } of interpretCases) {
+        interpretTest(expression, expected, serialise);
     }
 });

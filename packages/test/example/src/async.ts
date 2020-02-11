@@ -1,66 +1,91 @@
+const fetch = require("node-fetch");
+
 import {
     Pending,
-    Formula,
-    Primitive,
+    TypeMap,
+    TypeName,
     isDelayed,
     CalcObj,
     CalcValue,
-    compile
+    interpret,
+    parseFormula,
+    FormulaNode
 } from "@tiny-calc/nano";
 
-function createTimeoutPromise<T>(ms: number, value: T, cb: (x: T) => void): Promise<void> {
-    return new Promise(resolve => setTimeout(() => { cb(value); resolve() }, ms));
-}
-
-const cache: Record<string, Primitive | PendingPromise> = {};
+let cache: Record<string, CalcObj<unknown> | PendingPromise> = {};
 
 interface PendingPromise extends Pending<CalcObj<unknown>> {
     promise: Promise<void>;
 }
 
-const delayedCalcValue: CalcObj<unknown> = {
-    read(prop) {
+function createRefMap(getter: () => CalcValue<unknown> | Pending<CalcValue<unknown>>): TypeMap<CalcObj<unknown>, unknown> {
+    return { [TypeName.Reference]: { dereference: getter } }
+}
+
+function createReadMap(read: (prop: string) => CalcValue<unknown> | Pending<CalcValue<unknown>>): TypeMap<CalcObj<unknown>, unknown> {
+    return { [TypeName.Readable]: { read: (_v, p, _c) => read(p) } }
+}
+
+function createObjFromMap(map: TypeMap<CalcObj<unknown>, unknown>): CalcObj<unknown> {
+    return { typeMap: () => map, serialise: () => "TODO" }
+}
+
+function createReadableFromDict(dict: Record<string, any>): CalcObj<unknown> {
+    return createObjFromMap(createReadMap(prop => {
+        const val = dict[prop];
+        if (val === undefined) {
+            return "#MISSING!";
+        }
+        switch (typeof val) {
+            case "object": return createReadableFromDict(val);
+            default: return val;
+        }
+    }));
+}
+
+
+function queryWiki(id: string): Promise<Record<string, any>> {
+    const headers = { Accept: "application/json" };
+    const json = fetch(`http://www.wikidata.org/entity/${id}`, { headers }).then((body: any) => body.json());
+    return json.then((d: any) => d.entities[id]);
+}
+
+const read = (prop: string) => {
+    const pending: () => (PendingPromise | CalcObj<unknown>) = () => {
         if (cache[prop] !== undefined) {
             return cache[prop];
         }
-
-        let time: number;
-        let val: Primitive;
-
-        switch (prop) {
-            case "a string":
-                time = 100;
-                val = "hello world";
-                break;
-            case "a bool":
-                time = 400;
-                val = true;
-                break;
-            default:
-                time = 600;
-                val = 42;
-                break;
-        }
-        const pending: PendingPromise = {
+        const obj: PendingPromise = {
             kind: "Pending",
-            promise: createTimeoutPromise(time, val, x => cache[prop] = x)
-        }
-        return cache[prop] = pending;
+            promise: queryWiki(prop).then(data => {
+                cache[prop] = createReadableFromDict(data);
+                return;
+            })
+        };
+        return cache[prop] = obj;
     }
+    return createObjFromMap(createRefMap(pending));
 }
 
-const f = compile("{a number} + IF({a number} > 10, {other}, {other}) + {a number} + \" \" + {a string} + \" \" + {a bool}");
+const delayedCalcValue: CalcObj<unknown> = createObjFromMap(createReadMap(read));
+
+
+const f = parseFormula(`Q978185.labels.en.value + ' was last modified ' + Q978185.modified + '. ' +
+Q2005.labels.en.value + ' was last modified ' + Q2005.modified
+`)[1];
+
+const g = parseFormula("Q5")[1];
 
 /**
  * Care needs to be taken when using promise loops as they have a
  * tendency to leak memory.
  */
-async function runFormula(f: Formula, attempts: number): Promise<CalcValue<undefined>> {
-    let [pendings, value] = f(undefined, delayedCalcValue);
+async function runFormula(f: FormulaNode, attempts: number): Promise<CalcValue<unknown>> {
+    let [pendings, value] = interpret(undefined as unknown, delayedCalcValue, f);
     while (isDelayed(value)) {
         if (attempts > 0) {
             await Promise.all(pendings.map((p: any) => p.promise));
-            [pendings, value] = f(undefined, delayedCalcValue);
+            [pendings, value] = interpret(undefined as unknown, delayedCalcValue, f)
             attempts--;
             continue;
         }
@@ -69,8 +94,15 @@ async function runFormula(f: Formula, attempts: number): Promise<CalcValue<undef
     return value;
 }
 
-if (f) {
-    console.time('go');
-    const cb = (x: CalcValue<undefined>) => { console.timeEnd('go'); console.log(x) };
-    runFormula(f, 5).then(cb).catch(cb);
-}
+console.time('go');
+
+const cb = (x: CalcValue<unknown>) => { console.timeEnd('go'); console.log(x) };
+const cb2 = (x: CalcValue<unknown>) => { console.timeEnd('go2'); console.log(x) };
+runFormula(f, 5)
+    .then(cb).catch(cb)
+    .then(() => setTimeout(() => { return console.time('go2'), runFormula(g, 5).then(cb2).catch(cb2) }, 5000));
+
+
+
+
+
