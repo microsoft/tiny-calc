@@ -352,6 +352,7 @@ function rebuild(roots: number[], host: BuildHost): void {
     function runFunctionFiber<O, T>(fiber: FunctionFiber<O, T>) {
         const { point, range } = fiber;
         const [r, c] = point;
+        const startC = range.tl[COL]
         const endR = range.tl[ROW] + range.height;
         const endC = range.tl[COL] + range.width;
         for (let j = c; j < endC; j += 1) {
@@ -360,7 +361,7 @@ function rebuild(roots: number[], host: BuildHost): void {
             }
         }
         for (let i = r + 1; i < endR; i += 1) {
-            for (let j = 0; j < endC; j += 1) {
+            for (let j = startC; j < endC; j += 1) {
                 if (shouldQueueFiber(host, i, j)) {
                     addFiber(makePendingCell(i, j));
                 }
