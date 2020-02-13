@@ -15,7 +15,6 @@ import {
     makeError,
     Pending,
     ReadableType,
-    ReferenceType,
     Primitive,
     TypeMap,
     TypeName,
@@ -108,11 +107,11 @@ function initBinder(): Binder<number> {
 const enum CalcFlag {
     Clean,
     Dirty,
-    InCalc,
     Enqueued,
+    InCalc,
 }
 
-type Value = CalcValue<Point>;
+type Value = CalcValue<InSheetContext>;
 
 interface ValueCell {
     flag: CalcFlag.Clean;
@@ -188,7 +187,8 @@ interface CellReader {
 
 interface BuildHost extends CellReader {
     binder: Binder<number>;
-    rootContext: CalcObj<Point>;
+    context: InSheetContext;
+    rootObject: CalcObj<InSheetContext>;
 }
 
 function createInvalidator(reader: CellReader, binder: Binder<number>) {
@@ -291,8 +291,12 @@ function initFiberStack() {
     return [stack, (fiber: Fiber) => { stack.push(fiber); }] as const;
 }
 
-const coerceResult = (row: number, column: number, value: CalcValue<Point>) =>
-    value instanceof Range ? (value as Range<Point>).dereference(value, [row, column]) : value;
+const coerceResult = (value: Value, context: InSheetContext) => {
+    if (value instanceof Range) {
+        return Range.dereference(value, context);
+    }
+    return value;
+}
 
 /**
  * Mark a cell as calculated with `value`, queue its dependents for
@@ -381,15 +385,15 @@ function rebuild(roots: number[], host: BuildHost): void {
             return true;
         }
         cell.flag = CalcFlag.InCalc;
-        let result: [PendingValue[], Delayed<CalcValue<Point>>] = [[], errorValues.evalFailure];
+        let result: [PendingValue[], Delayed<Value>] = [[], errorValues.evalFailure];
         try {
-            result = cell.fn([row, col], host.rootContext);
+            result = cell.fn(host.context, host.rootObject);
         } catch {
         }
         if (isDelayed(result[1])) {
             return result[0];
         }
-        const value = coerceResult(row, col, result[1]);
+        const value = coerceResult(result[1], host.context);
         if (isPending(value)) { return [value]; }
         finishCell(queueKey, host.binder, row, col, cell, value);
         return true;
@@ -557,12 +561,13 @@ const createConcat = createRunner<string>((result) => s => { if (typeof s === "s
  */
 
 interface RangeContext<O> {
-    link: (row: number, col: number, origin: O) => CalcValue<O> | CellFiber | undefined;
+    origin: O;
+    link: (row: number, col: number, origin: O) => CalcValue<RangeContext<O>> | CellFiber | undefined;
     parseRef: (text: string) => Point | undefined;
 }
 
 type RangeAggregation<R, Accum = R> = <O>(
-    range: Range<O>, context: RangeContext<O>, origin: O, someTask?: FunctionFiber<O, Accum>,
+    range: Range<O>, context: RangeContext<O>, someTask?: FunctionFiber<O, Accum>,
 ) => R | FunctionFiber<O, Accum>;
 
 function runFunc<O, Res>(context: RangeContext<O>, task: FunctionFiber<O, Res>, initRunner: (init: Res) => FunctionRunner<Res>) {
@@ -586,49 +591,47 @@ function runFunc<O, Res>(context: RangeContext<O>, task: FunctionFiber<O, Res>, 
     return runner[0];
 }
 
-const rangeSum: RangeAggregation<number> = (range, context, origin, someTask?) => {
-    const task = someTask || makePendingFunction("sum", range, origin, range.tl, 0);
+const rangeSum: RangeAggregation<number> = (range, context, someTask?) => {
+    const task = someTask || makePendingFunction("sum", range, context.origin, range.tl, 0);
     return runFunc(context, task, createSum);
 };
 
-const rangeProduct: RangeAggregation<number> = (range, context, origin, someTask?) => {
-    const task = someTask || makePendingFunction("product", range, origin, range.tl, 1);
+const rangeProduct: RangeAggregation<number> = (range, context, someTask?) => {
+    const task = someTask || makePendingFunction("product", range, context.origin, range.tl, 1);
     return runFunc(context, task, createProduct);
 };
 
-const rangeCount: RangeAggregation<number> = (range, context, origin, someTask?) => {
-    const task = someTask || makePendingFunction("count", range, origin, range.tl, 0);
+const rangeCount: RangeAggregation<number> = (range, context, someTask?) => {
+    const task = someTask || makePendingFunction("count", range, context.origin, range.tl, 0);
     return runFunc(context, task, createCount);
 };
 
-const rangeAverage: RangeAggregation<number | CalcObj<any>, [number, number]> = (range, context, origin, someTask?) => {
-    const task = someTask || makePendingFunction("average", range, origin, range.tl, [0, 0]);
+const rangeAverage: RangeAggregation<number | CalcObj<any>, [number, number]> = (range, context, someTask?) => {
+    const task = someTask || makePendingFunction("average", range, context.origin, range.tl, [0, 0]);
     const result = runFunc(context, task, createAverage);
     if (isPending(result)) { return result; }
     const [total, finalCount] = result;
     return finalCount === 0 ? errorValues.div0 : total / finalCount;
 };
 
-const rangeMax: RangeAggregation<number, number | undefined> = (range, context, origin, someTask?) => {
-    const task = someTask || makePendingFunction("max", range, origin, range.tl, undefined);
+const rangeMax: RangeAggregation<number, number | undefined> = (range, context, someTask?) => {
+    const task = someTask || makePendingFunction("max", range, context.origin, range.tl, undefined);
     const result = runFunc(context, task, createMax);
     return result === undefined ? 0 : result;
 };
 
-const rangeMin: RangeAggregation<number, number | undefined> = (range, context, origin, someTask?) => {
-    const task = someTask || makePendingFunction("min", range, origin, range.tl, undefined);
+const rangeMin: RangeAggregation<number, number | undefined> = (range, context, someTask?) => {
+    const task = someTask || makePendingFunction("min", range, context.origin, range.tl, undefined);
     const result = runFunc(context, task, createMin);
     return result === undefined ? 0 : result;
 };
 
-const rangeConcat: RangeAggregation<string> = (range, context, origin, someTask?) => {
-    const task = someTask || makePendingFunction("concat", range, origin, range.tl, "");
+const rangeConcat: RangeAggregation<string> = (range, context, someTask?) => {
+    const task = someTask || makePendingFunction("concat", range, context.origin, range.tl, "");
     return runFunc(context, task, createConcat);
 };
 
-type FreshAggregation<R, Accum = R> = <O>(
-    range: Range<O>, context: RangeContext<O>, origin: O,
-) => R | FunctionFiber<O, Accum>;
+type FreshAggregation<R, Accum = R> = <O>(range: Range<O>, context: RangeContext<O>) => R | FunctionFiber<O, Accum>;
 
 const aggregations: Record<string, FreshAggregation<CalcValue<any>, any>> = {
     sum: rangeSum, product: rangeProduct, count: rangeCount, average: rangeAverage, max: rangeMax, min: rangeMin, concat: rangeConcat,
@@ -644,11 +647,11 @@ function tryParseRange<O>(context: RangeContext<O>, text: string) {
             return undefined;
         }
         if (asRange[1] === undefined) {
-            return new Range(context, first, first);
+            return new Range<O>(first, first);
         }
         const second = context.parseRef(asRange[1]);
         if (second !== undefined) {
-            return new Range(context, first, second);
+            return new Range<O>(first, second);
         }
     }
     return undefined;
@@ -659,12 +662,12 @@ function tryParseRange<O>(context: RangeContext<O>, text: string) {
  * aggregations over the view. The canonical value of a Range is the
  * top left corner.
  */
-class Range<O> implements CalcObj<O>, ReadableType<Range<O>, O>, ReferenceType<Range<O>, O> {
+class Range<O> implements CalcObj<RangeContext<O>> {
     public readonly tl: Point;
     public readonly height: number;
     public readonly width: number;
 
-    constructor(private readonly context: RangeContext<O>, first: Point, second: Point) {
+    constructor(first: Point, second: Point) {
         this.tl = [
             first[ROW] < second[ROW] ? first[ROW] : second[ROW],
             first[COL] < second[COL] ? first[COL] : second[COL],
@@ -673,14 +676,14 @@ class Range<O> implements CalcObj<O>, ReadableType<Range<O>, O>, ReferenceType<R
         this.width = Math.abs(first[COL] - second[COL]) + 1;
     }
 
-    public transportRange<O2>(context: RangeContext<O2>): Range<O2> {
-        return new Range(context, this.tl, [this.tl[ROW] + this.height, this.tl[COL] + this.width]);
+    public transportRange<O2>(): Range<O2> {
+        return this as any as Range<O2>;
     }
 
-    public typeMap(): TypeMap<this, O> {
+    public typeMap(): TypeMap<this, RangeContext<O>> {
         return {
-            [TypeName.Readable]: this,
-            [TypeName.Reference]: this
+            [TypeName.Readable]: Range,
+            [TypeName.Reference]: Range
         }
     }
 
@@ -688,34 +691,34 @@ class Range<O> implements CalcObj<O>, ReadableType<Range<O>, O>, ReferenceType<R
         return "REF";
     }
 
-    public dereference(value: Range<O>, context: O) {
-        const result = this.context.link(this.tl[ROW], this.tl[COL], context);
+    public static dereference<O>(value: Range<O>, context: RangeContext<O>) {
+        const result = context.link(value.tl[ROW], value.tl[COL], context.origin);
         return result === undefined ? errorValues.unknownField : result;
     }
 
-    public read(value: Range<O>, message: string, origin: O): CalcValue<O> | Pending<CalcValue<O>> {
+    public static read<O>(receiver: Range<O>, message: string, context: RangeContext<O>): CalcValue<RangeContext<O>> | Pending<CalcValue<RangeContext<O>>> {
         if (aggregations[message] !== undefined) {
             const fn = aggregations[message as keyof typeof aggregations];
-            return fn(value, this.context, origin);
+            return fn(receiver, context);
         }
         switch (message) {
             case "row":
             case "ROW":
-                return this.tl[ROW] + 1;
+                return receiver.tl[ROW] + 1;
             case "column":
             case "COLUMN":
-                return this.tl[COL] + 1;
+                return receiver.tl[COL] + 1;
             default:
-                const range = tryParseRange(this.context, message);
+                const range = tryParseRange(context, message);
                 if (range === undefined) {
-                    const value = this.context.link(this.tl[ROW], this.tl[COL], origin);
+                    const value = context.link(receiver.tl[ROW], receiver.tl[COL], context.origin);
                     if (typeof value === "object") {
                         if (isPending(value)) {
                             return value;
                         }
                         const reader = value.typeMap()[TypeName.Readable];
                         if (reader) {
-                            return reader.read(value, message, origin);
+                            return reader.read(value, message, context);
                         }
                     }
                     return errorValues.unknownField;
@@ -734,44 +737,47 @@ export interface ISheetlet {
     evaluateFormula: (formula: string) => Primitive | undefined;
 }
 
+type InSheetContext = RangeContext<Point>;
+type OutSheetContext = RangeContext<void>;
+
 class Sheetlet implements ISheetlet {
     private static readonly blank = "";
 
     public readonly binder = initBinder();
 
-    public readonly rootContext: CalcObj<Point> & ReadableType<CalcObj<Point>, Point> = {
+    public readonly rootContext: CalcObj<InSheetContext> & ReadableType<Value, InSheetContext> = {
         typeMap() {
             return {
                 [TypeName.Readable]: this
             }
         },
         serialise: () => "TODO",
-        read: (_value: CalcObj<Point>, message: string, context: Point) => {
+        read: (_value: CalcObj<InSheetContext>, message: string, context: InSheetContext) => {
             if (message in funcs) {
                 return funcs[message];
             }
             switch (message) {
                 case "row":
                 case "ROW":
-                    return context[ROW] + 1;
+                    return context.origin[ROW] + 1;
                 case "column":
                 case "COLUMN":
-                    return context[COL] + 1;
+                    return context.origin[COL] + 1;
                 default:
-                    const range = tryParseRange(this.inSheetContext, message);
+                    const range = tryParseRange(context, message);
                     return range || errorValues.unknownField;
             }
         },
     };
 
-    private readonly orphanFormulaContext: CalcObj<unknown> & ReadableType<CalcObj<unknown>, unknown> = {
+    private readonly orphanFormulaContext: CalcObj<RangeContext<void>> & ReadableType<CalcObj<RangeContext<void>>, RangeContext<void>> = {
         typeMap() {
             return {
                 [TypeName.Readable]: this
             }
         },
         serialise: () => "TODO",
-        read: (_value: CalcObj<unknown>, message: string) => {
+        read: (_: CalcObj<RangeContext<void>>, message: string) => {
             if (message in funcs) {
                 return funcs[message];
             }
@@ -780,12 +786,14 @@ class Sheetlet implements ISheetlet {
         },
     };
 
-    private readonly inSheetContext = {
+    private readonly inSheetContext: (origin: Point) => InSheetContext = origin => ({
+        origin,
         link: this.getCellValueAndLink.bind(this),
         parseRef: this.parseRef.bind(this),
-    };
+    });
 
-    private readonly outOfSheetContext: RangeContext<unknown> = {
+    private readonly outOfSheetContext: OutSheetContext = {
+        origin: undefined as void,
         link: this.getCellValueAndForget.bind(this),
         parseRef: this.parseRef.bind(this),
     };
@@ -822,9 +830,15 @@ class Sheetlet implements ISheetlet {
 
     public evaluateCell(row: number, col: number): Primitive | undefined {
         const cell = this.readCell(row, col);
+        const buildHost: BuildHost = {
+            readCell: this.readCell.bind(this),
+            binder: this.binder,
+            context: this.inSheetContext([row, col]),
+            rootObject: this.rootContext,
+        }
         if (cell && cell.flag === CalcFlag.Dirty) {
             try {
-                rebuild([pointToKey(row, col)], this);
+                rebuild([pointToKey(row, col)], buildHost);
             } catch (e) {
                 console.error(`Rebuild failure: ${e}`);
             }
@@ -833,7 +847,7 @@ class Sheetlet implements ISheetlet {
             return isFormulaCell(cell) ?
                 cell.value === undefined ?
                     undefined :
-                    this.primitiveFromValue([row, col] as Point, cell.value)
+                    this.primitiveFromValue(buildHost.context, cell.value)
                 :
                 cell.content;
         }
@@ -850,14 +864,14 @@ class Sheetlet implements ISheetlet {
      */
     public evaluateFormula(formula: string): Primitive | undefined {
         const program = formula[0] === "=" ? formula.substring(1) : formula;
-        const origin: Point = [0, 0];
+//        const origin: Point = [0, 0];
         const fn = compile(program);
         if (fn === undefined) { return undefined; }
-        const value = fn(origin, this.orphanFormulaContext)[1];
-        return isDelayed(value) ? undefined : this.primitiveFromValue(origin, value);
+        const value = fn(this.outOfSheetContext, this.orphanFormulaContext)[1];
+        return isDelayed(value) ? undefined : this.primitiveFromValue(this.outOfSheetContext, value);
     }
 
-    private primitiveFromValue<O>(context: O, value: CalcValue<O>): Primitive | undefined {
+    private primitiveFromValue<O>(context: RangeContext<O>, value: CalcValue<RangeContext<O>>): Primitive | undefined {
         switch (typeof value) {
             case "number":
             case "string":
@@ -867,7 +881,7 @@ class Sheetlet implements ISheetlet {
                 return "<function>";
             case "object":
                 if (value instanceof Range) {
-                    return this.primitiveFromValue(context, value.dereference(value, context) as CalcValue<O>);
+                    return this.primitiveFromValue(context, Range.dereference(value, context) as CalcValue<RangeContext<O>>);
                 }
                 const asString = value.serialise(context);
                 return typeof asString === "string" ? asString : undefined;
@@ -876,7 +890,7 @@ class Sheetlet implements ISheetlet {
         }
     }
 
-    private getCellValueAndForget(row: number, col: number): Primitive | Range<unknown> | undefined {
+    private getCellValueAndForget(row: number, col: number): Primitive | Range<void> | undefined {
         const cell = this.readCell(row, col);
         if (cell === undefined) {
             return Sheetlet.blank;
@@ -886,7 +900,7 @@ class Sheetlet implements ISheetlet {
                 if (isFormulaCell(cell)) {
                     const value = cell.value!
                     if (value && value instanceof Range) {
-                        return value.transportRange(this.outOfSheetContext);
+                        return value as Range<void>;
                     }
                 }
                 return cell.content;
