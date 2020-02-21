@@ -19,12 +19,14 @@ import {
     TypeMap,
     TypeName,
     Runtime,
+    IMatrixConsumer,
+    IMatrixProducer,
+    IMatrixReader,
 } from "@tiny-calc/nano";
 
 import { keyToPoint, pointToKey } from "./key";
 
 import * as assert from "assert";
-import { IMatrix } from "./matrix";
 
 function assertNever(_: never): never {
     return assert.fail(`
@@ -728,19 +730,10 @@ class Range<O> implements CalcObj<RangeContext<O>> {
     }
 }
 
-/**
- * Sheetlet: a grid of incrementally recalculating formulas.
- */
-export interface ISheetlet {
-    invalidate: (row: number, col: number) => void;
-    evaluateCell: (row: number, col: number) => Primitive | undefined;
-    evaluateFormula: (formula: string) => Primitive | undefined;
-}
-
 type InSheetContext = RangeContext<Point>;
 type OutSheetContext = RangeContext<void>;
 
-class Sheetlet implements ISheetlet {
+class Sheetlet implements IMatrixConsumer<Primitive | undefined>, IMatrixProducer<Value | undefined>, IMatrixReader<Value | undefined> {
     private static readonly blank = "";
 
     public readonly binder = initBinder();
@@ -799,45 +792,102 @@ class Sheetlet implements ISheetlet {
     };
 
     private readonly invalidateKey = createInvalidator({
-        readCell: this.getCell.bind(this),
+        readCell: this.cache.read.bind(this.cache),
     }, this.binder);
 
-    constructor(private readonly matrix: IMatrix) { }
+    reader!: IMatrixReader<Primitive | undefined>;
+    numRows: number = -1;
+    numCols: number = -1;
+    consumer0: IMatrixConsumer<Value | undefined> | undefined;
+    consumers: IMatrixConsumer<Value | undefined>[] = [];
+
+    constructor(readonly producer: IMatrixProducer<Primitive | undefined>, readonly cache: IMatrix<Cell>) { }
+
+    connect() {
+        this.reader = this.producer.openMatrix(this);
+        this.numRows = this.reader.numRows;
+        this.numCols = this.reader.numCols;
+    }
+
+    rowsChanged(row: number, numRemoved: number, numInserted: number, producer: IMatrixProducer<Primitive | undefined>) {
+        this.numRows = this.reader.numRows;
+        if (this.consumer0) {
+            this.consumer0.rowsChanged(row, numRemoved, numInserted, this);
+            this.consumers.forEach(consumer => consumer.rowsChanged(row, numRemoved, numInserted, this))
+        }
+    }
+
+    colsChanged(col: number, numRemoved: number, numInserted: number, producer: IMatrixProducer<Primitive | undefined>) {
+        this.numCols = this.reader.numCols;
+        if (this.consumer0) {
+            this.consumer0.colsChanged(col, numRemoved, numInserted, this);
+            this.consumers.forEach(consumer => consumer.colsChanged(col, numRemoved, numInserted, this))
+        }
+    }
+
+    cellsChanged(row: number, col: number, numRows: number, numCols: number, values: readonly (Primitive | undefined)[] | undefined, producer: IMatrixProducer<Primitive | undefined>) {
+        // invalidate the data
+        // queue rebuild the keys
+        // grab the changed cells or notify as they are executed.
+    }
+
+    openMatrix(consumer: IMatrixConsumer<Value>): IMatrixReader<Value | undefined> {
+        if (this.consumer0) {
+            if (this.consumers.indexOf(consumer) === -1) {
+                this.consumers.push(consumer);
+            }
+        }
+        else {
+            this.consumer0 = consumer;
+        }
+        this.connect();
+        return this;
+    }
+
+    removeMatrixConsumer(consumer: IMatrixConsumer<Value>) {
+        if (consumer === this.consumer0) {
+            this.consumer0 = undefined;
+            this.consumer0 = this.consumers.pop();
+        }
+        else if (this.consumers) {
+            const idx = this.consumers.indexOf(consumer);
+            if (idx > -1) {
+                this.consumers.splice(idx, 1);
+            }
+        }
+    }
 
     public invalidate(row: number, col: number) {
-        this.matrix.storeCellData(row, col, undefined);
+        this.cache.write(row, col, undefined);
         this.invalidateKey(pointToKey(row, col));
     }
 
     public parseRef(text: string): Point | undefined {
-        return parseRef(this.matrix.numRows - 1, this.matrix.numCols - 1, text);
-    }
-
-    public getCell(row: number, col: number) {
-        return this.matrix.loadCellData(row, col) as Cell | undefined;
+        return parseRef(this.numRows - 1, this.numCols - 1, text);
     }
 
     public readCell(row: number, col: number) {
-        let cell = this.getCell(row, col);
+        let cell = this.cache.read(row, col);
         if (cell === undefined) {
-            cell = makeCell(this.matrix.loadCellText(row, col));
+            cell = makeCell(this.reader.read(row, col));
             if (cell !== undefined) {
-                this.matrix.storeCellData(row, col, cell);
+                this.cache.write(row, col, cell);
             }
         }
         return cell;
     }
 
-    public evaluateCell(row: number, col: number): Primitive | undefined {
+    read(row: number, col: number): Primitive | undefined {
+        // TODO: this can be better!!!!
         const cell = this.readCell(row, col);
-        const buildHost: BuildHost = {
-            readCell: this.readCell.bind(this),
-            binder: this.binder,
-            context: this.inSheetContext([row, col]),
-            rootObject: this.rootContext,
-        }
         if (cell && cell.flag === CalcFlag.Dirty) {
             try {
+                const buildHost: BuildHost = {
+                    readCell: this.readCell.bind(this),
+                    binder: this.binder,
+                    context: this.inSheetContext([row, col]),
+                    rootObject: this.rootContext,
+                }
                 rebuild([pointToKey(row, col)], buildHost);
             } catch (e) {
                 console.error(`Rebuild failure: ${e}`);
@@ -847,7 +897,7 @@ class Sheetlet implements ISheetlet {
             return isFormulaCell(cell) ?
                 cell.value === undefined ?
                     undefined :
-                    this.primitiveFromValue(buildHost.context, cell.value)
+                    this.primitiveFromValue(this.inSheetContext([row, col]), cell.value)
                 :
                 cell.content;
         }
@@ -864,7 +914,7 @@ class Sheetlet implements ISheetlet {
      */
     public evaluateFormula(formula: string): Primitive | undefined {
         const program = formula[0] === "=" ? formula.substring(1) : formula;
-//        const origin: Point = [0, 0];
+        //        const origin: Point = [0, 0];
         const fn = compile(program);
         if (fn === undefined) { return undefined; }
         const value = fn(this.outOfSheetContext, this.orphanFormulaContext)[1];
@@ -940,4 +990,9 @@ class Sheetlet implements ISheetlet {
     }
 }
 
-export const createSheetlet = (matrix: IMatrix) => new Sheetlet(matrix);
+interface IMatrix<T> {
+    read(row: number, col: number): T | undefined;
+    write(row: number, col: number, value: T | undefined): void;
+}
+
+export const createSheetlet = (producer: IMatrixProducer<Primitive | undefined>, matrix: IMatrix<Cell>) => new Sheetlet(producer, matrix);
