@@ -168,7 +168,7 @@ describe("nano", () => {
         });
     }
 
-    function evalTest(expression: string, expected: CalcValue<any>, serialise: boolean | undefined) {
+    function evalTest(expression: string, expected: CalcValue<unknown>, serialise: boolean | undefined) {
         it(`Eval: ${expression}`, () => {
             const f = compile(expression);
             assert.notEqual(f, undefined)
@@ -188,7 +188,7 @@ describe("nano", () => {
         });
     }
 
-    function interpretTest(expression: string, expected: CalcValue<any>, serialise: boolean | undefined) {
+    function interpretTest(expression: string, expected: CalcValue<unknown>, serialise: boolean | undefined) {
         it(`Interpret: ${expression}`, () => {
             const [errors, formula] = parseFormula(expression);
             assert.strictEqual(errors, false);
