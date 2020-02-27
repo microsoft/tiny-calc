@@ -256,7 +256,7 @@ interface CellFiber extends PendingValue {
 
 type FunctionTask = "sum" | "product" | "count" | "average" | "max" | "min" | "concat";
 
-interface FunctionFiber<O = any, T = any> extends PendingValue {
+interface FunctionFiber<O = unknown, T = unknown> extends PendingValue {
     task: FiberKind.Function;
     name: FunctionTask;
     range: Range<O>;
@@ -265,7 +265,7 @@ interface FunctionFiber<O = any, T = any> extends PendingValue {
     current: T;
 }
 
-type Fiber<O = any, T = any> = CellFiber | FunctionFiber<O, T>;
+type Fiber<O = unknown, T = unknown> = CellFiber | FunctionFiber<O, T>;
 
 function makePendingCell(row: number, column: number): CellFiber {
     return { kind: "Pending", task: FiberKind.Cell, row, column };
@@ -601,7 +601,7 @@ const rangeCount: RangeAggregation<number> = (range, context, origin, someTask?)
     return runFunc(context, task, createCount);
 };
 
-const rangeAverage: RangeAggregation<number | CalcObj<any>, [number, number]> = (range, context, origin, someTask?) => {
+const rangeAverage: RangeAggregation<number | CalcObj<unknown>, [number, number]> = (range, context, origin, someTask?) => {
     const task = someTask || makePendingFunction("average", range, origin, range.tl, [0, 0]);
     const result = runFunc(context, task, createAverage);
     if (isPending(result)) { return result; }
@@ -630,7 +630,7 @@ type FreshAggregation<R, Accum = R> = <O>(
     range: Range<O>, context: RangeContext<O>, origin: O,
 ) => R | FunctionFiber<O, Accum>;
 
-const aggregations: Record<string, FreshAggregation<CalcValue<any>, any>> = {
+const aggregations: Record<string, FreshAggregation<CalcValue<unknown>, unknown>> = {
     sum: rangeSum, product: rangeProduct, count: rangeCount, average: rangeAverage, max: rangeMax, min: rangeMin, concat: rangeConcat,
     SUM: rangeSum, PRODUCT: rangeProduct, COUNT: rangeCount, AVERAGE: rangeAverage, MAX: rangeMax, MIN: rangeMin, CONCAT: rangeConcat,
 };
