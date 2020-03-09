@@ -21,9 +21,9 @@ import { SyntaxKind } from "./parser"
  *  These do not support enrichment.
  */
 
-const errorMap: TypeMap<CalcObj<any>, any> = { [TypeName.Error]: { enrich: value => value } };
+const errorMap: TypeMap<CalcObj<unknown>, unknown> = { [TypeName.Error]: { enrich: value => value } };
 
-export function makeError(message: string): CalcObj<any> {
+export function makeError(message: string): CalcObj<unknown> {
     return { typeMap: () => errorMap, serialise: () => message };
 }
 
@@ -50,9 +50,9 @@ export const errors = {
  *  These support type-based overloading.
  */
 
-type NumberLike = number | TypedCalcObj<TypeName.Numeric, any>;
+type NumberLike = number | TypedCalcObj<TypeName.Numeric, unknown>;
 type CoercibleNumberLike = boolean | string | NumberLike;
-type ComparableLike = Primitive | TypedCalcObj<TypeName.Comparable, any>;
+type ComparableLike = Primitive | TypedCalcObj<TypeName.Comparable, unknown>;
 
 const checkNum: CheckFn<NumberLike> = (_context, value, _pos): value is NumberLike => {
     switch (typeof value) {
@@ -62,8 +62,8 @@ const checkNum: CheckFn<NumberLike> = (_context, value, _pos): value is NumberLi
     }
 }
 
-function createPrimObjCheck<T extends TypeName>(name: T): CheckFn<Primitive | TypedCalcObj<T, any>> {
-    return (_context, value, _pos): value is Primitive | TypedCalcObj<T, any> => {
+function createPrimObjCheck<T extends TypeName>(name: T): CheckFn<Primitive | TypedCalcObj<T, unknown>> {
+    return (_context, value, _pos): value is Primitive | TypedCalcObj<T, unknown> => {
         switch (typeof value) {
             case "number":
             case "boolean":
@@ -89,12 +89,12 @@ const typeErrorOrForward = <C>(_: C, value: CalcValue<C>) => (typeof value === "
  */
 
 declare const $skolem: unique symbol;
-export type Skolem = { [$skolem]: never };
+export type Skolem = { [$skolem]: unknown };
 function pack<T, U>(op: TypedBinOp<T>): TypedBinOp<U> {
     return op as any;
 }
 
-function createNumericUnaryOp(fnPrim: (l: number) => CalcValue<any>, fnDispatch: Extract<keyof NumericType<any, any>, 'negate'> | undefined) {
+function createNumericUnaryOp(fnPrim: (l: number) => CalcValue<unknown>, fnDispatch: Extract<keyof NumericType<unknown, unknown>, 'negate'> | undefined) {
     const op: TypedUnaryOp<NumberLike> = {
         check: checkNum,
         fn: (context, value) => {
@@ -110,7 +110,7 @@ function createNumericUnaryOp(fnPrim: (l: number) => CalcValue<any>, fnDispatch:
     return op as unknown as TypedUnaryOp<Skolem>;
 }
 
-function createNumericBinOp(fnPrim: (l: Primitive, r: Primitive) => CalcValue<any>, fnDispatch: Exclude<keyof NumericType<any, any>, 'negate'>) {
+function createNumericBinOp(fnPrim: (l: Primitive, r: Primitive) => CalcValue<unknown>, fnDispatch: Exclude<keyof NumericType<unknown, unknown>, 'negate'>) {
     const op: TypedBinOp<CoercibleNumberLike> = {
         check: checkNumericOrPrim,
         fn: (context, l, r) => {
@@ -140,7 +140,7 @@ function createNumericBinOp(fnPrim: (l: Primitive, r: Primitive) => CalcValue<an
     return pack<CoercibleNumberLike, Skolem>(op);
 }
 
-function createComparableBinOp(fnPrim: (l: Primitive, r: Primitive) => CalcValue<any>, fnDispatch: <C>(result: number | CalcObj<C>) => CalcValue<C>) {
+function createComparableBinOp(fnPrim: (l: Primitive, r: Primitive) => CalcValue<unknown>, fnDispatch: <C>(result: number | CalcObj<C>) => CalcValue<C>) {
     const op: TypedBinOp<ComparableLike> = {
         check: checkComparable,
         fn: (context, l, r) => {
@@ -221,7 +221,7 @@ export const unaryOps = {
  */
 
 declare const $effect: unique symbol;
-export type Delay = { [$effect]: never };
+export type Delay = { [$effect]: unknown };
 const delay: Delay = {} as any;
 
 /**

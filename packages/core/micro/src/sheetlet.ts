@@ -261,23 +261,24 @@ interface CellFiber extends PendingValue {
 
 type FunctionTask = "sum" | "product" | "count" | "average" | "max" | "min" | "concat";
 
-interface FunctionFiber<O = any, T = any> extends PendingValue {
+interface FunctionFiber<O = unknown, T = unknown> extends PendingValue {
     task: FiberKind.Function;
     name: FunctionTask;
     range: Range<O>;
     origin: O;
-    point: Point;
+    row: number;
+    column: number;
     current: T;
 }
 
-type Fiber<O = any, T = any> = CellFiber | FunctionFiber<O, T>;
+type Fiber<O = unknown, T = unknown> = CellFiber | FunctionFiber<O, T>;
 
 function makePendingCell(row: number, column: number): CellFiber {
     return { kind: "Pending", task: FiberKind.Cell, row, column };
 }
 
-function makePendingFunction<O, V>(name: FunctionTask, range: Range<O>, origin: O, point: Point, current: V): FunctionFiber<O, V> {
-    return { kind: "Pending", name, task: FiberKind.Function, range, origin, point, current };
+function makePendingFunction<O, V>(name: FunctionTask, range: Range<O>, origin: O, row: number, column: number, current: V): FunctionFiber<O, V> {
+    return { kind: "Pending", name, task: FiberKind.Function, range, origin, row, column, current };
 }
 
 function isPending(content: any): content is PendingValue {
@@ -362,17 +363,16 @@ function rebuild(roots: number[], host: BuildHost): void {
     }
 
     function runFunctionFiber<O, T>(fiber: FunctionFiber<O, T>) {
-        const { point, range } = fiber;
-        const [r, c] = point;
-        const startC = range.tl[COL]
-        const endR = range.tl[ROW] + range.height;
-        const endC = range.tl[COL] + range.width;
-        for (let j = c; j < endC; j += 1) {
-            if (shouldQueueFiber(host, r, j)) {
-                addFiber(makePendingCell(r, j));
+        const { row, column, range } = fiber;
+        const startC = range.tlCol
+        const endR = range.tlRow + range.height;
+        const endC = range.tlCol + range.width;
+        for (let j = column; j < endC; j += 1) {
+            if (shouldQueueFiber(host, row, j)) {
+                addFiber(makePendingCell(row, j));
             }
         }
-        for (let i = r + 1; i < endR; i += 1) {
+        for (let i = row + 1; i < endR; i += 1) {
             for (let j = startC; j < endC; j += 1) {
                 if (shouldQueueFiber(host, i, j)) {
                     addFiber(makePendingCell(i, j));
@@ -488,15 +488,15 @@ const average: CalcFun<unknown> = (runtime, origin, args) => {
     const counts = args.map((arg) => extractNumberFromProperty(runtime, origin, arg, "count"));
     const total = reduceNumbers(totals, (prev, current) => prev + current, 0);
     if (typeof total === "number") {
-        const finalCount = reduceNumbers(counts, (prev, current) => prev + current, 0);
-        return typeof finalCount === "number" ? finalCount === 0 ? errorValues.div0 : total / finalCount : finalCount;
+        const count = reduceNumbers(counts, (prev, current) => prev + current, 0);
+        return typeof count === "number" ? count === 0 ? errorValues.div0 : total / count : count;
     }
     return total;
 };
 
 const max: CalcFun<unknown> = (runtime, origin, args) => {
+    if (args.length === 0) { return 0; }
     const maxs = args.map((arg) => extractNumberFromProperty(runtime, origin, arg, "max"));
-    if (maxs.length === 0) { return 0; }
     for (const arg of maxs) {
         if (typeof arg !== "number") {
             return arg;
@@ -506,8 +506,8 @@ const max: CalcFun<unknown> = (runtime, origin, args) => {
 };
 
 const min: CalcFun<unknown> = (runtime, origin, args) => {
+    if (args.length === 0) { return 0; }
     const mins = args.map((arg) => extractNumberFromProperty(runtime, origin, arg, "min"));
-    if (mins.length === 0) { return 0; }
     for (const arg of mins) {
         if (typeof arg !== "number") {
             return arg;
@@ -567,7 +567,7 @@ const createConcat = createRunner<string>((result) => s => { if (typeof s === "s
 
 interface RangeContext<O> {
     origin: O;
-    link: (row: number, col: number, origin: O) => CalcValue<RangeContext<O>> | CellFiber | undefined;
+    link: (row: number, col: number, origin: O) => CalcValue<RangeContext<O>> | CellFiber;
     parseRef: (text: string) => Point | undefined;
 }
 
@@ -576,17 +576,20 @@ type RangeAggregation<R, Accum = R> = <O>(
 ) => R | FunctionFiber<O, Accum>;
 
 function runFunc<O, Res>(context: RangeContext<O>, task: FunctionFiber<O, Res>, initRunner: (init: Res) => FunctionRunner<Res>) {
-    const { current, point, range } = task;
+    const { current, row, column, range } = task;
     const runner = initRunner(current);
     const run = runner[1];
-    const endR = point[ROW] + range.height;
-    const endC = point[COL] + range.width;
-    for (let i = point[ROW]; i < endR; i += 1) {
-        for (let j = point[COL]; j < endC; j += 1) {
+    const endR = row + range.height;
+    const endC = column + range.width;
+    // TODO: This is not resumable! See function fiber for how to do
+    // this properly.
+    for (let i = row; i < endR; i += 1) {
+        for (let j = column; j < endC; j += 1) {
             const content = context.link(i, j, task.origin);
             if (isPending(content)) {
                 assert.strictEqual(content.task, FiberKind.Cell);
-                task.point = [i, j];
+                task.row = i;
+                task.column = j;
                 task.current = runner[0];
                 return task;
             }
@@ -597,22 +600,22 @@ function runFunc<O, Res>(context: RangeContext<O>, task: FunctionFiber<O, Res>, 
 }
 
 const rangeSum: RangeAggregation<number> = (range, context, someTask?) => {
-    const task = someTask || makePendingFunction("sum", range, context.origin, range.tl, 0);
+    const task = someTask || makePendingFunction("sum", range, context.origin, range.tlRow, range.tlCol, 0);
     return runFunc(context, task, createSum);
 };
 
 const rangeProduct: RangeAggregation<number> = (range, context, someTask?) => {
-    const task = someTask || makePendingFunction("product", range, context.origin, range.tl, 1);
+    const task = someTask || makePendingFunction("product", range, context.origin, range.tlRow, range.tlCol, 1);
     return runFunc(context, task, createProduct);
 };
 
 const rangeCount: RangeAggregation<number> = (range, context, someTask?) => {
-    const task = someTask || makePendingFunction("count", range, context.origin, range.tl, 0);
+    const task = someTask || makePendingFunction("count", range, context.origin, range.tlRow, range.tlCol, 0);
     return runFunc(context, task, createCount);
 };
 
-const rangeAverage: RangeAggregation<number | CalcObj<any>, [number, number]> = (range, context, someTask?) => {
-    const task = someTask || makePendingFunction("average", range, context.origin, range.tl, [0, 0]);
+const rangeAverage: RangeAggregation<number | CalcObj<unknown>, [number, number]> = (range, context, someTask?) => {
+    const task = someTask || makePendingFunction("average", range, context.origin, range.tlRow, range.tlCol, [0, 0]);
     const result = runFunc(context, task, createAverage);
     if (isPending(result)) { return result; }
     const [total, finalCount] = result;
@@ -620,25 +623,25 @@ const rangeAverage: RangeAggregation<number | CalcObj<any>, [number, number]> = 
 };
 
 const rangeMax: RangeAggregation<number, number | undefined> = (range, context, someTask?) => {
-    const task = someTask || makePendingFunction("max", range, context.origin, range.tl, undefined);
+    const task = someTask || makePendingFunction("max", range, context.origin, range.tlRow, range.tlCol, undefined);
     const result = runFunc(context, task, createMax);
     return result === undefined ? 0 : result;
 };
 
 const rangeMin: RangeAggregation<number, number | undefined> = (range, context, someTask?) => {
-    const task = someTask || makePendingFunction("min", range, context.origin, range.tl, undefined);
+    const task = someTask || makePendingFunction("min", range, context.origin, range.tlRow, range.tlCol, undefined);
     const result = runFunc(context, task, createMin);
     return result === undefined ? 0 : result;
 };
 
 const rangeConcat: RangeAggregation<string> = (range, context, someTask?) => {
-    const task = someTask || makePendingFunction("concat", range, context.origin, range.tl, "");
+    const task = someTask || makePendingFunction("concat", range, context.origin, range.tlRow, range.tlCol, "");
     return runFunc(context, task, createConcat);
 };
 
 type FreshAggregation<R, Accum = R> = <O>(range: Range<O>, context: RangeContext<O>) => R | FunctionFiber<O, Accum>;
 
-const aggregations: Record<string, FreshAggregation<CalcValue<any>, any>> = {
+const aggregations: Record<string, FreshAggregation<CalcValue<unknown>, unknown>> = {
     sum: rangeSum, product: rangeProduct, count: rangeCount, average: rangeAverage, max: rangeMax, min: rangeMin, concat: rangeConcat,
     SUM: rangeSum, PRODUCT: rangeProduct, COUNT: rangeCount, AVERAGE: rangeAverage, MAX: rangeMax, MIN: rangeMin, CONCAT: rangeConcat,
 };
@@ -668,15 +671,14 @@ function tryParseRange<O>(context: RangeContext<O>, text: string) {
  * top left corner.
  */
 class Range<O> implements CalcObj<RangeContext<O>> {
-    public readonly tl: Point;
+    public readonly tlRow: number;
+    public readonly tlCol: number;
     public readonly height: number;
     public readonly width: number;
 
     constructor(first: Point, second: Point) {
-        this.tl = [
-            first[ROW] < second[ROW] ? first[ROW] : second[ROW],
-            first[COL] < second[COL] ? first[COL] : second[COL],
-        ];
+        this.tlRow = first[ROW] < second[ROW] ? first[ROW] : second[ROW];
+        this.tlCol = first[COL] < second[COL] ? first[COL] : second[COL];
         this.height = Math.abs(first[ROW] - second[ROW]) + 1;
         this.width = Math.abs(first[COL] - second[COL]) + 1;
     }
@@ -697,8 +699,7 @@ class Range<O> implements CalcObj<RangeContext<O>> {
     }
 
     public static dereference<O>(value: Range<O>, context: RangeContext<O>) {
-        const result = context.link(value.tl[ROW], value.tl[COL], context.origin);
-        return result === undefined ? errorValues.unknownField : result;
+        return context.link(value.tlRow, value.tlCol, context.origin);
     }
 
     public static read<O>(receiver: Range<O>, message: string, context: RangeContext<O>): CalcValue<RangeContext<O>> | Pending<CalcValue<RangeContext<O>>> {
@@ -709,12 +710,12 @@ class Range<O> implements CalcObj<RangeContext<O>> {
         switch (message) {
             case "row":
             case "ROW":
-                return receiver.tl[ROW] + 1;
+                return receiver.tlRow + 1;
             case "column":
             case "COLUMN":
-                return receiver.tl[COL] + 1;
+                return receiver.tlCol + 1;
             default:
-                const value = context.link(receiver.tl[ROW], receiver.tl[COL], context.origin);
+                const value = context.link(receiver.tlRow, receiver.tlCol, context.origin);
                 if (typeof value === "object") {
                     if (isPending(value)) {
                         return value;
@@ -940,7 +941,7 @@ class Sheetlet implements IMatrixConsumer<Value>, IMatrixProducer<Value>, IMatri
         }
     }
 
-    private getCellValueAndForget(row: number, col: number): CalcValue<unknown> {
+    private getCellValueAndForget(row: number, col: number) {
         const cell = this.readCell(row, col);
         if (cell === undefined) {
             return Sheetlet.blank;
@@ -950,14 +951,14 @@ class Sheetlet implements IMatrixConsumer<Value>, IMatrixProducer<Value>, IMatri
                 if (isFormulaCell(cell)) {
                     const value = cell.value!
                     if (value && value instanceof Range) {
-                        return value as Range<unknown>;
+                        return value.transportRange<unknown>();
                     }
                 }
                 return cell.content;
 
             case CalcFlag.Dirty:
             case CalcFlag.Enqueued:
-                return errorValues.evalFailure;
+                return makePendingCell(row, col);
 
             case CalcFlag.InCalc:
             default:
