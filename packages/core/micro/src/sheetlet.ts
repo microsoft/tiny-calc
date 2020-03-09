@@ -884,12 +884,42 @@ export class Sheetlet implements IMatrixConsumer<Value>, IMatrixProducer<Value>,
             }
         }
         if (cell) {
-            return isFormulaCell(cell) ?
-                cell.value === undefined ?
-                    undefined :
-                    this.primitiveFromValue(this.inSheetContext([row, col]), cell.value)
-                :
-                cell.content;
+            if (isFormulaCell(cell)) {
+                if (cell.value === undefined) {
+                    return undefined;
+                }
+                let value: CellValue | CellFiber = cell.value;
+                switch (typeof value) {
+                    case "number":
+                    case "string":
+                    case "boolean":
+                        return value;
+                    case "function":
+                        return "<function>";
+                    case "object":
+                        const context = this.inSheetContext([row, col]);
+                        // TODO: Fix this to avoid loops
+                        if (value instanceof Range) {
+                            value = Range.dereference(value, context);
+                            switch (typeof value) {
+                                case "number":
+                                case "string":
+                                case "boolean":
+                                    return value;
+                                case "function":
+                                    return "<function>";
+                                case "object":
+                                    if (isPending(value)) {
+                                        return undefined;
+                                    }
+                            }
+                        }
+                        return value.serialise(context);
+                    default:
+                        return assertNever(value);
+                }
+            }
+            return cell.content;
         }
         return undefined;
     }

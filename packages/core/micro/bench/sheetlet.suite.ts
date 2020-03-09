@@ -10,8 +10,9 @@ export const suites: Suite[] = [ suite ];
 
 function cachedTest(size: number) {
     const { sheet } = makeBenchmark(size);
-    evalSheet(sheet.openMatrix(undefined as any), size);
-    suite.add(`Cached: ${size}x${size}`, () => { consume(evalSheet(sheet.openMatrix(undefined as any), size)); });
+    const reader = sheet.openMatrix(undefined as any);
+    evalSheet(reader, size);
+    suite.add(`Cached: ${size}x${size}`, () => { consume(evalSheet(reader, size)); });
 }
 
 function recalcTest(size: number) {
