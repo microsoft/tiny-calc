@@ -24,6 +24,8 @@ import {
     IMatrixReader,
 } from "@tiny-calc/nano";
 
+import { IMatrix } from "./types";
+
 import { keyToPoint, pointToKey } from "./key";
 
 import * as assert from "assert";
@@ -113,7 +115,8 @@ const enum CalcFlag {
     InCalc,
 }
 
-type Value = CalcValue<InSheetContext>;
+type Value = Primitive | undefined;
+type CellValue = CalcValue<InSheetContext>;
 
 interface ValueCell {
     flag: CalcFlag.Clean;
@@ -123,7 +126,7 @@ interface ValueCell {
 interface FormulaCell {
     flag: CalcFlag;
     content: string;
-    value: Value | undefined;
+    value: CellValue | undefined;
     fn: Formula | undefined;
 }
 
@@ -165,7 +168,7 @@ function makeFormulaCell(text: string) {
     return cell;
 }
 
-function makeCell(value: Primitive | undefined) {
+function makeCell(value: Value) {
     if (value === undefined || value === "") {
         return undefined;
     }
@@ -293,7 +296,7 @@ function initFiberStack() {
     return [stack, (fiber: Fiber) => { stack.push(fiber); }] as const;
 }
 
-const coerceResult = (value: Value, context: InSheetContext) => {
+const coerceResult = (value: CellValue, context: InSheetContext) => {
     if (value instanceof Range) {
         return Range.dereference(value, context);
     }
@@ -305,7 +308,7 @@ const coerceResult = (value: Value, context: InSheetContext) => {
  * evaluation, and remove dependency links (to be re-established on
  * dependent recalc).
  */
-function finishCell(queueKey: (key: number) => void, binder: Binder<number>, row: number, col: number, cell: FormulaCell, value: Value) {
+function finishCell(queueKey: (key: number) => void, binder: Binder<number>, row: number, col: number, cell: FormulaCell, value: CellValue) {
     cell.value = value;
     const key = pointToKey(row, col);
     const deps = binder.getDeps(key);
@@ -387,7 +390,7 @@ function rebuild(roots: number[], host: BuildHost): void {
             return true;
         }
         cell.flag = CalcFlag.InCalc;
-        let result: [PendingValue[], Delayed<Value>] = [[], errorValues.evalFailure];
+        let result: [PendingValue[], Delayed<CellValue>] = [[], errorValues.evalFailure];
         try {
             result = cell.fn(host.context, host.rootObject);
         } catch {
@@ -711,34 +714,31 @@ class Range<O> implements CalcObj<RangeContext<O>> {
             case "COLUMN":
                 return receiver.tl[COL] + 1;
             default:
-                const range = tryParseRange(context, message);
-                if (range === undefined) {
-                    const value = context.link(receiver.tl[ROW], receiver.tl[COL], context.origin);
-                    if (typeof value === "object") {
-                        if (isPending(value)) {
-                            return value;
-                        }
-                        const reader = value.typeMap()[TypeName.Readable];
-                        if (reader) {
-                            return reader.read(value, message, context);
-                        }
+                const value = context.link(receiver.tl[ROW], receiver.tl[COL], context.origin);
+                if (typeof value === "object") {
+                    if (isPending(value)) {
+                        return value;
                     }
-                    return errorValues.unknownField;
+                    const reader = value.typeMap()[TypeName.Readable];
+                    if (reader) {
+                        return reader.read(value, message, context);
+                    }
                 }
-                return range;
+                return errorValues.unknownField;
+
         }
     }
 }
 
 type InSheetContext = RangeContext<Point>;
-type OutSheetContext = RangeContext<void>;
+type OutSheetContext = RangeContext<unknown>;
 
-class Sheetlet implements IMatrixConsumer<Primitive | undefined>, IMatrixProducer<Value | undefined>, IMatrixReader<Value | undefined> {
+class Sheetlet implements IMatrixConsumer<Value>, IMatrixProducer<Value>, IMatrixReader<Value> {
     private static readonly blank = "";
 
     public readonly binder = initBinder();
 
-    public readonly rootContext: CalcObj<InSheetContext> & ReadableType<Value, InSheetContext> = {
+    public readonly rootContext: CalcObj<InSheetContext> & ReadableType<CellValue, InSheetContext> = {
         typeMap() {
             return {
                 [TypeName.Readable]: this
@@ -763,14 +763,14 @@ class Sheetlet implements IMatrixConsumer<Primitive | undefined>, IMatrixProduce
         },
     };
 
-    private readonly orphanFormulaContext: CalcObj<RangeContext<void>> & ReadableType<CalcObj<RangeContext<void>>, RangeContext<void>> = {
+    private readonly orphanFormulaContext: CalcObj<RangeContext<unknown>> & ReadableType<CalcObj<RangeContext<unknown>>, RangeContext<unknown>> = {
         typeMap() {
             return {
                 [TypeName.Readable]: this
             }
         },
         serialise: () => "TODO",
-        read: (_: CalcObj<RangeContext<void>>, message: string) => {
+        read: (_: CalcObj<RangeContext<unknown>>, message: string) => {
             if (message in funcs) {
                 return funcs[message];
             }
@@ -786,7 +786,7 @@ class Sheetlet implements IMatrixConsumer<Primitive | undefined>, IMatrixProduce
     });
 
     private readonly outOfSheetContext: OutSheetContext = {
-        origin: undefined as void,
+        origin: undefined,
         link: this.getCellValueAndForget.bind(this),
         parseRef: this.parseRef.bind(this),
     };
@@ -795,13 +795,13 @@ class Sheetlet implements IMatrixConsumer<Primitive | undefined>, IMatrixProduce
         readCell: this.cache.read.bind(this.cache),
     }, this.binder);
 
-    reader!: IMatrixReader<Primitive | undefined>;
+    reader!: IMatrixReader<Value>;
     numRows: number = -1;
     numCols: number = -1;
-    consumer0: IMatrixConsumer<Value | undefined> | undefined;
-    consumers: IMatrixConsumer<Value | undefined>[] = [];
+    consumer0: IMatrixConsumer<Value> | undefined;
+    consumers: IMatrixConsumer<Value>[] = [];
 
-    constructor(readonly producer: IMatrixProducer<Primitive | undefined>, readonly cache: IMatrix<Cell>) { }
+    constructor(readonly producer: IMatrixProducer<Value>, readonly cache: IMatrix<Cell>) { }
 
     connect() {
         this.reader = this.producer.openMatrix(this);
@@ -809,7 +809,7 @@ class Sheetlet implements IMatrixConsumer<Primitive | undefined>, IMatrixProduce
         this.numCols = this.reader.numCols;
     }
 
-    rowsChanged(row: number, numRemoved: number, numInserted: number, producer: IMatrixProducer<Primitive | undefined>) {
+    rowsChanged(row: number, numRemoved: number, numInserted: number) {
         this.numRows = this.reader.numRows;
         if (this.consumer0) {
             this.consumer0.rowsChanged(row, numRemoved, numInserted, this);
@@ -817,7 +817,7 @@ class Sheetlet implements IMatrixConsumer<Primitive | undefined>, IMatrixProduce
         }
     }
 
-    colsChanged(col: number, numRemoved: number, numInserted: number, producer: IMatrixProducer<Primitive | undefined>) {
+    colsChanged(col: number, numRemoved: number, numInserted: number) {
         this.numCols = this.reader.numCols;
         if (this.consumer0) {
             this.consumer0.colsChanged(col, numRemoved, numInserted, this);
@@ -825,13 +825,13 @@ class Sheetlet implements IMatrixConsumer<Primitive | undefined>, IMatrixProduce
         }
     }
 
-    cellsChanged(row: number, col: number, numRows: number, numCols: number, values: readonly (Primitive | undefined)[] | undefined, producer: IMatrixProducer<Primitive | undefined>) {
+    cellsChanged(row: number, col: number, numRows: number, numCols: number, values: readonly (Value)[] | undefined, producer: IMatrixProducer<Value>) {
         // invalidate the data
         // queue rebuild the keys
         // grab the changed cells or notify as they are executed.
     }
 
-    openMatrix(consumer: IMatrixConsumer<Value>): IMatrixReader<Value | undefined> {
+    openMatrix(consumer: IMatrixConsumer<Value>): IMatrixReader<Value> {
         if (this.consumer0) {
             if (this.consumers.indexOf(consumer) === -1) {
                 this.consumers.push(consumer);
@@ -858,7 +858,7 @@ class Sheetlet implements IMatrixConsumer<Primitive | undefined>, IMatrixProduce
     }
 
     public invalidate(row: number, col: number) {
-        this.cache.write(row, col, undefined);
+        this.cache.clear(row, col);
         this.invalidateKey(pointToKey(row, col));
     }
 
@@ -877,7 +877,7 @@ class Sheetlet implements IMatrixConsumer<Primitive | undefined>, IMatrixProduce
         return cell;
     }
 
-    read(row: number, col: number): Primitive | undefined {
+    read(row: number, col: number): Value {
         // TODO: this can be better!!!!
         const cell = this.readCell(row, col);
         if (cell && cell.flag === CalcFlag.Dirty) {
@@ -912,7 +912,7 @@ class Sheetlet implements IMatrixConsumer<Primitive | undefined>, IMatrixProduce
      * not calc dirty cells on demand. We return `undefined` if we
      * encounter anything dirty during calc.
      */
-    public evaluateFormula(formula: string): Primitive | undefined {
+    public evaluateFormula(formula: string): Value {
         const program = formula[0] === "=" ? formula.substring(1) : formula;
         //        const origin: Point = [0, 0];
         const fn = compile(program);
@@ -921,7 +921,7 @@ class Sheetlet implements IMatrixConsumer<Primitive | undefined>, IMatrixProduce
         return isDelayed(value) ? undefined : this.primitiveFromValue(this.outOfSheetContext, value);
     }
 
-    private primitiveFromValue<O>(context: RangeContext<O>, value: CalcValue<RangeContext<O>>): Primitive | undefined {
+    private primitiveFromValue<O>(context: RangeContext<O>, value: CalcValue<RangeContext<O>>): Value {
         switch (typeof value) {
             case "number":
             case "string":
@@ -940,7 +940,7 @@ class Sheetlet implements IMatrixConsumer<Primitive | undefined>, IMatrixProduce
         }
     }
 
-    private getCellValueAndForget(row: number, col: number): Primitive | Range<void> | undefined {
+    private getCellValueAndForget(row: number, col: number): CalcValue<unknown> {
         const cell = this.readCell(row, col);
         if (cell === undefined) {
             return Sheetlet.blank;
@@ -950,14 +950,14 @@ class Sheetlet implements IMatrixConsumer<Primitive | undefined>, IMatrixProduce
                 if (isFormulaCell(cell)) {
                     const value = cell.value!
                     if (value && value instanceof Range) {
-                        return value as Range<void>;
+                        return value as Range<unknown>;
                     }
                 }
                 return cell.content;
 
             case CalcFlag.Dirty:
             case CalcFlag.Enqueued:
-                return undefined;
+                return errorValues.evalFailure;
 
             case CalcFlag.InCalc:
             default:
@@ -990,9 +990,4 @@ class Sheetlet implements IMatrixConsumer<Primitive | undefined>, IMatrixProduce
     }
 }
 
-interface IMatrix<T> {
-    read(row: number, col: number): T | undefined;
-    write(row: number, col: number, value: T | undefined): void;
-}
-
-export const createSheetlet = (producer: IMatrixProducer<Primitive | undefined>, matrix: IMatrix<Cell>) => new Sheetlet(producer, matrix);
+export const createSheetlet = (producer: IMatrixProducer<Value>, matrix: IMatrix<Cell>) => new Sheetlet(producer, matrix);
