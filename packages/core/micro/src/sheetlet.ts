@@ -14,8 +14,8 @@ import {
     isDelayed,
     makeError,
     Pending,
-    ReadableType,
     Primitive,
+    ReadableType,
     TypeMap,
     TypeName,
     Runtime,
@@ -24,7 +24,7 @@ import {
     IMatrixReader,
 } from "@tiny-calc/nano";
 
-import { IMatrix } from "./types";
+import { IMatrix, Value } from "./types";
 
 import { keyToPoint, pointToKey } from "./key";
 
@@ -115,8 +115,7 @@ const enum CalcFlag {
     InCalc,
 }
 
-type Value = Primitive | undefined;
-type CellValue = CalcValue<InSheetContext>;
+type CellValue = CalcValue<RangeContext>;
 
 interface ValueCell {
     flag: CalcFlag.Clean;
@@ -192,8 +191,8 @@ interface CellReader {
 
 interface BuildHost extends CellReader {
     binder: Binder<number>;
-    context: InSheetContext;
-    rootObject: CalcObj<InSheetContext>;
+    context: RangeContext;
+    rootObject: CalcObj<RangeContext>;
 }
 
 function createInvalidator(reader: CellReader, binder: Binder<number>) {
@@ -261,24 +260,23 @@ interface CellFiber extends PendingValue {
 
 type FunctionTask = "sum" | "product" | "count" | "average" | "max" | "min" | "concat";
 
-interface FunctionFiber<O = unknown, T = unknown> extends PendingValue {
+interface FunctionFiber<T = unknown> extends PendingValue {
     task: FiberKind.Function;
     name: FunctionTask;
-    range: Range<O>;
-    origin: O;
+    range: Range;
     row: number;
     column: number;
     current: T;
 }
 
-type Fiber<O = unknown, T = unknown> = CellFiber | FunctionFiber<O, T>;
+type Fiber<T = unknown> = CellFiber | FunctionFiber<T>;
 
 function makePendingCell(row: number, column: number): CellFiber {
     return { kind: "Pending", task: FiberKind.Cell, row, column };
 }
 
-function makePendingFunction<O, V>(name: FunctionTask, range: Range<O>, origin: O, row: number, column: number, current: V): FunctionFiber<O, V> {
-    return { kind: "Pending", name, task: FiberKind.Function, range, origin, row, column, current };
+function makePendingFunction<V>(name: FunctionTask, range: Range, row: number, column: number, current: V): FunctionFiber<V> {
+    return { kind: "Pending", name, task: FiberKind.Function, range, row, column, current };
 }
 
 function isPending(content: any): content is PendingValue {
@@ -297,7 +295,7 @@ function initFiberStack() {
     return [stack, (fiber: Fiber) => { stack.push(fiber); }] as const;
 }
 
-const coerceResult = (value: CellValue, context: InSheetContext) => {
+const coerceResult = (value: CellValue, context: RangeContext) => {
     if (value instanceof Range) {
         return Range.dereference(value, context);
     }
@@ -362,7 +360,7 @@ function rebuild(roots: number[], host: BuildHost): void {
         return;
     }
 
-    function runFunctionFiber<O, T>(fiber: FunctionFiber<O, T>) {
+    function runFunctionFiber<T>(fiber: FunctionFiber<T>) {
         const { row, column, range } = fiber;
         const startC = range.tlCol
         const endR = range.tlRow + range.height;
@@ -392,7 +390,7 @@ function rebuild(roots: number[], host: BuildHost): void {
         cell.flag = CalcFlag.InCalc;
         let result: [PendingValue[], Delayed<CellValue>] = [[], errorValues.evalFailure];
         try {
-            result = cell.fn(host.context, host.rootObject);
+            result = cell.fn<RangeContext>(host.context, host.rootObject);
         } catch {
         }
         if (isDelayed(result[1])) {
@@ -565,17 +563,15 @@ const createConcat = createRunner<string>((result) => s => { if (typeof s === "s
  * Core aggregation functions over ranges
  */
 
-interface RangeContext<O> {
-    origin: O;
-    link: (row: number, col: number, origin: O) => CalcValue<RangeContext<O>> | CellFiber;
+interface RangeContext {
+    origin: Point | undefined;
+    link: (row: number, col: number) => CalcValue<RangeContext> | CellFiber;
     parseRef: (text: string) => Point | undefined;
 }
 
-type RangeAggregation<R, Accum = R> = <O>(
-    range: Range<O>, context: RangeContext<O>, someTask?: FunctionFiber<O, Accum>,
-) => R | FunctionFiber<O, Accum>;
+type RangeAggregation<R, Accum = R> = (range: Range, context: RangeContext, someTask?: FunctionFiber<Accum>) => R | FunctionFiber<Accum>;
 
-function runFunc<O, Res>(context: RangeContext<O>, task: FunctionFiber<O, Res>, initRunner: (init: Res) => FunctionRunner<Res>) {
+function runFunc<Res>(context: RangeContext, task: FunctionFiber<Res>, initRunner: (init: Res) => FunctionRunner<Res>) {
     const { current, row, column, range } = task;
     const runner = initRunner(current);
     const run = runner[1];
@@ -585,7 +581,7 @@ function runFunc<O, Res>(context: RangeContext<O>, task: FunctionFiber<O, Res>, 
     // this properly.
     for (let i = row; i < endR; i += 1) {
         for (let j = column; j < endC; j += 1) {
-            const content = context.link(i, j, task.origin);
+            const content = context.link(i, j);
             if (isPending(content)) {
                 assert.strictEqual(content.task, FiberKind.Cell);
                 task.row = i;
@@ -600,22 +596,22 @@ function runFunc<O, Res>(context: RangeContext<O>, task: FunctionFiber<O, Res>, 
 }
 
 const rangeSum: RangeAggregation<number> = (range, context, someTask?) => {
-    const task = someTask || makePendingFunction("sum", range, context.origin, range.tlRow, range.tlCol, 0);
+    const task = someTask || makePendingFunction("sum", range, range.tlRow, range.tlCol, 0);
     return runFunc(context, task, createSum);
 };
 
 const rangeProduct: RangeAggregation<number> = (range, context, someTask?) => {
-    const task = someTask || makePendingFunction("product", range, context.origin, range.tlRow, range.tlCol, 1);
+    const task = someTask || makePendingFunction("product", range, range.tlRow, range.tlCol, 1);
     return runFunc(context, task, createProduct);
 };
 
 const rangeCount: RangeAggregation<number> = (range, context, someTask?) => {
-    const task = someTask || makePendingFunction("count", range, context.origin, range.tlRow, range.tlCol, 0);
+    const task = someTask || makePendingFunction("count", range, range.tlRow, range.tlCol, 0);
     return runFunc(context, task, createCount);
 };
 
 const rangeAverage: RangeAggregation<number | CalcObj<unknown>, [number, number]> = (range, context, someTask?) => {
-    const task = someTask || makePendingFunction("average", range, context.origin, range.tlRow, range.tlCol, [0, 0]);
+    const task = someTask || makePendingFunction("average", range, range.tlRow, range.tlCol, [0, 0]);
     const result = runFunc(context, task, createAverage);
     if (isPending(result)) { return result; }
     const [total, finalCount] = result;
@@ -623,30 +619,30 @@ const rangeAverage: RangeAggregation<number | CalcObj<unknown>, [number, number]
 };
 
 const rangeMax: RangeAggregation<number, number | undefined> = (range, context, someTask?) => {
-    const task = someTask || makePendingFunction("max", range, context.origin, range.tlRow, range.tlCol, undefined);
+    const task = someTask || makePendingFunction("max", range, range.tlRow, range.tlCol, undefined);
     const result = runFunc(context, task, createMax);
     return result === undefined ? 0 : result;
 };
 
 const rangeMin: RangeAggregation<number, number | undefined> = (range, context, someTask?) => {
-    const task = someTask || makePendingFunction("min", range, context.origin, range.tlRow, range.tlCol, undefined);
+    const task = someTask || makePendingFunction("min", range, range.tlRow, range.tlCol, undefined);
     const result = runFunc(context, task, createMin);
     return result === undefined ? 0 : result;
 };
 
 const rangeConcat: RangeAggregation<string> = (range, context, someTask?) => {
-    const task = someTask || makePendingFunction("concat", range, context.origin, range.tlRow, range.tlCol, "");
+    const task = someTask || makePendingFunction("concat", range, range.tlRow, range.tlCol, "");
     return runFunc(context, task, createConcat);
 };
 
-type FreshAggregation<R, Accum = R> = <O>(range: Range<O>, context: RangeContext<O>) => R | FunctionFiber<O, Accum>;
+type FreshAggregation<R, Accum = R> = (range: Range, context: RangeContext) => R | FunctionFiber<Accum>;
 
 const aggregations: Record<string, FreshAggregation<CalcValue<unknown>, unknown>> = {
     sum: rangeSum, product: rangeProduct, count: rangeCount, average: rangeAverage, max: rangeMax, min: rangeMin, concat: rangeConcat,
     SUM: rangeSum, PRODUCT: rangeProduct, COUNT: rangeCount, AVERAGE: rangeAverage, MAX: rangeMax, MIN: rangeMin, CONCAT: rangeConcat,
 };
 
-function tryParseRange<O>(context: RangeContext<O>, text: string) {
+function tryParseRange(context: RangeContext, text: string) {
     const normalizedText = text.toLowerCase();
     const asRange = normalizedText.split(":");
     if (asRange.length >= 1) {
@@ -655,11 +651,11 @@ function tryParseRange<O>(context: RangeContext<O>, text: string) {
             return undefined;
         }
         if (asRange[1] === undefined) {
-            return new Range<O>(first, first);
+            return new Range(first, first);
         }
         const second = context.parseRef(asRange[1]);
         if (second !== undefined) {
-            return new Range<O>(first, second);
+            return new Range(first, second);
         }
     }
     return undefined;
@@ -670,7 +666,7 @@ function tryParseRange<O>(context: RangeContext<O>, text: string) {
  * aggregations over the view. The canonical value of a Range is the
  * top left corner.
  */
-class Range<O> implements CalcObj<RangeContext<O>> {
+class Range implements CalcObj<RangeContext> {
     public readonly tlRow: number;
     public readonly tlCol: number;
     public readonly height: number;
@@ -683,11 +679,7 @@ class Range<O> implements CalcObj<RangeContext<O>> {
         this.width = Math.abs(first[COL] - second[COL]) + 1;
     }
 
-    public transportRange<O2>(): Range<O2> {
-        return this as any as Range<O2>;
-    }
-
-    public typeMap(): TypeMap<this, RangeContext<O>> {
+    public typeMap(): TypeMap<this, RangeContext> {
         return {
             [TypeName.Readable]: Range,
             [TypeName.Reference]: Range
@@ -698,11 +690,11 @@ class Range<O> implements CalcObj<RangeContext<O>> {
         return "REF";
     }
 
-    public static dereference<O>(value: Range<O>, context: RangeContext<O>) {
-        return context.link(value.tlRow, value.tlCol, context.origin);
+    public static dereference(value: Range, context: RangeContext) {
+        return context.link(value.tlRow, value.tlCol);
     }
 
-    public static read<O>(receiver: Range<O>, message: string, context: RangeContext<O>): CalcValue<RangeContext<O>> | Pending<CalcValue<RangeContext<O>>> {
+    public static read(receiver: Range, message: string, context: RangeContext): CalcValue<RangeContext> | Pending<CalcValue<RangeContext>> {
         if (aggregations[message] !== undefined) {
             const fn = aggregations[message as keyof typeof aggregations];
             return fn(receiver, context);
@@ -715,7 +707,7 @@ class Range<O> implements CalcObj<RangeContext<O>> {
             case "COLUMN":
                 return receiver.tlCol + 1;
             default:
-                const value = context.link(receiver.tlRow, receiver.tlCol, context.origin);
+                const value = context.link(receiver.tlRow, receiver.tlCol);
                 if (typeof value === "object") {
                     if (isPending(value)) {
                         return value;
@@ -731,32 +723,29 @@ class Range<O> implements CalcObj<RangeContext<O>> {
     }
 }
 
-type InSheetContext = RangeContext<Point>;
-type OutSheetContext = RangeContext<unknown>;
-
-class Sheetlet implements IMatrixConsumer<Value>, IMatrixProducer<Value>, IMatrixReader<Value> {
+export class Sheetlet implements IMatrixConsumer<Value>, IMatrixProducer<Value>, IMatrixReader<Value> {
     private static readonly blank = "";
 
     public readonly binder = initBinder();
 
-    public readonly rootContext: CalcObj<InSheetContext> & ReadableType<CellValue, InSheetContext> = {
+    public readonly rootContext: CalcObj<RangeContext> & ReadableType<CellValue, RangeContext> = {
         typeMap() {
             return {
                 [TypeName.Readable]: this
             }
         },
         serialise: () => "TODO",
-        read: (_value: CalcObj<InSheetContext>, message: string, context: InSheetContext) => {
+        read: (_value: CalcObj<RangeContext>, message: string, context: RangeContext) => {
             if (message in funcs) {
                 return funcs[message];
             }
             switch (message) {
                 case "row":
                 case "ROW":
-                    return context.origin[ROW] + 1;
+                    return context.origin ? context.origin[ROW] + 1 : errorValues.unknownField;
                 case "column":
                 case "COLUMN":
-                    return context.origin[COL] + 1;
+                    return context.origin ? context.origin[COL] + 1 : errorValues.unknownField;
                 default:
                     const range = tryParseRange(context, message);
                     return range || errorValues.unknownField;
@@ -764,14 +753,14 @@ class Sheetlet implements IMatrixConsumer<Value>, IMatrixProducer<Value>, IMatri
         },
     };
 
-    private readonly orphanFormulaContext: CalcObj<RangeContext<unknown>> & ReadableType<CalcObj<RangeContext<unknown>>, RangeContext<unknown>> = {
+    private readonly orphanFormulaContext: CalcObj<RangeContext> & ReadableType<CalcObj<RangeContext>, RangeContext> = {
         typeMap() {
             return {
                 [TypeName.Readable]: this
             }
         },
         serialise: () => "TODO",
-        read: (_: CalcObj<RangeContext<unknown>>, message: string) => {
+        read: (_: CalcObj<RangeContext>, message: string) => {
             if (message in funcs) {
                 return funcs[message];
             }
@@ -780,13 +769,13 @@ class Sheetlet implements IMatrixConsumer<Value>, IMatrixProducer<Value>, IMatri
         },
     };
 
-    private readonly inSheetContext: (origin: Point) => InSheetContext = origin => ({
+    private readonly inSheetContext: (origin: Point) => RangeContext = origin => ({
         origin,
-        link: this.getCellValueAndLink.bind(this),
+        link: (row, col) => this.getCellValueAndLink(row, col, origin),
         parseRef: this.parseRef.bind(this),
     });
 
-    private readonly outOfSheetContext: OutSheetContext = {
+    private readonly outOfSheetContext: RangeContext = {
         origin: undefined,
         link: this.getCellValueAndForget.bind(this),
         parseRef: this.parseRef.bind(this),
@@ -922,7 +911,7 @@ class Sheetlet implements IMatrixConsumer<Value>, IMatrixProducer<Value>, IMatri
         return isDelayed(value) ? undefined : this.primitiveFromValue(this.outOfSheetContext, value);
     }
 
-    private primitiveFromValue<O>(context: RangeContext<O>, value: CalcValue<RangeContext<O>>): Value {
+    private primitiveFromValue(context: RangeContext, value: CalcValue<RangeContext>): Value {
         switch (typeof value) {
             case "number":
             case "string":
@@ -931,8 +920,9 @@ class Sheetlet implements IMatrixConsumer<Value>, IMatrixProducer<Value>, IMatri
             case "function":
                 return "<function>";
             case "object":
+                // TODO: Fix this to avoid loops
                 if (value instanceof Range) {
-                    return this.primitiveFromValue(context, Range.dereference(value, context) as CalcValue<RangeContext<O>>);
+                    return this.primitiveFromValue(context, Range.dereference(value, context) as CalcValue<RangeContext>);
                 }
                 const asString = value.serialise(context);
                 return typeof asString === "string" ? asString : undefined;
@@ -948,13 +938,7 @@ class Sheetlet implements IMatrixConsumer<Value>, IMatrixProducer<Value>, IMatri
         }
         switch (cell.flag) {
             case CalcFlag.Clean:
-                if (isFormulaCell(cell)) {
-                    const value = cell.value!
-                    if (value && value instanceof Range) {
-                        return value.transportRange<unknown>();
-                    }
-                }
-                return cell.content;
+                return isFormulaCell(cell) ? cell.value! : cell.content;
 
             case CalcFlag.Dirty:
             case CalcFlag.Enqueued:

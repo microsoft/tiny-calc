@@ -1,3 +1,8 @@
+import {
+    IMatrixProducer,
+    IMatrixReader,
+} from "@tiny-calc/nano";
+
 import { IMatrix } from "./types";
 
 const enum CONSTS {
@@ -214,5 +219,22 @@ export function createMatrix<T>(): IMatrix<T> {
         clear(row: number, col: number) {
             clearCell(row, col, cells);
         },
+    }
+}
+
+export function matrixProducer<T>(data: T[][]): IMatrixProducer<T | undefined> & IMatrixReader<T | undefined> & IMatrix<T> {
+    const grid = createMatrix<T>();
+    for (let i = 0; i < data.length; i++) {
+        const row = data[i];
+        for (let j = 0; j < row.length; j++) {
+            grid.write(i, j, row[j]);
+        }
+    }
+    return {
+        numRows: data.length,
+        numCols: data.length > 0 ? data[0].length : 0,
+        ...grid,
+        removeMatrixConsumer() { },
+        openMatrix() { return this },
     }
 }

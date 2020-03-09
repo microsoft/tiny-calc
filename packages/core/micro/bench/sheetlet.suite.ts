@@ -10,17 +10,17 @@ export const suites: Suite[] = [ suite ];
 
 function cachedTest(size: number) {
     const { sheet } = makeBenchmark(size);
-    evalSheet(sheet, size);
-    suite.add(`Cached: ${size}x${size}`, () => { consume(evalSheet(sheet, size)); });
+    evalSheet(sheet.openMatrix(undefined as any), size);
+    suite.add(`Cached: ${size}x${size}`, () => { consume(evalSheet(sheet.openMatrix(undefined as any), size)); });
 }
 
 function recalcTest(size: number) {
     const { sheet, setAt } = makeBenchmark(size);
-    evalSheet(sheet, size);
+    evalSheet(sheet.openMatrix(undefined as any), size);
     let i = 1;
     suite.add(`Recalc: ${size}x${size}`, () => { 
         setAt(0, 0, i = ~i);    // Toggle [0,0] between 1 and -2
-        consume(evalSheet(sheet, size));
+        consume(evalSheet(sheet.openMatrix(undefined as any), size));
     });
 }
 
