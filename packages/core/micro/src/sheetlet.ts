@@ -4,27 +4,46 @@
  */
 
 import {
-    CalcFun,
     CalcObj,
     CalcValue,
     compile,
     Delayed,
-    errors,
-    Formula,
     isDelayed,
-    makeError,
-    Pending,
     Primitive,
     ReadableType,
-    TypeMap,
     TypeName,
-    Runtime,
     IMatrixConsumer,
     IMatrixProducer,
     IMatrixReader,
 } from "@tiny-calc/nano";
 
-import { IMatrix, Value } from "./types";
+import {
+    errors,
+    isPending,
+    isPendingFiber,
+} from "./core";
+
+import { funcs } from "./functions";
+
+import {
+    isRange,
+    makeRange,
+} from "./range";
+
+import {
+    CalcFlag,
+    Cell,
+    CellValue,
+    Fiber,
+    FormulaCell,
+    FunctionFiber,
+    IMatrix,
+    PendingValue,
+    Point,
+    RangeContext,
+    Value,
+    ValueCell,
+} from "./types";
 
 import { keyToPoint, pointToKey } from "./key";
 
@@ -39,7 +58,6 @@ Stack: ${new Error().stack}
 
 const ROW = 0 as const;
 const COL = 1 as const;
-type Point = [number, number];
 
 function colNameToIndex(chars: string[]) {
     return chars
@@ -101,42 +119,8 @@ function initBinder(): Binder<number> {
     };
 }
 
-/*
- * Cell Data Types
- */
-
-/**
- * CalcFlags for Cell Status.
- */
-const enum CalcFlag {
-    Clean,
-    Dirty,
-    Enqueued,
-    InCalc,
-}
-
-type CellValue = CalcValue<RangeContext>;
-
-interface ValueCell {
-    flag: CalcFlag.Clean;
-    content: Primitive;
-}
-
-interface FormulaCell {
-    flag: CalcFlag;
-    content: string;
-    value: CellValue | undefined;
-    fn: Formula | undefined;
-}
-
-type Cell = ValueCell | FormulaCell;
-
 function valueCell(content: Primitive): ValueCell {
     return { flag: CalcFlag.Clean, content };
-}
-
-function formulaCell(content: string): FormulaCell {
-    return { flag: CalcFlag.Clean, content, value: undefined, fn: undefined };
 }
 
 function isFormulaCell(cell: Cell): cell is FormulaCell {
@@ -159,12 +143,8 @@ function makeValueCell(value: Primitive) {
     return valueCell(content);
 }
 
-function makeFormulaCell(text: string) {
-    // text should not start with '='
-    const cell = formulaCell(text);
-    cell.flag = CalcFlag.Dirty;
-    cell.fn = compile(text);
-    return cell;
+function makeFormulaCell(text: string): FormulaCell {
+    return { flag: CalcFlag.Dirty, content: text, value: undefined, fn: compile(text), prev: undefined, next: undefined };
 }
 
 function makeCell(value: Value) {
@@ -191,7 +171,7 @@ interface CellReader {
 
 interface BuildHost extends CellReader {
     binder: Binder<number>;
-    context: RangeContext;
+    makeContext: (point: Point) => RangeContext;
     rootObject: CalcObj<RangeContext>;
 }
 
@@ -220,15 +200,24 @@ function createInvalidator(reader: CellReader, binder: Binder<number>) {
 /**
  * Initialize a build queue from edited `roots`.
  */
-function initBuildQueue(roots: number[], reader: CellReader, binder: Binder<number>) {
-    const queue: Fiber[] = [];
-
+function initBuildQueue(chain: FormulaCell, roots: number[], reader: CellReader, binder: Binder<number>): FormulaCell | undefined {
+    assert.strictEqual(chain.next, undefined);
     function queueKey(key: number) {
         const [row, column] = keyToPoint(key);
         const cell = reader.readCell(row, column);
         if (cell && isFormulaCell(cell) && cell.flag === CalcFlag.Dirty) {
             cell.flag = CalcFlag.Enqueued;
-            queue.unshift(makePendingCell(row, column));
+            // splice out the node and add it to the end of the chain.
+            if (cell.prev) {
+                cell.prev.next = cell.next;
+            }
+            if (cell.next) {
+                cell.next.prev = cell.prev;
+            }
+            chain.next = cell;
+            cell.prev = chain;
+            cell.next = undefined;
+            chain = cell;
             return;
         }
         const deps = binder.getDeps(key);
@@ -238,66 +227,13 @@ function initBuildQueue(roots: number[], reader: CellReader, binder: Binder<numb
         }
         return;
     }
-
     roots.forEach(queueKey);
-    return [queue, queueKey] as const;
-}
-
-interface PendingValue {
-    kind: "Pending";
-}
-
-const enum FiberKind {
-    Cell,
-    Function,
-}
-
-interface CellFiber extends PendingValue {
-    task: FiberKind.Cell;
-    row: number;
-    column: number;
-}
-
-type FunctionTask = "sum" | "product" | "count" | "average" | "max" | "min" | "concat";
-
-interface FunctionFiber<T = unknown> extends PendingValue {
-    task: FiberKind.Function;
-    name: FunctionTask;
-    range: Range;
-    row: number;
-    column: number;
-    current: T;
-}
-
-type Fiber<T = unknown> = CellFiber | FunctionFiber<T>;
-
-function makePendingCell(row: number, column: number): CellFiber {
-    return { kind: "Pending", task: FiberKind.Cell, row, column };
-}
-
-function makePendingFunction<V>(name: FunctionTask, range: Range, row: number, column: number, current: V): FunctionFiber<V> {
-    return { kind: "Pending", name, task: FiberKind.Function, range, row, column, current };
-}
-
-function isPending(content: any): content is PendingValue {
-    return typeof content === "object" && "kind" in content && content.kind === "Pending";
-}
-
-function isFiber(content: any): content is Fiber {
-    return isPending(content) && "task" in content;
-}
-
-/**
- * Initialise a fiber stack for high-priority tasks.
- */
-function initFiberStack() {
-    const stack: Fiber[] = [];
-    return [stack, (fiber: Fiber) => { stack.push(fiber); }] as const;
+    return chain;
 }
 
 const coerceResult = (value: CellValue, context: RangeContext) => {
-    if (value instanceof Range) {
-        return Range.dereference(value, context);
+    if (typeof value === "object" && isRange(value)) {
+        return context.link(value.tlRow, value.tlCol);
     }
     return value;
 }
@@ -324,25 +260,12 @@ const shouldQueueFiber = (host: BuildHost, row: number, column: number) => {
 };
 
 /**
- * Basic errors.
- */
-const errorValues = {
-    ...errors,
-    unknownField: makeError("#UNKNOWN!"),
-    cycle: makeError("#CYCLE!"),
-    fallbackCoercion: makeError("#VALUE!"),
-    compileFailure: makeError("#COMPILE!"),
-    evalFailure: makeError("#EVAL!"),
-} as const;
-
-/**
  * Recalc `sheet`, starting from the edited `roots`.
  */
-function rebuild(roots: number[], host: BuildHost): void {
-    const [queue, queueKey] = initBuildQueue(roots, host, host.binder);
-    const [dynamicFibers, addFiber] = initFiberStack();
+function rebuild(startChain: FormulaCell, roots: number[], host: BuildHost) {
+    let chain: Fiber | undefined = initBuildQueue(startChain, roots, host, host.binder);
 
-    function runCellFiber(fiber: CellFiber) {
+    function runCellFiber(fiber: FormulaCell) {
         const { row, column } = fiber;
         const cell = host.readCell(row, column);
         if (cell === undefined || !isFormulaCell(cell)) {
@@ -384,19 +307,20 @@ function rebuild(roots: number[], host: BuildHost): void {
             return true;
         }
         if (cell.fn === undefined) {
-            finishCell(queueKey, host.binder, row, col, cell, errorValues.compileFailure);
+            finishCell(queueKey, host.binder, row, col, cell, errors.compileFailure);
             return true;
         }
         cell.flag = CalcFlag.InCalc;
-        let result: [PendingValue[], Delayed<CellValue>] = [[], errorValues.evalFailure];
+        const context = host.makeContext([row, col]);
+        let result: [PendingValue[], Delayed<CellValue>] = [[], errors.evalFailure];
         try {
-            result = cell.fn<RangeContext>(host.context, host.rootObject);
+            result = cell.fn<RangeContext>(context, host.rootObject);
         } catch {
         }
         if (isDelayed(result[1])) {
             return result[0];
         }
-        const value = coerceResult(result[1], host.context);
+        const value = coerceResult(result[1], context);
         if (isPending(value)) { return [value]; }
         finishCell(queueKey, host.binder, row, col, cell, value);
         return true;
@@ -407,240 +331,13 @@ function rebuild(roots: number[], host: BuildHost): void {
         [FiberKind.Function]: runFunctionFiber,
     } as const;
 
-    while (queue.length !== 0 || dynamicFibers.length !== 0) {
+    while (chain !== undefined) {
         const fiber = dynamicFibers.pop() || queue.pop()!;
         lookupTable[fiber.task](fiber as any);
     }
+    
+    
 }
-
-/*
- * Function implementations.
- * These are mostly reducer wrappers around Range aggregations.
- */
-
-type PrimitiveMap = {
-    number: number;
-    string: string;
-    boolean: boolean;
-}
-
-function extractTypeFromProperty<K extends keyof PrimitiveMap>(
-    type: K, defaultValue: PrimitiveMap[K]
-): <O, Delay>(runtime: Runtime<Delay>, origin: O, arg: CalcValue<O>, property: string) => PrimitiveMap[K] | Delay | CalcValue<O>;
-
-
-function extractTypeFromProperty(
-    type: keyof PrimitiveMap,
-    defaultValue: Primitive
-): <O, Delay>(runtime: Runtime<Delay>, origin: O, arg: CalcValue<O>, property: string) => Primitive | Delay | CalcValue<O> {
-    return <O, Delay>(runtime: Runtime<Delay>, origin: O, arg: CalcValue<O>, property: string) => {
-        if (typeof arg === type) { return arg; } // fast path
-        switch (typeof arg) {
-            case "object":
-            case type:
-                return runtime.read(origin, arg, property, arg);
-            default:
-                return defaultValue;
-        }
-    }
-}
-
-const extractNumberFromProperty = extractTypeFromProperty("number", 0);
-const extractStringFromProperty = extractTypeFromProperty("string", "");
-
-function reduceType<K extends keyof PrimitiveMap>(type: K): <O, Delay>(args: (Delay | CalcValue<O>)[], fn: (prev: PrimitiveMap[K], current: PrimitiveMap[K]) => PrimitiveMap[K], init: PrimitiveMap[K]) => PrimitiveMap[K] | CalcValue<O> | Delay;
-function reduceType<K extends keyof PrimitiveMap>(type: K): <O, Delay>(args: (Delay | CalcValue<O>)[], fn: (prev: Primitive, current: Primitive) => Primitive, init: Primitive) => Primitive | CalcValue<O> | Delay {
-    return <O, Delay>(args: (CalcValue<O> | Delay)[], fn: (prev: Primitive, current: Primitive) => Primitive, init: Primitive) => {
-        let total = init;
-        for (const arg of args) {
-            if (typeof arg !== type) {
-                return arg;
-            }
-            total = fn(total, arg as Primitive);
-        }
-        return total;
-    }
-}
-
-const reduceNumbers = reduceType("number");
-const reduceStrings = reduceType("string");
-
-
-const sum: CalcFun<unknown> = (runtime, origin, args) => {
-    const totals = args.map((arg) => extractNumberFromProperty(runtime, origin, arg, "sum"));
-    return reduceNumbers(totals, (prev, current) => prev + current, 0);
-};
-
-const product: CalcFun<unknown> = (runtime, origin, args) => {
-    const totals = args.map((arg) => extractNumberFromProperty(runtime, origin, arg, "product"));
-    return reduceNumbers(totals, (prev, current) => prev * current, 1);
-};
-
-const count: CalcFun<unknown> = (runtime, origin, args) => {
-    const totals = args.map((arg) => extractNumberFromProperty(runtime, origin, arg, "count"));
-    return reduceNumbers(totals, (prev, current) => prev + current, 0);
-};
-
-const average: CalcFun<unknown> = (runtime, origin, args) => {
-    const totals = args.map((arg) => extractNumberFromProperty(runtime, origin, arg, "sum"));
-    const counts = args.map((arg) => extractNumberFromProperty(runtime, origin, arg, "count"));
-    const total = reduceNumbers(totals, (prev, current) => prev + current, 0);
-    if (typeof total === "number") {
-        const count = reduceNumbers(counts, (prev, current) => prev + current, 0);
-        return typeof count === "number" ? count === 0 ? errorValues.div0 : total / count : count;
-    }
-    return total;
-};
-
-const max: CalcFun<unknown> = (runtime, origin, args) => {
-    if (args.length === 0) { return 0; }
-    const maxs = args.map((arg) => extractNumberFromProperty(runtime, origin, arg, "max"));
-    for (const arg of maxs) {
-        if (typeof arg !== "number") {
-            return arg;
-        }
-    }
-    return reduceNumbers(maxs, (prev, current) => current > prev ? current : prev, maxs[0] as number);
-};
-
-const min: CalcFun<unknown> = (runtime, origin, args) => {
-    if (args.length === 0) { return 0; }
-    const mins = args.map((arg) => extractNumberFromProperty(runtime, origin, arg, "min"));
-    for (const arg of mins) {
-        if (typeof arg !== "number") {
-            return arg;
-        }
-    }
-    return reduceNumbers(mins, (prev, current) => current < prev ? current : prev, mins[0] as number);
-};
-
-
-const concat: CalcFun<unknown> = (runtime, origin, args) => {
-    const val = args.map((arg) => extractStringFromProperty(runtime, origin, arg, "concat"));
-    return reduceStrings(val, (prev, current) => prev + current, "");
-};
-
-const funcs: Record<string, CalcFun<unknown>> = {
-    sum, product, count, average, max, min, concat,
-    SUM: sum, PRODUCT: product, COUNT: count, AVERAGE: average, MAX: max, MIN: min, CONCAT: concat,
-};
-
-/*
- * Function Runners are accumulators over ranges.
- */
-
-type FunctionRunner<Res> = [Res, (x: unknown) => void];
-
-const createRunner = <Res>(fn: (box: [Res]) => (x: unknown) => void) => {
-    return (init: Res) => {
-        const result: FunctionRunner<Res> = [init, undefined!];
-        result[1] = fn(result as unknown as [Res]);
-        return result;
-    };
-};
-
-const createSum = createRunner<number>(result => n => { if (typeof n === "number") { result[0] += n; } });
-const createProduct = createRunner<number>(result => n => { if (typeof n === "number") { result[0] *= n; } });
-const createCount = createRunner<number>(result => n => { if (typeof n === "number") { result[0]++; } });
-const createAverage = createRunner<[number, number]>(result => n => { if (typeof n === "number") { result[0][0] += n; result[0][1]++; } });
-const createMax = createRunner<number | undefined>(
-    result => n => {
-        if (typeof n === "number" && (result[0] === undefined || n > result[0])) {
-            result[0] = n;
-        }
-    },
-);
-const createMin = createRunner<number | undefined>(
-    result => n => {
-        if (typeof n === "number" && (result[0] === undefined || n < result[0])) {
-            result[0] = n;
-        }
-    },
-);
-const createConcat = createRunner<string>((result) => s => { if (typeof s === "string") { result[0] += s; } });
-
-/*
- * Core aggregation functions over ranges
- */
-
-interface RangeContext {
-    origin: Point | undefined;
-    link: (row: number, col: number) => CalcValue<RangeContext> | CellFiber;
-    parseRef: (text: string) => Point | undefined;
-}
-
-type RangeAggregation<R, Accum = R> = (range: Range, context: RangeContext, someTask?: FunctionFiber<Accum>) => R | FunctionFiber<Accum>;
-
-function runFunc<Res>(context: RangeContext, task: FunctionFiber<Res>, initRunner: (init: Res) => FunctionRunner<Res>) {
-    const { current, row, column, range } = task;
-    const runner = initRunner(current);
-    const run = runner[1];
-    const endR = row + range.height;
-    const endC = column + range.width;
-    // TODO: This is not resumable! See function fiber for how to do
-    // this properly.
-    for (let i = row; i < endR; i += 1) {
-        for (let j = column; j < endC; j += 1) {
-            const content = context.link(i, j);
-            if (isPending(content)) {
-                assert.strictEqual(content.task, FiberKind.Cell);
-                task.row = i;
-                task.column = j;
-                task.current = runner[0];
-                return task;
-            }
-            run(content);
-        }
-    }
-    return runner[0];
-}
-
-const rangeSum: RangeAggregation<number> = (range, context, someTask?) => {
-    const task = someTask || makePendingFunction("sum", range, range.tlRow, range.tlCol, 0);
-    return runFunc(context, task, createSum);
-};
-
-const rangeProduct: RangeAggregation<number> = (range, context, someTask?) => {
-    const task = someTask || makePendingFunction("product", range, range.tlRow, range.tlCol, 1);
-    return runFunc(context, task, createProduct);
-};
-
-const rangeCount: RangeAggregation<number> = (range, context, someTask?) => {
-    const task = someTask || makePendingFunction("count", range, range.tlRow, range.tlCol, 0);
-    return runFunc(context, task, createCount);
-};
-
-const rangeAverage: RangeAggregation<number | CalcObj<unknown>, [number, number]> = (range, context, someTask?) => {
-    const task = someTask || makePendingFunction("average", range, range.tlRow, range.tlCol, [0, 0]);
-    const result = runFunc(context, task, createAverage);
-    if (isPending(result)) { return result; }
-    const [total, finalCount] = result;
-    return finalCount === 0 ? errorValues.div0 : total / finalCount;
-};
-
-const rangeMax: RangeAggregation<number, number | undefined> = (range, context, someTask?) => {
-    const task = someTask || makePendingFunction("max", range, range.tlRow, range.tlCol, undefined);
-    const result = runFunc(context, task, createMax);
-    return result === undefined ? 0 : result;
-};
-
-const rangeMin: RangeAggregation<number, number | undefined> = (range, context, someTask?) => {
-    const task = someTask || makePendingFunction("min", range, range.tlRow, range.tlCol, undefined);
-    const result = runFunc(context, task, createMin);
-    return result === undefined ? 0 : result;
-};
-
-const rangeConcat: RangeAggregation<string> = (range, context, someTask?) => {
-    const task = someTask || makePendingFunction("concat", range, range.tlRow, range.tlCol, "");
-    return runFunc(context, task, createConcat);
-};
-
-type FreshAggregation<R, Accum = R> = (range: Range, context: RangeContext) => R | FunctionFiber<Accum>;
-
-const aggregations: Record<string, FreshAggregation<CalcValue<unknown>, unknown>> = {
-    sum: rangeSum, product: rangeProduct, count: rangeCount, average: rangeAverage, max: rangeMax, min: rangeMin, concat: rangeConcat,
-    SUM: rangeSum, PRODUCT: rangeProduct, COUNT: rangeCount, AVERAGE: rangeAverage, MAX: rangeMax, MIN: rangeMin, CONCAT: rangeConcat,
-};
 
 function tryParseRange(context: RangeContext, text: string) {
     const normalizedText = text.toLowerCase();
@@ -651,77 +348,17 @@ function tryParseRange(context: RangeContext, text: string) {
             return undefined;
         }
         if (asRange[1] === undefined) {
-            return new Range(first, first);
+            return makeRange(first[ROW], first[COL], first[ROW], first[COL]);
         }
         const second = context.parseRef(asRange[1]);
         if (second !== undefined) {
-            return new Range(first, second);
+            return makeRange(first[ROW], first[COL], second[ROW], second[COL]);
         }
     }
     return undefined;
 }
 
-/**
- * A Range represents a view of the grid that knows how to calculate
- * aggregations over the view. The canonical value of a Range is the
- * top left corner.
- */
-class Range implements CalcObj<RangeContext> {
-    public readonly tlRow: number;
-    public readonly tlCol: number;
-    public readonly height: number;
-    public readonly width: number;
 
-    constructor(first: Point, second: Point) {
-        this.tlRow = first[ROW] < second[ROW] ? first[ROW] : second[ROW];
-        this.tlCol = first[COL] < second[COL] ? first[COL] : second[COL];
-        this.height = Math.abs(first[ROW] - second[ROW]) + 1;
-        this.width = Math.abs(first[COL] - second[COL]) + 1;
-    }
-
-    public typeMap(): TypeMap<this, RangeContext> {
-        return {
-            [TypeName.Readable]: Range,
-            [TypeName.Reference]: Range
-        }
-    }
-
-    public serialise() {
-        return "REF";
-    }
-
-    public static dereference(value: Range, context: RangeContext) {
-        return context.link(value.tlRow, value.tlCol);
-    }
-
-    public static read(receiver: Range, message: string, context: RangeContext): CalcValue<RangeContext> | Pending<CalcValue<RangeContext>> {
-        if (aggregations[message] !== undefined) {
-            const fn = aggregations[message as keyof typeof aggregations];
-            return fn(receiver, context);
-        }
-        switch (message) {
-            case "row":
-            case "ROW":
-                return receiver.tlRow + 1;
-            case "column":
-            case "COLUMN":
-                return receiver.tlCol + 1;
-            default:
-                const value = context.link(receiver.tlRow, receiver.tlCol);
-                if (typeof value === "object") {
-                    if (isPending(value)) {
-                        return value;
-                    }
-                    const reader = value.typeMap()[TypeName.Readable];
-                    if (reader) {
-                        return reader.read(value, message, context);
-                    }
-                }
-                return errorValues.unknownField;
-
-        }
-    }
-}
 
 export class Sheetlet implements IMatrixConsumer<Value>, IMatrixProducer<Value>, IMatrixReader<Value> {
     private static readonly blank = "";
@@ -742,13 +379,13 @@ export class Sheetlet implements IMatrixConsumer<Value>, IMatrixProducer<Value>,
             switch (message) {
                 case "row":
                 case "ROW":
-                    return context.origin ? context.origin[ROW] + 1 : errorValues.unknownField;
+                    return context.origin ? context.origin[ROW] + 1 : errors.unknownField;
                 case "column":
                 case "COLUMN":
-                    return context.origin ? context.origin[COL] + 1 : errorValues.unknownField;
+                    return context.origin ? context.origin[COL] + 1 : errors.unknownField;
                 default:
                     const range = tryParseRange(context, message);
-                    return range || errorValues.unknownField;
+                    return range || errors.unknownField;
             }
         },
     };
@@ -765,7 +402,7 @@ export class Sheetlet implements IMatrixConsumer<Value>, IMatrixProducer<Value>,
                 return funcs[message];
             }
             const range = tryParseRange(this.outOfSheetContext, message);
-            return range || errorValues.unknownField;
+            return range || errors.unknownField;
         },
     };
 
@@ -797,6 +434,7 @@ export class Sheetlet implements IMatrixConsumer<Value>, IMatrixProducer<Value>,
         this.reader = this.producer.openMatrix(this);
         this.numRows = this.reader.numRows;
         this.numCols = this.reader.numCols;
+        return this;
     }
 
     rowsChanged(row: number, numRemoved: number, numInserted: number) {
@@ -830,8 +468,7 @@ export class Sheetlet implements IMatrixConsumer<Value>, IMatrixProducer<Value>,
         else {
             this.consumer0 = consumer;
         }
-        this.connect();
-        return this;
+        return this.connect();
     }
 
     removeMatrixConsumer(consumer: IMatrixConsumer<Value>) {
@@ -875,7 +512,7 @@ export class Sheetlet implements IMatrixConsumer<Value>, IMatrixProducer<Value>,
                 const buildHost: BuildHost = {
                     readCell: this.readCell.bind(this),
                     binder: this.binder,
-                    context: this.inSheetContext([row, col]),
+                    makeContext: this.inSheetContext,
                     rootObject: this.rootContext,
                 }
                 rebuild([pointToKey(row, col)], buildHost);
@@ -899,8 +536,8 @@ export class Sheetlet implements IMatrixConsumer<Value>, IMatrixProducer<Value>,
                     case "object":
                         const context = this.inSheetContext([row, col]);
                         // TODO: Fix this to avoid loops
-                        if (value instanceof Range) {
-                            value = Range.dereference(value, context);
+                        if (isRange(value)) {
+                            value = context.link(value.tlRow, value.tlCol);
                             switch (typeof value) {
                                 case "number":
                                 case "string":
@@ -951,8 +588,9 @@ export class Sheetlet implements IMatrixConsumer<Value>, IMatrixProducer<Value>,
                 return "<function>";
             case "object":
                 // TODO: Fix this to avoid loops
-                if (value instanceof Range) {
-                    return this.primitiveFromValue(context, Range.dereference(value, context) as CalcValue<RangeContext>);
+                if (isRange(value)) {
+                    const result = context.link(value.tlRow, value.tlCol);
+                    return isPending(result) ? undefined : this.primitiveFromValue(context, result);
                 }
                 const asString = value.serialise(context);
                 return typeof asString === "string" ? asString : undefined;
@@ -997,7 +635,7 @@ export class Sheetlet implements IMatrixConsumer<Value>, IMatrixProducer<Value>,
 
             case CalcFlag.InCalc:
                 // TODO: proper cycle handling
-                return errorValues.cycle;
+                return errors.cycle;
 
             default:
                 return assertNever(cell);
