@@ -23,6 +23,10 @@ import {
     isPendingFiber,
 } from "./core";
 
+import {
+    createFormulaParser
+} from "./formula";
+
 import { funcs } from "./functions";
 
 import {
@@ -233,7 +237,7 @@ function initBuildQueue(chain: FormulaCell, roots: number[], reader: CellReader,
 
 const coerceResult = (value: CellValue, context: RangeContext) => {
     if (typeof value === "object" && isRange(value)) {
-        return context.link(value.tlRow, value.tlCol);
+        return context.read(value.tlRow, value.tlCol);
     }
     return value;
 }
@@ -364,6 +368,7 @@ export class Sheetlet implements IMatrixConsumer<Value>, IMatrixProducer<Value>,
     private static readonly blank = "";
 
     public readonly binder = initBinder();
+    public readonly parser = createFormulaParser();
 
     public readonly rootContext: CalcObj<RangeContext> & ReadableType<CellValue, RangeContext> = {
         typeMap() {
@@ -408,13 +413,13 @@ export class Sheetlet implements IMatrixConsumer<Value>, IMatrixProducer<Value>,
 
     private readonly inSheetContext: (origin: Point) => RangeContext = origin => ({
         origin,
-        link: (row, col) => this.getCellValueAndLink(row, col, origin),
+        read: (row, col) => this.getCellValueAndLink(row, col, origin),
         parseRef: this.parseRef.bind(this),
     });
 
     private readonly outOfSheetContext: RangeContext = {
         origin: undefined,
-        link: this.getCellValueAndForget.bind(this),
+        read: this.getCellValueAndForget.bind(this),
         parseRef: this.parseRef.bind(this),
     };
 
@@ -537,7 +542,7 @@ export class Sheetlet implements IMatrixConsumer<Value>, IMatrixProducer<Value>,
                         const context = this.inSheetContext([row, col]);
                         // TODO: Fix this to avoid loops
                         if (isRange(value)) {
-                            value = context.link(value.tlRow, value.tlCol);
+                            value = context.read(value.tlRow, value.tlCol);
                             switch (typeof value) {
                                 case "number":
                                 case "string":
@@ -589,7 +594,7 @@ export class Sheetlet implements IMatrixConsumer<Value>, IMatrixProducer<Value>,
             case "object":
                 // TODO: Fix this to avoid loops
                 if (isRange(value)) {
-                    const result = context.link(value.tlRow, value.tlCol);
+                    const result = context.read(value.tlRow, value.tlCol);
                     return isPending(result) ? undefined : this.primitiveFromValue(context, result);
                 }
                 const asString = value.serialise(context);

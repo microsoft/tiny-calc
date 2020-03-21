@@ -7,7 +7,7 @@ export {
 } from "./ast"
 
 export {
-    createRuntime,
+    CoreRuntime,
     Delay,
     Delayed,
     errors,
@@ -55,6 +55,7 @@ export {
     createParser,
     ExpAlgebra,
     ParserErrorHandler,
+    Parser,
 } from "./parser";
 
 export {

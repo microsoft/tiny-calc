@@ -27,48 +27,48 @@ interface LiteralNode {
     value: Primitive;
 }
 
-interface IdentNode {
+interface IdentNode<I> {
     kind: NodeKind.Ident;
-    value: string;
+    value: I;
 }
 
-interface ParenNode {
+interface ParenNode<I> {
     kind: NodeKind.Paren;
-    value: ExpressionNode;
+    value: ExpressionNode<I>;
 }
 
-interface FunNode {
+interface FunNode<I> {
     kind: NodeKind.Fun;
-    children: ExpressionNode[];
+    children: ExpressionNode<I>[];
 }
 
-interface AppNode {
+interface AppNode<I> {
     kind: NodeKind.App;
-    children: ExpressionNode[];
+    children: ExpressionNode<I>[];
 }
 
-interface ConditionalNode {
+interface ConditionalNode<I> {
     kind: NodeKind.Conditional;
-    children: ExpressionNode[];
+    children: ExpressionNode<I>[];
 }
 
-interface DotNode {
+interface DotNode<I> {
     kind: NodeKind.Dot;
-    operand1: ExpressionNode;
-    operand2: ExpressionNode;
+    operand1: ExpressionNode<I>;
+    operand2: ExpressionNode<I>;
 }
 
-interface BinaryOpNode {
+interface BinaryOpNode<I> {
     kind: NodeKind.BinaryOp;
     op: BinaryOperatorToken;
-    operand1: ExpressionNode;
-    operand2: ExpressionNode;
+    operand1: ExpressionNode<I>;
+    operand2: ExpressionNode<I>;
 }
 
-interface UnaryOpNode {
+interface UnaryOpNode<I> {
     kind: NodeKind.UnaryOp;
     op: UnaryOperatorToken;
-    operand1: ExpressionNode;
+    operand1: ExpressionNode<I>;
 }
 
 interface MissingNode {
@@ -76,16 +76,16 @@ interface MissingNode {
     value: undefined;
 }
 
-export type ExpressionNode =
+export type ExpressionNode<I> =
     | LiteralNode
-    | IdentNode
-    | ParenNode
-    | FunNode
-    | AppNode
-    | ConditionalNode
-    | DotNode
-    | BinaryOpNode
-    | UnaryOpNode
+    | IdentNode<I>
+    | ParenNode<I>
+    | FunNode<I>
+    | AppNode<I>
+    | ConditionalNode<I>
+    | DotNode<I>
+    | BinaryOpNode<I>
+    | UnaryOpNode<I>
     | MissingNode;
 
 
@@ -107,46 +107,47 @@ type NaryNode =
     | NodeKind.App
     | NodeKind.Conditional;
 
-type NodeOfKind<K extends NodeKind> = Extract<ExpressionNode, Record<"kind", K>>;
-type Value<K extends UnaryNode> = NodeOfKind<K> extends { value: infer V } ? V : never;
-type Op<K extends NodeKind> = NodeOfKind<K> extends { op: infer V } ? V : undefined;
-type Operand2<K extends NodeKind> = NodeOfKind<K> extends { operand2: infer V } ? V : undefined;
+type NodeOfKind<K extends NodeKind, I> = Extract<ExpressionNode<I>, Record<"kind", K>>;
+type Value<K extends UnaryNode, I> = NodeOfKind<K, I> extends { value: infer V } ? V : never;
+type Op<K extends NodeKind, I> = NodeOfKind<K, I> extends { op: infer V } ? V : undefined;
+type Operand2<K extends NodeKind, I> = NodeOfKind<K, I> extends { operand2: infer V } ? V : undefined;
 
-function createUnaryNode<K extends UnaryNode>(kind: K, value: Value<K>): NodeOfKind<K> {
+function createUnaryNode<K extends UnaryNode, I>(kind: K, value: Value<K, I>): NodeOfKind<K, I> {
     return { kind, value } as any;
 }
 
-function createBinaryNode<K extends BinaryNode>(
+function createBinaryNode<K extends BinaryNode, I>(
     kind: K,
-    op: Op<K>,
-    operand1: ExpressionNode,
-    operand2: Operand2<K>
-): NodeOfKind<K> {
+    op: Op<K, I>,
+    operand1: ExpressionNode<I>,
+    operand2: Operand2<K, I>
+): NodeOfKind<K, I> {
     return { kind, op, operand1, operand2 } as any;
 }
 
-function createNaryNode<K extends NaryNode>(kind: K, children: ExpressionNode[]): NodeOfKind<K> {
+function createNaryNode<K extends NaryNode, I>(kind: K, children: ExpressionNode<I>[]): NodeOfKind<K, I> {
     return { kind, children } as any;
 }
 
-export function ident(id: string): IdentNode {
+// Public Constructors
+
+export function ident<I>(id: I): IdentNode<I> {
     return createUnaryNode(NodeKind.Ident, id);
 }
 
-/**
- * We always assume that V includes Primitive;
- */
-export function createAlgebra<T>(handler: ParserErrorHandler<T>): ExpAlgebra<ExpressionNode> {
+export function createAlgebra<T, I>(resolve: (id: string) => I, handler: ParserErrorHandler<T>): ExpAlgebra<ExpressionNode<I>> {
     return {
         lit(value: number | string | boolean) {
             return createUnaryNode(NodeKind.Literal, value);
         },
-        ident,
-        paren(expr: ExpressionNode) {
+        ident(id: string) {
+            return ident(resolve(id));
+        },
+        paren(expr: ExpressionNode<I>) {
             return createUnaryNode(NodeKind.Paren, expr);
         },
-        app(head: ExpressionNode, args: ExpressionNode[], start: number, end: number) {
-            if (head.kind === NodeKind.Ident) {
+        app(head: ExpressionNode<I>, args: ExpressionNode<I>[], start: number, end: number) {
+            if (head.kind === NodeKind.Ident && typeof head.value === "string") {
                 switch (head.value) {
                     case "if":
                     case "IF":
@@ -173,13 +174,13 @@ export function createAlgebra<T>(handler: ParserErrorHandler<T>): ExpAlgebra<Exp
             return createNaryNode(NodeKind.App, [head].concat(args));
 
         },
-        dot(operand1: ExpressionNode, operand2: ExpressionNode) {
+        dot(operand1: ExpressionNode<I>, operand2: ExpressionNode<I>) {
             return createBinaryNode(NodeKind.Dot, undefined, operand1, operand2);
         },
-        binOp(op: BinaryOperatorToken, left: ExpressionNode, right: ExpressionNode) {
+        binOp(op: BinaryOperatorToken, left: ExpressionNode<I>, right: ExpressionNode<I>) {
             return createBinaryNode(NodeKind.BinaryOp, op, left, right);
         },
-        unaryOp(op: UnaryOperatorToken, expr: ExpressionNode) {
+        unaryOp(op: UnaryOperatorToken, expr: ExpressionNode<I>) {
             return createBinaryNode(NodeKind.UnaryOp, op, expr, undefined);
         },
         missing(position: number) {
@@ -190,4 +191,4 @@ export function createAlgebra<T>(handler: ParserErrorHandler<T>): ExpAlgebra<Exp
 }
 
 const errorHandler = createBooleanErrorHandler();
-export const parseExpression = createParser(createAlgebra(errorHandler), errorHandler);
+export const parseExpression = createParser(createAlgebra(x => x, errorHandler), errorHandler);

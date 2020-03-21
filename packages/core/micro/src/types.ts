@@ -1,13 +1,20 @@
 import {
-    Primitive,
+    ExpressionNode,
     CalcObj,
     CalcValue,
-    Formula,
+    Primitive,
 } from "@tiny-calc/nano";
 
 export type Point = [number, number];
 
-export type Value = Primitive | undefined;
+export interface Reference {
+    row1: number;
+    col1: number;
+    row2?: number | undefined;
+    col2?: number | undefined;
+}
+
+export type FormulaNode = ExpressionNode<string | Reference>;
 
 /*
  * Cell Data Types
@@ -25,7 +32,7 @@ export const enum CalcFlag {
 
 export type CellValue = CalcValue<RangeContext>;
 
-export interface  ValueCell {
+export interface ValueCell {
     flag: CalcFlag.Clean;
     content: Primitive;
 }
@@ -34,7 +41,7 @@ export interface FormulaCell {
     flag: CalcFlag;
     content: string;
     value: CellValue | undefined;
-    fn: Formula | undefined;
+    fn: FormulaNode | undefined;
     prev: FormulaCell | undefined;
     next: FormulaCell | undefined;
 }
@@ -60,8 +67,7 @@ export interface PendingValue {
 
 export interface RangeContext {
     origin: Point | undefined;
-    link: (row: number, col: number) => CalcValue<RangeContext> | PendingValue;
-    parseRef: (text: string) => Point | undefined;
+    read: (row: number, col: number) => CalcValue<RangeContext> | PendingValue;
 }
 
 export interface Range extends CalcObj<RangeContext> {
@@ -71,6 +77,9 @@ export interface Range extends CalcObj<RangeContext> {
     readonly width: number;
 }
 
+/**
+ * IMatrix denotes a 2D cache for values of type `T`.
+ */
 export interface IMatrix<T> {
     read(row: number, col: number): T | undefined;
     write(row: number, col: number, value: T): void;

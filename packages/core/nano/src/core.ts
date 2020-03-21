@@ -244,9 +244,9 @@ export function isDelayed<T>(x: T | Delay): x is Delay {
  * records any pending value. This allows us to gather multiple
  * pending values in a single computation
  */
-type Trace = <T>(value: T | Pending<T>) => Delayed<T>;
+export type Trace = <T>(value: T | Pending<T>) => Delayed<T>;
 
-function makeTracer(): [Pending<unknown>[], Trace] {
+export function makeTracer(): [Pending<unknown>[], Trace] {
     // The trace function is used to catch pending values early and
     // replace them with a sentinel so that we can use pointer
     // equality throughout the rest of a calculation. The
@@ -382,11 +382,11 @@ export class CoreRuntime implements Runtime<Delay> {
     }
 }
 
-export function createResolver<C>(root: CalcObj<C>): Resolver<C, string, Pending<CalcValue<C>>> {
+export function createObjectResolver<C>(root: CalcObj<C>, trace: Trace): Resolver<C, string, Delay> {
     return {
         resolve<F>(context: C, ident: string, failure: F) {
             let reader = root.typeMap()[TypeName.Readable];
-            return reader ? reader.read(root, ident, context) : failure;
+            return reader ? trace(reader.read(root, ident, context)) : failure;
         }
     }
 }
@@ -401,9 +401,3 @@ export function createResolver<C>(root: CalcObj<C>): Resolver<C, string, Pending
 export type Errors = typeof errors;
 export type BinaryOps = typeof binOps;
 export type UnaryOps = typeof unaryOps;
-
-export const createRuntime = <O>(root: CalcObj<O>): [Pending<unknown>[], Runtime<Delay>, Resolver<O, string, Delay>] => {
-    const { resolve } = createResolver(root);
-    const [data, trace] = makeTracer();
-    return [data, new CoreRuntime(trace), { resolve: (context, ident, failure) => trace(resolve(context, ident, failure)) }];
-}

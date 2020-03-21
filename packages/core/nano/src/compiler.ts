@@ -19,10 +19,12 @@ import {
 import {
     binOps,
     BinaryOps,
+    createObjectResolver,
+    CoreRuntime,
     Delay,
     Delayed,
     errors,
-    createRuntime,
+    makeTracer,
     unaryOps,
     UnaryOps,
 } from "./core";
@@ -100,7 +102,7 @@ const makeGensym = () => {
     }
 };
 
-function compileAST(gensym: () => number, scope: Record<string, string>, f: ExpressionNode): string {
+function compileAST(gensym: () => number, scope: Record<string, string>, f: ExpressionNode<string>): string {
     switch (f.kind) {
         case NodeKind.Literal:
             return simpleSink.lit(f.value);
@@ -166,8 +168,8 @@ export type Formula = <C>(context: C, root: CalcObj<C>) => [Pending<unknown>[], 
 const parse = createParser(simpleSink, errorHandler);
 
 const formula = (raw: RawFormula): Formula => <O>(origin: O, context: CalcObj<O>) => {
-    const [data, rt, resolver] = createRuntime(context);
-    const result = raw(rt, resolver, errors, origin, context, binOps, unaryOps);
+    const [data, trace] = makeTracer();
+    const result = raw(new CoreRuntime(trace), createObjectResolver(context, trace), errors, origin, context, binOps, unaryOps);
     return [data, result];
 };
 

@@ -91,22 +91,14 @@ const average: CalcFun<unknown> = (runtime, origin, args) => {
 const max: CalcFun<unknown> = (runtime, origin, args) => {
     if (args.length === 0) { return 0; }
     const maxs = args.map((arg) => extractNumberFromProperty(runtime, origin, arg, "max"));
-    for (const arg of maxs) {
-        if (typeof arg !== "number") {
-            return arg;
-        }
-    }
+    if (typeof maxs[0] !== "number") { return maxs[0] };
     return reduceNumbers(maxs, (prev, current) => current > prev ? current : prev, maxs[0] as number);
 };
 
 const min: CalcFun<unknown> = (runtime, origin, args) => {
     if (args.length === 0) { return 0; }
     const mins = args.map((arg) => extractNumberFromProperty(runtime, origin, arg, "min"));
-    for (const arg of mins) {
-        if (typeof arg !== "number") {
-            return arg;
-        }
-    }
+    if (typeof mins[0] !== "number") { return mins[0] };
     return reduceNumbers(mins, (prev, current) => current < prev ? current : prev, mins[0] as number);
 };
 

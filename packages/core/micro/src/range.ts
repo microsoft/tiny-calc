@@ -13,7 +13,7 @@ import {
 
 import {
     errors,
-    isPending,
+    isPendingFiber,
     makePendingFunction,
 } from "./core";
 
@@ -22,6 +22,7 @@ import {
     FunctionFiber,
     Range,
     RangeContext,
+    Reference,
 } from "./types";
 
 /*
@@ -80,7 +81,7 @@ function runFunc<Res>(context: RangeContext, task: FunctionFiber<Res>, initRunne
     // this properly.
     for (let i = row; i < endR; i += 1) {
         for (let j = column; j < endC; j += 1) {
-            const content = context.link(i, j);
+            const content = context.read(i, j);
             if (isPending(content)) {
                 task.row = i;
                 task.column = j;
@@ -111,7 +112,7 @@ const rangeCount: RangeAggregation<number> = (range, context, someTask?) => {
 const rangeAverage: RangeAggregation<number | CalcObj<unknown>, [number, number]> = (range, context, someTask?) => {
     const task = someTask || makePendingFunction("average", range, range.tlRow, range.tlCol, [0, 0]);
     const result = runFunc(context, task, createAverage);
-    if (isPending(result)) { return result; }
+    if (isPendingFiber(result)) { return result; }
     const [total, finalCount] = result;
     return finalCount === 0 ? errors.div0 : total / finalCount;
 };
@@ -157,9 +158,9 @@ const rangeTypeMap: TypeMap<Range, RangeContext> = {
                 case "COLUMN":
                     return receiver.tlCol + 1;
                 default:
-                    const value = context.link(receiver.tlRow, receiver.tlCol);
+                    const value = context.read(receiver.tlRow, receiver.tlCol);
                     if (typeof value === "object") {
-                        if (isPending(value)) {
+                        if (isPendingFiber(value)) {
                             return value;
                         }
                         const reader = value.typeMap()[TypeName.Readable];
@@ -173,7 +174,7 @@ const rangeTypeMap: TypeMap<Range, RangeContext> = {
         }
     },
     [TypeName.Reference]: {
-        dereference: (value: Range, context: RangeContext) => context.link(value.tlRow, value.tlCol)
+        dereference: (value: Range, context: RangeContext) => context.read(value.tlRow, value.tlCol)
     }
 }
 
@@ -188,13 +189,24 @@ export const isRange = (v: { typeMap: () => unknown; }): v is Range => {
  * aggregations over the view. The canonical value of a Range is the
  * top left corner.
  */
-export function makeRange(firstR: number, firstC: number, secondR: number, secondC: number): Range {
-    return {
-        tlRow: firstR < secondR ? firstR : secondR,
-        tlCol: firstC < secondC ? firstC : secondC,
-        height: Math.abs(firstR - secondR) + 1,
-        width: Math.abs(firstC - secondC) + 1,
-        serialise: serialiseRange,
-        typeMap: getRangeType,
-    }
+export function fromReference(reference: Reference): Range {
+    let { row1, col1, row2, col2 } = reference;
+    return (row2 !== undefined && col2 !== undefined) ?
+        {
+            tlRow: row1 < row2 ? row1 : row2,
+            tlCol: col1 < col2 ? col1 : col2,
+            height: Math.abs(row1 - row2) + 1,
+            width: Math.abs(col1 - col2) + 1,
+            serialise: serialiseRange,
+            typeMap: getRangeType,
+        }
+        :
+        {
+            tlRow: row1,
+            tlCol: col1,
+            height: 1,
+            width: 1,
+            serialise: serialiseRange,
+            typeMap: getRangeType,
+        }
 }

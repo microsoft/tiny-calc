@@ -2,10 +2,12 @@ import { ExpressionNode, NodeKind } from "./ast";
 import {
     binOps,
     BinaryOps,
-    createRuntime,
+    CoreRuntime,
+    createObjectResolver,
     Delayed,
     errors,
     Errors,
+    makeTracer,
     unaryOps,
     UnaryOps,
 } from "./core";
@@ -24,7 +26,7 @@ interface EvalContext {
     readonly unaryOps: UnaryOps;
 }
 
-export function evaluate<O, Delay>(ctx: EvalContext, origin: O, rt: Runtime<Delay>, resolver: Resolver<O, string, Delay>, expr: ExpressionNode): CalcValue<O> | Delay {
+export function evaluate<O, I, Delay>(ctx: EvalContext, origin: O, rt: Runtime<Delay>, resolver: Resolver<O, I, Delay>, expr: ExpressionNode<I>): CalcValue<O> | Delay {
     switch (expr.kind) {
         case NodeKind.Literal:
             return expr.value;
@@ -67,7 +69,7 @@ export function evaluate<O, Delay>(ctx: EvalContext, origin: O, rt: Runtime<Dela
 
         case NodeKind.Dot:
             const obj = evaluate(ctx, origin, rt, resolver, expr.operand1);
-            if (expr.operand2.kind === NodeKind.Ident) {
+            if (expr.operand2.kind === NodeKind.Ident && typeof expr.operand2.value === "string") {
                 return rt.read(origin, obj, expr.operand2.value, ctx.errors.readOnNonObject);
             }
             return ctx.errors.nonStringField;
@@ -96,11 +98,11 @@ export function evaluate<O, Delay>(ctx: EvalContext, origin: O, rt: Runtime<Dela
     }
 }
 
-export type Interpreter = <O>(origin: O, root: CalcObj<O>, expr: ExpressionNode) => [Pending<unknown>[], Delayed<CalcValue<O>>];
+export type Interpreter = <O>(origin: O, root: CalcObj<O>, expr: ExpressionNode<string>) => [Pending<unknown>[], Delayed<CalcValue<O>>];
 
 export const evalContext: EvalContext = { errors, binOps, unaryOps };
 
 export const interpret: Interpreter = (origin, root, expr) => {
-    const [data, rt, resolver] = createRuntime(root);
-    return [data, evaluate(evalContext, origin, rt, resolver, expr)];
+    const [data, trace] = makeTracer();
+    return [data, evaluate(evalContext, origin, new CoreRuntime(trace), createObjectResolver(root, trace), expr)];
 }
