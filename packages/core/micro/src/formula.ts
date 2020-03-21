@@ -46,7 +46,7 @@ function parseCellRef(id: string): Reference | string {
             pos++;
             continue;
         }
-        else if (ch >= CharacterCodes.A && ch <= CharacterCodes.Z) {
+        else if (ch >= CharacterCodes.a && ch <= CharacterCodes.z) {
             col1 = (col1 - 96) * 26;
             pos++;
             continue;
@@ -92,7 +92,7 @@ function parseCellRef(id: string): Reference | string {
             pos++;
             continue;
         }
-        else if (ch >= CharacterCodes.A && ch <= CharacterCodes.Z) {
+        else if (ch >= CharacterCodes.a && ch <= CharacterCodes.z) {
             col2 = (col2 - 96) * 26;
             pos++;
             continue;
