@@ -154,12 +154,16 @@ export interface TypedBinOp<A> {
  * Evaluation Runtime
  */
 export interface Runtime<Delay> {
-    isDelayed(v: unknown): v is Delay;
+    isDelayed: (v: unknown) => v is Delay;
     read: <C, F>(context: C, receiver: CalcValue<C> | Delay, prop: string, fallback: F) => CalcValue<C> | F | Delay;
     ifS: <T>(cond: boolean | Delay, cont: (cond: boolean) => T | Delay) => T | Delay;
     app1: <A, C>(context: C, op: TypedUnaryOp<A>, expr: CalcValue<C> | Delay) => CalcValue<C> | Delay;
     app2: <A, C>(context: C, op: TypedBinOp<A>, l: CalcValue<C> | Delay, r: CalcValue<C> | Delay) => CalcValue<C> | Delay;
     appN: <C, F>(context: C, fn: CalcValue<C> | Delay, args: (CalcValue<C> | Delay)[], fallback: F) => CalcValue<C> | F | Delay;
+}
+
+export interface Resolver<C, Ref, Delay> {
+    resolve: <F>(context: C, ref: Ref, failure: F) => CalcValue<C> | F | Delay
 }
 
 /**

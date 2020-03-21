@@ -9,6 +9,7 @@ import {
     TypedCalcObj,
     TypeMap,
     TypeName,
+    Resolver,
     Runtime,
     TypedBinOp,
     TypedUnaryOp,
@@ -33,6 +34,7 @@ const functionArity = makeError("#ARITY!");
 const functionAsOpArgument = makeError("Operator argument must be a primitive.");
 const nonStringField = makeError("A field expression must be of type string");
 const readOnNonObject = makeError("The target of a dot-operation must be a calc object.");
+const resolveError = makeError("#RESOLVE!");
 const typeError = makeError("#TYPE!");
 
 export const errors = {
@@ -42,6 +44,7 @@ export const errors = {
     functionAsOpArgument,
     nonStringField,
     readOnNonObject,
+    resolveError,
     typeError
 } as const;
 
@@ -278,10 +281,10 @@ function errorOr<C, F>(value: CalcObj<C>, fallback: F): CalcObj<C> | F {
  * To find the actual `Pending` values see the results of `trace`.
  */
 export class CoreRuntime implements Runtime<Delay> {
-    constructor(public trace: Trace) { }
+    constructor(public readonly trace: Trace) { }
 
     isDelayed = isDelayed
-    
+
     read<C, F>(context: C, receiver: Delayed<CalcValue<C>>, prop: string, fallback: F): Delayed<CalcValue<C> | F> {
         if (isDelayed(receiver)) { return receiver; }
         if (typeof receiver === "object") {
@@ -379,6 +382,15 @@ export class CoreRuntime implements Runtime<Delay> {
     }
 }
 
+export function createResolver<C>(root: CalcObj<C>): Resolver<C, string, Pending<CalcValue<C>>> {
+    return {
+        resolve<F>(context: C, ident: string, failure: F) {
+            let reader = root.typeMap()[TypeName.Readable];
+            return reader ? reader.read(root, ident, context) : failure;
+        }
+    }
+}
+
 /**
  * Exports the basic building blocks of a formula runtime.
  * - Error values
@@ -390,7 +402,8 @@ export type Errors = typeof errors;
 export type BinaryOps = typeof binOps;
 export type UnaryOps = typeof unaryOps;
 
-export const createRuntime = (): [Pending<unknown>[], Runtime<Delay>] => {
+export const createRuntime = <O>(root: CalcObj<O>): [Pending<unknown>[], Runtime<Delay>, Resolver<O, string, Delay>] => {
+    const { resolve } = createResolver(root);
     const [data, trace] = makeTracer();
-    return [data, new CoreRuntime(trace)];
+    return [data, new CoreRuntime(trace), { resolve: (context, ident, failure) => trace(resolve(context, ident, failure)) }];
 }

@@ -1,6 +1,9 @@
 export {
-    parseFormula,
-    FormulaNode
+    createAlgebra,
+    ExpressionNode,
+    ident,
+    NodeKind,
+    parseExpression,
 } from "./ast"
 
 export {
@@ -46,6 +49,13 @@ export {
     TypeMap,
     TypeName,
 } from "./types";
+
+export {
+    createBooleanErrorHandler,
+    createParser,
+    ExpAlgebra,
+    ParserErrorHandler,
+} from "./parser";
 
 export {
     produce
