@@ -62,6 +62,35 @@ export function setCell<T>(r: number, c: number, grid: SparseGrid<T>, value: T) 
     t4[((c & CONSTS.MW) << CONSTS.LOGH) | (r & CONSTS.MH)] = value;
 }
 
+export function getOrSetCell<T>(r: number, c: number, grid: SparseGrid<T>, value: () => T): T | undefined {
+    if (r < 0 || c < 0 || r >= CONSTS.SIZEH || c >= CONSTS.SIZEW) {
+        return;
+    }
+
+    const i2 = (((c >> (3 * CONSTS.LOGW)) & CONSTS.MW) << CONSTS.LOGH) | ((r >> (3 * CONSTS.LOGH)) & CONSTS.MH);
+    let t2 = grid[i2];
+    if (t2 === undefined) {
+        t2 = grid[i2] = [];
+    }
+
+    const i3 = (((c >> (2 * CONSTS.LOGW)) & CONSTS.MW) << CONSTS.LOGH) | ((r >> (2 * CONSTS.LOGH)) & CONSTS.MH);
+    let t3 = t2[i3];
+    if (t3 === undefined) {
+        t3 = t2[i3] = [];
+    }
+
+    const i4 = (((c >> CONSTS.LOGW) & CONSTS.MW) << CONSTS.LOGH) | ((r >> CONSTS.LOGH) & CONSTS.MH);
+    let t4 = t3[i4];
+    if (t4 === undefined) {
+        t4 = t3[i4] = [];
+    }
+    const idx = ((c & CONSTS.MW) << CONSTS.LOGH) | (r & CONSTS.MH);
+    if (t4[idx] === undefined) {
+        return t4[idx] = value();
+    }
+    return t4[idx];
+}
+
 export function clearCell<T>(r: number, c: number, grid: SparseGrid<T>) {
     if (r < 0 || c < 0 || r >= CONSTS.SIZEH || c >= CONSTS.SIZEW) {
         return;
@@ -215,6 +244,9 @@ export function createMatrix<T>(): IMatrix<T> {
         },
         write(row: number, col: number, value: T) {
             setCell(row, col, cells, value);
+        },
+        readOrWrite(row: number, col: number, value: () => T) {
+            return getOrSetCell(row, col, cells, value);
         },
         clear(row: number, col: number) {
             clearCell(row, col, cells);

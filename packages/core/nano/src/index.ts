@@ -11,8 +11,8 @@ export {
     Delay,
     Delayed,
     errors,
-    isDelayed,
     makeError,
+    makeTracer,
 } from "./core";
 
 export {
@@ -21,6 +21,9 @@ export {
 } from "./compiler";
 
 export {
+    evaluate,
+    evalContext,
+    EvalContext,
     interpret,
     Interpreter
 } from "./interpreter";
@@ -45,6 +48,7 @@ export {
     Primitive,
     ReadableType,
     ReferenceType,
+    Resolver,
     Runtime,
     TypeMap,
     TypeName,

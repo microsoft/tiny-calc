@@ -20,7 +20,7 @@ import {
     Runtime,
 } from "./types";
 
-interface EvalContext {
+export interface EvalContext {
     readonly errors: Errors;
     readonly binOps: BinaryOps;
     readonly unaryOps: UnaryOps;

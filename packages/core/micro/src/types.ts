@@ -30,6 +30,8 @@ export const enum CalcFlag {
     InCalc,
 }
 
+export type Value = Primitive | undefined;
+
 export type CellValue = CalcValue<RangeContext>;
 
 export interface ValueCell {
@@ -39,20 +41,22 @@ export interface ValueCell {
 
 export interface FormulaCell {
     flag: CalcFlag;
-    content: string;
+    row: number;
+    col: number;
+    formula: string;
     value: CellValue | undefined;
-    fn: FormulaNode | undefined;
+    node: FormulaNode | undefined;
     prev: FormulaCell | undefined;
     next: FormulaCell | undefined;
 }
 
 export type Cell = ValueCell | FormulaCell;
 
-export type Fiber<T = unknown> = FormulaCell | FunctionFiber<T>;
+export type Fiber<T> = FormulaCell | FunctionFiber<T>;
 
 export type FunctionTask = "sum" | "product" | "count" | "average" | "max" | "min" | "concat";
 
-export interface FunctionFiber<T = unknown> {
+export interface FunctionFiber<T> {
     flag: FunctionTask;
     range: Range;
     row: number;
@@ -60,14 +64,16 @@ export interface FunctionFiber<T = unknown> {
     current: T;
 }
 
-export interface PendingValue {
+export interface PendingTask<T> {
     kind: "Pending";
-    fiber: Fiber;
+    fiber: Fiber<T>;
 }
+
+export type PendingValue = PendingTask<CalcValue<RangeContext>>;
 
 export interface RangeContext {
     origin: Point | undefined;
-    read: (row: number, col: number) => CalcValue<RangeContext> | PendingValue;
+    read: (row: number, col: number) => CalcValue<RangeContext> | PendingTask<CalcValue<RangeContext>>;
 }
 
 export interface Range extends CalcObj<RangeContext> {
@@ -77,11 +83,20 @@ export interface Range extends CalcObj<RangeContext> {
     readonly width: number;
 }
 
+export interface Binder {
+    getVolatile: () => Set<number>;
+    bindCell: (fromRow: number, fromCol: number, toRow: number, toCol: number) => void;
+    getDependents: (row: number, col: number) => Set<number> | undefined;
+    clear: () => void;
+}
+
 /**
  * IMatrix denotes a 2D cache for values of type `T`.
  */
 export interface IMatrix<T> {
     read(row: number, col: number): T | undefined;
     write(row: number, col: number, value: T): void;
+    // Undefined means invalid row or col.
+    readOrWrite(row: number, col: number, value: () => T): T | undefined;
     clear(row: number, col: number): void;
 }

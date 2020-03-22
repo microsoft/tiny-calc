@@ -3,8 +3,9 @@ import { strict as assert } from "assert";
 import "mocha";
 import { createMatrix, matrixProducer } from "../src/matrix";
 import { createSheetlet, Sheetlet } from "../src/sheetlet";
-import { Value } from "../src/types";
 import { makeBenchmark } from "./sheets";
+
+type Value = Primitive | undefined;
 
 describe("Sheetlet", () => {
     function evalCellTest(sheet: IMatrixReader<Value>, row: number, col: number, expected: Primitive) {

@@ -13,13 +13,13 @@ import {
 
 import {
     errors,
-    isPendingFiber,
+    isPendingTask,
     makePendingFunction,
 } from "./core";
 
-
 import {
     FunctionFiber,
+    PendingValue,
     Range,
     RangeContext,
     Reference,
@@ -82,7 +82,7 @@ function runFunc<Res>(context: RangeContext, task: FunctionFiber<Res>, initRunne
     for (let i = row; i < endR; i += 1) {
         for (let j = column; j < endC; j += 1) {
             const content = context.read(i, j);
-            if (isPending(content)) {
+            if (isPendingTask(content)) {
                 task.row = i;
                 task.column = j;
                 task.current = runner[0];
@@ -112,7 +112,8 @@ const rangeCount: RangeAggregation<number> = (range, context, someTask?) => {
 const rangeAverage: RangeAggregation<number | CalcObj<unknown>, [number, number]> = (range, context, someTask?) => {
     const task = someTask || makePendingFunction("average", range, range.tlRow, range.tlCol, [0, 0]);
     const result = runFunc(context, task, createAverage);
-    if (isPendingFiber(result)) { return result; }
+    // TODO: Not sure about this.
+    if (!Array.isArray(result)) { return result; }
     const [total, finalCount] = result;
     return finalCount === 0 ? errors.div0 : total / finalCount;
 };
@@ -160,7 +161,7 @@ const rangeTypeMap: TypeMap<Range, RangeContext> = {
                 default:
                     const value = context.read(receiver.tlRow, receiver.tlCol);
                     if (typeof value === "object") {
-                        if (isPendingFiber(value)) {
+                        if (isPendingTask(value)) {
                             return value;
                         }
                         const reader = value.typeMap()[TypeName.Readable];
@@ -190,7 +191,7 @@ export const isRange = (v: { typeMap: () => unknown; }): v is Range => {
  * top left corner.
  */
 export function fromReference(reference: Reference): Range {
-    let { row1, col1, row2, col2 } = reference;
+    const { row1, col1, row2, col2 } = reference;
     return (row2 !== undefined && col2 !== undefined) ?
         {
             tlRow: row1 < row2 ? row1 : row2,

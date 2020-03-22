@@ -12,7 +12,7 @@ import {
 import {
     FunctionFiber,
     FunctionTask,
-    PendingValue,
+    PendingTask,
     Range,
 } from "./types";
 
@@ -24,7 +24,7 @@ export function isPending(content: any): content is Pending<unknown> {
     return typeof content === "object" && "kind" in content && content.kind === "Pending";
 }
 
-export function isPendingFiber(content: any): content is PendingValue {
+export function isPendingTask(content: any): content is PendingTask<unknown> {
     return isPending(content) && "fiber" in content;
 }
 
@@ -37,6 +37,6 @@ export const errors = {
     cycle: makeError("#CYCLE!"),
     ref: makeError("#REF!"),
     fallbackCoercion: makeError("#VALUE!"),
-    compileFailure: makeError("#COMPILE!"),
+    parseFailure: makeError("#PARSE!"),
     evalFailure: makeError("#EVAL!"),
 } as const;
