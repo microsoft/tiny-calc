@@ -19,7 +19,7 @@ import {
 
 import {
     FunctionFiber,
-    PendingValue,
+    PendingTask,
     Range,
     RangeContext,
     Reference,
@@ -69,7 +69,7 @@ const createConcat = createRunner<string>((result) => s => { if (typeof s === "s
  * Core aggregation functions over ranges
  */
 
-type RangeAggregation<R, Accum = R> = (range: Range, context: RangeContext, someTask?: FunctionFiber<Accum>) => R | FunctionFiber<Accum>;
+type RangeAggregation<R, Accum = R> = (range: Range, context: RangeContext, someTask?: FunctionFiber<Accum>) => R | PendingTask<Accum>;
 
 function runFunc<Res>(context: RangeContext, task: FunctionFiber<Res>, initRunner: (init: Res) => FunctionRunner<Res>) {
     const { current, row, column, range } = task;
@@ -86,7 +86,7 @@ function runFunc<Res>(context: RangeContext, task: FunctionFiber<Res>, initRunne
                 task.row = i;
                 task.column = j;
                 task.current = runner[0];
-                return task;
+                return { kind: "Pending" as const, fiber: task };
             }
             run(content);
         }
@@ -135,7 +135,7 @@ const rangeConcat: RangeAggregation<string> = (range, context, someTask?) => {
     return runFunc(context, task, createConcat);
 };
 
-type FreshAggregation<R, Accum = R> = (range: Range, context: RangeContext) => R | FunctionFiber<Accum>;
+type FreshAggregation<R, Accum = R> = (range: Range, context: RangeContext) => R | PendingTask<Accum>;
 
 const aggregations: Record<string, FreshAggregation<CalcValue<unknown>, unknown>> = {
     sum: rangeSum, product: rangeProduct, count: rangeCount, average: rangeAverage, max: rangeMax, min: rangeMin, concat: rangeConcat,

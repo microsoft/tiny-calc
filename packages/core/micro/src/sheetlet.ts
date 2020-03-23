@@ -79,7 +79,7 @@ function valueCell(content: Primitive): ValueCell {
     return { flag: CalcFlag.Clean, content };
 }
 
-function isFormulaCell(cell: Cell): cell is FormulaCell {
+function isFormulaCell(cell: Cell): cell is FormulaCell<CellValue> {
     return "fn" in cell;
 }
 
@@ -99,7 +99,7 @@ function makeValueCell(value: Primitive) {
     return valueCell(content);
 }
 
-function makeFormulaCell(row: number, col: number, text: string): FormulaCell {
+function makeFormulaCell(row: number, col: number, text: string): FormulaCell<CellValue> {
     return {
         flag: CalcFlag.Dirty,
         row, col,
@@ -131,86 +131,91 @@ function parseValue(value: string): Primitive {
 
 interface BuildHost {
     parser: Parser<boolean, FormulaNode>;
+    readCell(row: number, col: number): Cell | undefined;
     evaluate(row: number, col: number, node: FormulaNode): Pending<unknown>[] | CalcValue<RangeContext>;
+    dereference(row: number, col: number, value: CellValue): PendingValue | CalcValue<RangeContext>;
 }
 
-const coerceResult = (value: CellValue, context: RangeContext) => {
-    if (typeof value === "object" && isRange(value)) {
-        return context.read(value.tlRow, value.tlCol);
+function reprioritise<T>(pointer: Fiber<T>, task: Fiber<T>): Fiber<T> {
+    // splice out task
+    if (task.next) {
+        task.next.prev = task.prev;
     }
-    return value;
-}
-
-function reprioritise(head: FormulaCell, task: Fiber<CalcValue<RangeContext>>): Fiber<CalcValue<RangeContext>> {
-    if (head.prev === undefined) {
-        head.prev = task;
-        return task;
+    if (task.prev) {
+        task.prev.next = task.next;        
     }
-    head.prev.next = task;
-    head.prev = task;
+    if (pointer.prev !== undefined) {
+        pointer.prev.next = task;
+    }
+    task.prev = pointer.prev;
+    pointer.prev = task;
+    task.next = pointer;
     return task;
 }
 
-/**
- * Recalc `sheet`, starting from the edited `roots`.
- */
-function rebuild(chainHead: FormulaCell, host: BuildHost) {
-    let chain: Fiber<CalcValue<RangeContext>> | undefined = chainHead;
+function rebuild(chainHead: FormulaCell<CellValue>, host: BuildHost) {
+    let chain: Fiber<CalcValue<RangeContext>> = chainHead;
 
-    while (chain) {
-        switch (typeof chain.flag) {
-            case "string":
-
-            case "number":
-                if (flag === CalcFlag.Dirty) {
-                    const result = evalCell
+    while (true) {
+        
+        // Cell Fiber
+        if (typeof chain.flag === "number") {
+            if (chain.flag === CalcFlag.Dirty) {
+                const result = evalCell(chain, host);
+                if (typeof result === "boolean") {
+                    if (chain.next === undefined) {
+                        return chain;
+                    }
+                    chain = chain.next;
                 }
-
+                continue;
+            }
+            if (!chain.next) {
+                return chain;
+            }
+            chain = chain.next;
+            continue;
         }
-        chain = chain.next;
+        
+        // Function Fiber
+        chain = evalFunctionFiber(chain as Fiber<CellValue> as FunctionFiber<CellValue>, host);
     }
 
-
-    function runCellFiber(fiber: FormulaCell) {
-        const { row, column } = fiber;
-        const cell = host.readCell(row, column);
-        if (cell === undefined || !isFormulaCell(cell)) {
-            return assertNever(cell as never);
-        }
-        const result = evalCell(row, column, cell);
-        if (result !== true) {
-            addFiber(fiber);
-            result.forEach((pending: unknown) => {
-                if (isFiber(pending)) {
-                    addFiber(pending);
-                }
-            });
-        }
-        return;
-    }
-
-    function runFunctionFiber<T>(fiber: FunctionFiber<T>) {
+    function evalFunctionFiber(fiber: FunctionFiber<CellValue>, host: BuildHost) {
         const { row, column, range } = fiber;
+        
+        if (fiber.next === undefined) {
+            return assert.fail("Function fiber should not be last in chain");
+        }
+        fiber.next.prev = fiber.prev;
+        if (fiber.prev) {
+            fiber.prev.next = fiber.next;
+        }
+        
+        let task: Fiber<CellValue> = fiber.next;
         const startC = range.tlCol
         const endR = range.tlRow + range.height;
         const endC = range.tlCol + range.width;
         for (let j = column; j < endC; j += 1) {
-            if (shouldQueueFiber(host, row, j)) {
-                addFiber(makePendingCell(row, j));
+            const cell = host.readCell(row, j);
+            if (cell && cell.flag === CalcFlag.Dirty) {
+                task = reprioritise(task, cell);
             }
         }
         for (let i = row + 1; i < endR; i += 1) {
             for (let j = startC; j < endC; j += 1) {
-                if (shouldQueueFiber(host, i, j)) {
-                    addFiber(makePendingCell(i, j));
+                const cell = host.readCell(i, j);
+                if (cell && cell.flag === CalcFlag.Dirty) {
+                    task = reprioritise(task, cell);
                 }
             }
         }
+        return task;
     }
 
-    function evalCell(cell: FormulaCell, host: BuildHost): true | Pending<unknown>[] {
-        const { parser, evaluate } = host;
-        if (cell.flag === CalcFlag.Clean) {
+    function evalCell(cell: FormulaCell<CellValue>, host: BuildHost): true | Fiber<CellValue> {
+        const { parser, evaluate, dereference } = host;
+        if (cell.flag === CalcFlag.Clean || cell.flag === CalcFlag.CleanUnacked) {
             return true;
         }
         if (cell.node === undefined) {
@@ -219,7 +224,7 @@ function rebuild(chainHead: FormulaCell, host: BuildHost) {
                 cell.node = node;
             }
             else {
-                cell.flag = CalcFlag.Clean;
+                cell.flag = CalcFlag.CleanUnacked;
                 cell.value = errors.parseFailure;
                 return true;
             }
@@ -228,35 +233,25 @@ function rebuild(chainHead: FormulaCell, host: BuildHost) {
         cell.flag = CalcFlag.InCalc;
         const result = evaluate(cell.row, cell.col, cell.node);
         if (Array.isArray(result)) {
-            return result
+            let fiber: Fiber<CellValue> = cell;
+            for (let i = 0; i < result.length; i++) {
+                const p = result[i];
+                if (isPendingTask(p)) {
+                    fiber = reprioritise(fiber, p.fiber);
+                }
+            }
+            if (fiber === cell) {
+                return assert.fail('Pending cell should return a fiber');
+            }
+            return fiber;
         }
-        cell.flag = CalcFlag.Clean;
-        cell.value = result; // TODO: coercion.
+        const dererd = dereference(cell.row, cell.col, result);
+        if (isPendingTask(dererd)) {
+            return reprioritise(cell, dererd.fiber);
+        }
+        cell.flag = CalcFlag.CleanUnacked;
+        cell.value = dererd;
         return true;
-
-        // const context = host.makeContext([row, col]);
-        // let result: [PendingTask[], Delayed<CellValue>] = [[], errors.evalFailure];
-        // try {
-        //     result = cell.node<RangeContext>(context, host.rootObject);
-        // } catch {
-        // }
-        // if (isDelayed(result[1])) {
-        //     return result[0];
-        // }
-        // const value = coerceResult(result[1], context);
-        // if (isPending(value)) { return [value]; }
-        // finishCell(queueKey, host.binder, row, col, cell, value);
-        // return true;
-    }
-
-    const lookupTable = {
-        [FiberKind.Cell]: runCellFiber,
-        [FiberKind.Function]: runFunctionFiber,
-    } as const;
-
-    while (chain !== undefined) {
-        const fiber = dynamicFibers.pop() || queue.pop()!;
-        lookupTable[fiber.task](fiber as any);
     }
 }
 
@@ -266,7 +261,7 @@ export class Sheetlet implements IMatrixConsumer<Value>, IMatrixProducer<Value>,
     readonly binder = initBinder();
     readonly parser = createFormulaParser();
 
-    chain: FormulaCell | undefined;
+    chain: FormulaCell<CellValue> | undefined;
     reader: IMatrixReader<Value> | undefined;
     numRows: number = -1;
     numCols: number = -1;
@@ -294,22 +289,6 @@ export class Sheetlet implements IMatrixConsumer<Value>, IMatrixProducer<Value>,
         }
     };
 
-    private readonly orphanFormulaContext: CalcObj<RangeContext> & ReadableType<CalcObj<RangeContext>, RangeContext> = {
-        typeMap() {
-            return {
-                [TypeName.Readable]: this
-            }
-        },
-        serialise: () => "TODO",
-        read: (_: CalcObj<RangeContext>, message: string) => {
-            if (message in funcs) {
-                return funcs[message];
-            }
-            const range = tryParseRange(this.outOfSheetContext, message);
-            return range || errors.unknownField;
-        },
-    };
-
     private readonly inSheetContext: (origin: Point) => RangeContext = origin => ({
         origin,
         read: (row, col) => this.getCellValueAndLink(row, col, origin),
@@ -317,14 +296,8 @@ export class Sheetlet implements IMatrixConsumer<Value>, IMatrixProducer<Value>,
 
     private readonly outOfSheetContext: RangeContext = {
         origin: undefined,
-        read: this.getCellValueAndForget.bind(this),
-        parseRef: this.parseRef.bind(this),
+        read: (row, col) => this.getCellValueAndForget(row, col),
     };
-
-    private readonly invalidateKey = createInvalidator({
-        readCell: this.cache.read.bind(this.cache),
-    }, this.binder);
-
 
     constructor(readonly producer: IMatrixProducer<Value>, readonly cache: IMatrix<Cell>) { }
 
@@ -353,6 +326,32 @@ export class Sheetlet implements IMatrixConsumer<Value>, IMatrixProducer<Value>,
         }
     }
 
+    ackChain(chain: Fiber<CellValue>, ack: (row: number, col: number) => void) {
+        while (true) {
+            if (typeof chain.flag === "number") {
+                if (chain.flag === CalcFlag.CleanUnacked) {
+                    chain.flag = CalcFlag.Clean;
+                    ack(chain.row, chain.col);
+                }
+                else if (chain.flag !== CalcFlag.Clean) {
+                    assert.fail("All flags must be clean after calc");
+                }
+            }
+            if (typeof chain.flag === "string") {
+                if (chain.next) {
+                    chain.next.prev = chain.prev;
+                }
+                if (chain.prev) {
+                    chain.prev.next = chain.next;        
+                }
+                assert.fail("Function fibers should not be in chain");
+            }
+            if (!chain.prev) {
+                return chain as FormulaCell<CellValue>;
+            }
+        }
+    }
+
     cellsChanged(row: number, col: number, numRows: number, numCols: number, values: readonly (Value)[] | undefined) {
         const endR = row + numRows;
         const endC = col + numCols;
@@ -364,8 +363,13 @@ export class Sheetlet implements IMatrixConsumer<Value>, IMatrixProducer<Value>,
             }
         }
 
+        if (!this.consumer0) {
+            return;
+        }
+
         const host: BuildHost = {
             parser: this.parser,
+            readCell: this.readCell.bind(this),
             evaluate: (r, c, node) => {
                 const [data, tracer] = makeTracer();
                 const rt = new CoreRuntime(tracer);
@@ -376,22 +380,31 @@ export class Sheetlet implements IMatrixConsumer<Value>, IMatrixProducer<Value>,
                 }
                 return result;
             },
+            dereference: (r, c, value) => {
+                if (typeof value === "object" && isRange(value)) {
+                    return this.getCellValueAndLink(value.tlRow, value.tlCol, [r, c]);
+                }
+                return value;
+            },
         }
 
+        let newChain: Fiber<CellValue> | undefined;
+        
         if (this.chain) {
-            rebuild(this.chain, host);
+            newChain = rebuild(this.chain, host);
         }
 
-        // invalidate the data
-        // queue rebuild the keys
+        this.consumer0!.cellsChanged(row, col, numRows, numCols, values, this);
+        this.consumers.forEach(consumer => consumer.cellsChanged(row, col, numRows, numCols, values, this));
 
-        if (this.consumer0) {
-            this.consumer0.cellsChanged(row, col, numRows, numCols, values, this);
-            this.consumers.forEach(consumer => consumer.cellsChanged(row, col, numRows, numCols, values, this));
-            // TODO: the recalc'd cells.
+        const ack = (r: number, c: number) => {
+            this.consumer0!.cellsChanged(r, c, 1, 1, undefined, this);
+            this.consumers.forEach(consumer => consumer.cellsChanged(r, c, 1, 1, undefined, this));
+        };
+
+        if (newChain) {
+            this.chain = this.ackChain(newChain, ack);
         }
-
-        // grab the changed cells or notify as they are executed.
     }
 
     openMatrix(consumer: IMatrixConsumer<Value>): IMatrixReader<Value> {
@@ -417,11 +430,6 @@ export class Sheetlet implements IMatrixConsumer<Value>, IMatrixProducer<Value>,
                 this.consumers.splice(idx, 1);
             }
         }
-    }
-
-    invalidate(row: number, col: number) {
-        this.cache.clear(row, col);
-        this.invalidateKey(pointToKey(row, col));
     }
 
     createDirtier() {
@@ -450,7 +458,7 @@ export class Sheetlet implements IMatrixConsumer<Value>, IMatrixProducer<Value>,
         assert(this.reader, "Reader should be opened on readCell");
         let cell = this.cache.read(row, col);
         if (cell === undefined) {
-            cell = makeCell(this.reader!.read(row, col));
+            cell = makeCell(row, col, this.reader!.read(row, col));
             if (cell !== undefined) {
                 this.cache.write(row, col, cell);
             }
@@ -560,11 +568,11 @@ export class Sheetlet implements IMatrixConsumer<Value>, IMatrixProducer<Value>,
         }
         switch (cell.flag) {
             case CalcFlag.Clean:
+            case CalcFlag.CleanUnacked:
                 return isFormulaCell(cell) ? cell.value! : cell.content;
 
             case CalcFlag.Dirty:
-            case CalcFlag.Enqueued:
-                return makePendingCell(row, col);
+                return { kind: "Pending" as const, fiber: cell };
 
             case CalcFlag.InCalc:
             default:
@@ -575,20 +583,19 @@ export class Sheetlet implements IMatrixConsumer<Value>, IMatrixProducer<Value>,
     getCellValueAndLink(row: number, col: number, origin: Point) {
         const cell = this.readCell(row, col);
         if (cell === undefined) {
-            this.binder.bindCells(pointToKey(row, col), pointToKey(origin[ROW], origin[COL]));
+            this.binder.bindCell(row, col, origin[ROW], origin[COL]);
             return Sheetlet.blank;
         }
         switch (cell.flag) {
             case CalcFlag.Clean:
-                this.binder.bindCells(pointToKey(row, col), pointToKey(origin[ROW], origin[COL]));
+            case CalcFlag.CleanUnacked:
+                this.binder.bindCell(row, col, origin[ROW], origin[COL]);
                 return isFormulaCell(cell) ? cell.value! : cell.content;
 
             case CalcFlag.Dirty:
-            case CalcFlag.Enqueued:
-                return makePendingCell(row, col);
+                return { kind: "Pending" as const, fiber: cell };
 
             case CalcFlag.InCalc:
-                // TODO: proper cycle handling
                 return errors.cycle;
 
             default:

@@ -26,8 +26,8 @@ export type FormulaNode = ExpressionNode<string | Reference>;
 export const enum CalcFlag {
     Clean,
     Dirty,
-    Enqueued,
     InCalc,
+    CleanUnacked,
 }
 
 export type Value = Primitive | undefined;
@@ -39,30 +39,35 @@ export interface ValueCell {
     content: Primitive;
 }
 
-export interface FormulaCell {
+interface FiberBase<T> {
+  flag: number | string;
+  prev: Fiber<T> | undefined;
+  next: Fiber<T> | undefined;
+}
+
+export interface FormulaCell<T> extends FiberBase<T> {
     flag: CalcFlag;
     row: number;
     col: number;
     formula: string;
-    value: CellValue | undefined;
+    value: T | undefined;
     node: FormulaNode | undefined;
-    prev: FormulaCell | undefined;
-    next: FormulaCell | undefined;
 }
 
-export type Cell = ValueCell | FormulaCell;
-
-export type Fiber<T> = FormulaCell | FunctionFiber<T>;
-
-export type FunctionTask = "sum" | "product" | "count" | "average" | "max" | "min" | "concat";
-
-export interface FunctionFiber<T> {
+export interface FunctionFiber<T> extends FiberBase<T> {
     flag: FunctionTask;
     range: Range;
     row: number;
     column: number;
     current: T;
 }
+
+export type Cell = ValueCell | FormulaCell<CellValue>;
+
+export type Fiber<T> = FormulaCell<T> | FunctionFiber<T>;
+
+export type FunctionTask = "sum" | "product" | "count" | "average" | "max" | "min" | "concat";
+
 
 export interface PendingTask<T> {
     kind: "Pending";
