@@ -18,63 +18,75 @@ import {
 } from "./core";
 
 import {
+    CellValue,
     FunctionFiber,
+    FunctionRunner,
+    FunctionSkolem,
     PendingTask,
     Range,
     RangeContext,
     Reference,
 } from "./types";
 
-/*
- * Function Runners are accumulators over ranges.
- */
+const makeCacheKey = (range: Range, prop: string) => `${prop};${range.tlRow};${range.tlCol};${range.height};${range.width}`;
 
-type FunctionRunner<Res> = [Res, (x: unknown) => void];
-
-const createRunner = <Res>(fn: (box: [Res]) => (x: unknown) => void) => {
-    return (init: Res) => {
-        const result: FunctionRunner<Res> = [init, undefined!];
-        result[1] = fn(result as unknown as [Res]);
-        return result;
+const createRunner = <Accum, Res = Accum>(initAccum: (box: [Accum]) => (x: unknown) => void, finalise: (state: Accum) => Res) => {
+    return (init: Accum) => {
+        const result: FunctionRunner<Accum, Res> = [init, undefined!, finalise];
+        result[1] = initAccum(result as unknown as [Accum]);
+        return result as unknown as FunctionRunner<FunctionSkolem, Res>; // Pack the existential.
     };
 };
 
-const createSum = createRunner<number>(result => n => { if (typeof n === "number") { result[0] += n; } });
+const id: <X>(x: X) => X = x => x
 
-const createProduct = createRunner<number>(result => n => { if (typeof n === "number") { result[0] *= n; } });
+const createSum = createRunner<number>(result => n => { if (typeof n === "number") { result[0] += n; } }, id);
 
-const createCount = createRunner<number>(result => n => { if (typeof n === "number") { result[0]++; } });
+const createProduct = createRunner<number>(result => n => { if (typeof n === "number") { result[0] *= n; } }, id);
 
-const createAverage = createRunner<[number, number]>(result => n => { if (typeof n === "number") { result[0][0] += n; result[0][1]++; } });
+const createCount = createRunner<number>(result => n => { if (typeof n === "number") { result[0]++; } }, id);
 
-const createMax = createRunner<number | undefined>(
+function finishAverage(value: [number, number]): number | CalcObj<unknown> {
+    const [total, finalCount] = value;
+    return finalCount === 0 ? errors.div0 : total / finalCount;    
+}
+
+const createAverage = createRunner<[number, number], number | CalcObj<unknown>>(
+    result => n => { if (typeof n === "number") { result[0][0] += n; result[0][1]++; } },
+    finishAverage
+);
+
+const fromUndefined = (result: number | undefined) => result === undefined ? 0 : result
+
+const createMax = createRunner<number | undefined, number>(
     result => n => {
         if (typeof n === "number" && (result[0] === undefined || n > result[0])) {
             result[0] = n;
         }
     },
+    fromUndefined
 );
 
-const createMin = createRunner<number | undefined>(
+const createMin = createRunner<number | undefined, number>(
     result => n => {
         if (typeof n === "number" && (result[0] === undefined || n < result[0])) {
             result[0] = n;
         }
     },
+    fromUndefined,
 );
 
-const createConcat = createRunner<string>((result) => s => { if (typeof s === "string") { result[0] += s; } });
+const createConcat = createRunner<string>((result) => s => { if (typeof s === "string") { result[0] += s; } }, id);
 
 /*
  * Core aggregation functions over ranges
  */
 
-type RangeAggregation<R, Accum = R> = (range: Range, context: RangeContext, someTask?: FunctionFiber<Accum>) => R | PendingTask<Accum>;
+type RangeAggregation<R> = (range: Range, context: RangeContext, someTask?: FunctionFiber<R>) => R | PendingTask<R>;
 
-function runFunc<Res>(context: RangeContext, task: FunctionFiber<Res>, initRunner: (init: Res) => FunctionRunner<Res>) {
-    const { current, row, column, range } = task;
-    const runner = initRunner(current);
-    const run = runner[1];
+function runFunc<Res extends CellValue>(fiber: FunctionFiber<Res>) {
+    const { context, runner, row, column, range } = fiber;
+    const [, run, finish] = runner;
     const endR = row + range.height;
     const endC = column + range.width;
     // TODO: This is not resumable! See function fiber for how to do
@@ -83,61 +95,54 @@ function runFunc<Res>(context: RangeContext, task: FunctionFiber<Res>, initRunne
         for (let j = column; j < endC; j += 1) {
             const content = context.read(i, j);
             if (isPendingTask(content)) {
-                task.row = i;
-                task.column = j;
-                task.current = runner[0];
-                return { kind: "Pending" as const, fiber: task };
+                fiber.row = i;
+                fiber.column = j;
+                return context.cache[makeCacheKey(range, fiber.flag)] = { kind: "Pending" as const, fiber };
             }
             run(content);
         }
     }
-    return runner[0];
+    return finish(runner[0]);
 }
 
 const rangeSum: RangeAggregation<number> = (range, context, someTask?) => {
-    const task = someTask || makePendingFunction("sum", range, range.tlRow, range.tlCol, 0);
-    return runFunc(context, task, createSum);
+    const task = someTask || makePendingFunction("sum", range, context, range.tlRow, range.tlCol, createSum(0));
+    return runFunc(task);
 };
 
 const rangeProduct: RangeAggregation<number> = (range, context, someTask?) => {
-    const task = someTask || makePendingFunction("product", range, range.tlRow, range.tlCol, 1);
-    return runFunc(context, task, createProduct);
+    const task = someTask || makePendingFunction("product", range, context, range.tlRow, range.tlCol, createProduct(1));
+    return runFunc(task);
 };
 
 const rangeCount: RangeAggregation<number> = (range, context, someTask?) => {
-    const task = someTask || makePendingFunction("count", range, range.tlRow, range.tlCol, 0);
-    return runFunc(context, task, createCount);
+    const task = someTask || makePendingFunction("count", range, context, range.tlRow, range.tlCol, createCount(0));
+    return runFunc(task);
 };
 
-const rangeAverage: RangeAggregation<number | CalcObj<unknown>, [number, number]> = (range, context, someTask?) => {
-    const task = someTask || makePendingFunction("average", range, range.tlRow, range.tlCol, [0, 0]);
-    const result = runFunc(context, task, createAverage);
-    // TODO: Not sure about this.
-    if (!Array.isArray(result)) { return result; }
-    const [total, finalCount] = result;
-    return finalCount === 0 ? errors.div0 : total / finalCount;
+const rangeAverage: RangeAggregation<number | CalcObj<unknown>> = (range, context, someTask?) => {
+    const task = someTask || makePendingFunction("average", range, context, range.tlRow, range.tlCol, createAverage([0, 0]));
+    return runFunc(task);
 };
 
-const rangeMax: RangeAggregation<number, number | undefined> = (range, context, someTask?) => {
-    const task = someTask || makePendingFunction("max", range, range.tlRow, range.tlCol, undefined);
-    const result = runFunc(context, task, createMax);
-    return result === undefined ? 0 : result;
+const rangeMax: RangeAggregation<number> = (range, context, someTask?) => {
+    const task = someTask || makePendingFunction("max", range, context, range.tlRow, range.tlCol, createMax(undefined));
+    return runFunc(task);
 };
 
-const rangeMin: RangeAggregation<number, number | undefined> = (range, context, someTask?) => {
-    const task = someTask || makePendingFunction("min", range, range.tlRow, range.tlCol, undefined);
-    const result = runFunc(context, task, createMin);
-    return result === undefined ? 0 : result;
+const rangeMin: RangeAggregation<number> = (range, context, someTask?) => {
+    const task = someTask || makePendingFunction("min", range, context, range.tlRow, range.tlCol, createMin(undefined));
+    return runFunc(task);
 };
 
 const rangeConcat: RangeAggregation<string> = (range, context, someTask?) => {
-    const task = someTask || makePendingFunction("concat", range, range.tlRow, range.tlCol, "");
-    return runFunc(context, task, createConcat);
+    const task = someTask || makePendingFunction("concat", range, context, range.tlRow, range.tlCol, createConcat(""));
+    return runFunc(task);
 };
 
-type FreshAggregation<R, Accum = R> = (range: Range, context: RangeContext) => R | PendingTask<Accum>;
+type FreshAggregation<R> = (range: Range, context: RangeContext) => R | PendingTask<R>;
 
-const aggregations: Record<string, FreshAggregation<CalcValue<unknown>, unknown>> = {
+const aggregations: Record<string, FreshAggregation<CellValue>> = {
     sum: rangeSum, product: rangeProduct, count: rangeCount, average: rangeAverage, max: rangeMax, min: rangeMin, concat: rangeConcat,
     SUM: rangeSum, PRODUCT: rangeProduct, COUNT: rangeCount, AVERAGE: rangeAverage, MAX: rangeMax, MIN: rangeMin, CONCAT: rangeConcat,
 };
@@ -148,6 +153,11 @@ const rangeTypeMap: TypeMap<Range, RangeContext> = {
     [TypeName.Readable]: {
         read: (receiver: Range, message: string, context: RangeContext): CalcValue<RangeContext> | Pending<CalcValue<RangeContext>> => {
             if (aggregations[message] !== undefined) {
+                const key = makeCacheKey(receiver, message);
+                const value = context.cache[key];
+                if (value !== undefined) {
+                    return value;
+                }
                 const fn = aggregations[message as keyof typeof aggregations];
                 return fn(receiver, context);
             }

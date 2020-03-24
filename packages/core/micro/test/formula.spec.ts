@@ -13,16 +13,16 @@ const parser = createFormulaParser();
 describe("Formula Parser", () => {
 
     function parseTest(input: string, expected: object) {
-        const [ok, res] = parser(input);
-        assert.strictEqual(ok, true);
-        assert.strictEqual(res, expected);
+        const [errors, res] = parser(input);
+        assert.deepStrictEqual(errors, false);
+        assert.deepStrictEqual(res, expected);
     }
 
     it("should parse single cell refs", () => {
-        parseTest("A1", ident({ row1: 1, col1: 1 }));
-        parseTest("a1", ident({ row1: 1, col1: 1 }));
-        parseTest("Aa1", ident({ row1: 1, col1: 27 }));
-        parseTest("A1:B1", ident({ row1: 1, col1: 1, row2: 1, col2: 2 }));
+        parseTest("A1", ident({ row1: 0, col1: 0 }));
+        parseTest("a1", ident({ row1: 0, col1: 0 }));
+        parseTest("Aa1", ident({ row1: 0, col1: 26 }));
+        parseTest("A1:B1", ident({ row1: 0, col1: 0, row2: 0, col2: 1 }));
     });
 
 });

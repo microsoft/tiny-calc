@@ -26,7 +26,7 @@ const enum CharacterCodes {
     colon = 0x3a,
 }
 
-const isDigit = (ch: number) => ch >= CharacterCodes._0 && ch <= CharacterCodes._0;
+const isDigit = (ch: number) => ch >= CharacterCodes._0 && ch <= CharacterCodes._9;
 
 function parseCellRef(id: string): Reference | string {
     let col1 = 0;
@@ -42,12 +42,12 @@ function parseCellRef(id: string): Reference | string {
     while (pos < end) {
         const ch = id.charCodeAt(pos);
         if (ch >= CharacterCodes.A && ch <= CharacterCodes.Z) {
-            col1 = (col1 - 64) * 26;
+            col1 = col1 * 26 + (ch - 64);
             pos++;
             continue;
         }
         else if (ch >= CharacterCodes.a && ch <= CharacterCodes.z) {
-            col1 = (col1 - 96) * 26;
+            col1 = col1 * 26 + (ch - 96);
             pos++;
             continue;
         }
@@ -71,7 +71,7 @@ function parseCellRef(id: string): Reference | string {
         return id;
     }
 
-    if (pos === end) { return { row1, col1 } }
+    if (pos === end) { return { row1: row1 - 1, col1: col1 - 1 } }
 
     if (pos < end && id.charCodeAt(pos) !== CharacterCodes.colon) {
         return id;
@@ -88,12 +88,12 @@ function parseCellRef(id: string): Reference | string {
     while (pos < end) {
         const ch = id.charCodeAt(pos);
         if (ch >= CharacterCodes.A && ch <= CharacterCodes.Z) {
-            col2 = (col2 - 64) * 26;
+            col2 = col2 * 26 + (ch - 64);
             pos++;
             continue;
         }
         else if (ch >= CharacterCodes.a && ch <= CharacterCodes.z) {
-            col2 = (col2 - 96) * 26;
+            col2 = col2 * 26 + (ch - 96);
             pos++;
             continue;
         }
@@ -112,12 +112,12 @@ function parseCellRef(id: string): Reference | string {
     if (start2 === pos) { return id };
 
     // Parse row numbers
-    const row2 = Number(id.substring(start, pos));
+    const row2 = Number(id.substring(start2, pos));
     if (isNaN(row2)) {
         return id;
     }
 
-    return pos === end ? { row1, col1, row2, col2 } : id;
+    return pos === end ? { row1: row1 - 1, col1: col1 - 1, row2: row2 - 1, col2: col2 - 1 } : id;
 }
 
 export function createFormulaParser(): Parser<boolean, FormulaNode> {

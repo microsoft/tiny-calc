@@ -39,13 +39,7 @@ export interface ValueCell {
     content: Primitive;
 }
 
-interface FiberBase<T> {
-  flag: number | string;
-  prev: Fiber<T> | undefined;
-  next: Fiber<T> | undefined;
-}
-
-export interface FormulaCell<T> extends FiberBase<T> {
+export interface FormulaCell<T> {
     flag: CalcFlag;
     row: number;
     col: number;
@@ -54,12 +48,19 @@ export interface FormulaCell<T> extends FiberBase<T> {
     node: FormulaNode | undefined;
 }
 
-export interface FunctionFiber<T> extends FiberBase<T> {
-    flag: FunctionTask;
-    range: Range;
+// Keep calling accum (that updates the state), then run the finaliser.
+export type FunctionRunner<A, R> = [A, (accum: unknown) => void, (finalise: A) => R];
+
+declare const function_skolem: unique symbol;
+export type FunctionSkolem = typeof function_skolem;
+
+export interface FunctionFiber<R> {
+    readonly flag: FunctionTask;
+    readonly range: Range;
+    readonly context: RangeContext,
     row: number;
     column: number;
-    current: T;
+    readonly runner: FunctionRunner<FunctionSkolem, R>;
 }
 
 export type Cell = ValueCell | FormulaCell<CellValue>;
@@ -67,7 +68,6 @@ export type Cell = ValueCell | FormulaCell<CellValue>;
 export type Fiber<T> = FormulaCell<T> | FunctionFiber<T>;
 
 export type FunctionTask = "sum" | "product" | "count" | "average" | "max" | "min" | "concat";
-
 
 export interface PendingTask<T> {
     kind: "Pending";
@@ -77,8 +77,9 @@ export interface PendingTask<T> {
 export type PendingValue = PendingTask<CalcValue<RangeContext>>;
 
 export interface RangeContext {
+    cache: Record<string, PendingValue | CellValue | undefined>;
     origin: Point | undefined;
-    read: (row: number, col: number) => CalcValue<RangeContext> | PendingTask<CalcValue<RangeContext>>;
+    read: (row: number, col: number) => CellValue | PendingTask<CellValue>;
 }
 
 export interface Range extends CalcObj<RangeContext> {

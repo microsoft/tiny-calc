@@ -11,13 +11,17 @@ import {
 
 import {
     FunctionFiber,
+    FunctionRunner,
     FunctionTask,
     PendingTask,
     Range,
+    RangeContext,
 } from "./types";
 
-export function makePendingFunction<V>(name: FunctionTask, range: Range, row: number, column: number, current: V): FunctionFiber<V> {
-    return { flag: name, range, row, column, current, prev: undefined, next: undefined };
+export function makePendingFunction<V>(
+    name: FunctionTask, range: Range, context: RangeContext, row: number, column: number, runner: FunctionRunner<V>
+): FunctionFiber<V> {
+    return { flag: name, range, context, row, column, runner };
 }
 
 export function isPending(content: any): content is Pending<unknown> {
