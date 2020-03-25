@@ -10,8 +10,12 @@ import {
 } from "@tiny-calc/nano";
 
 import {
+    CalcFlags,
+    Fiber,
+    FormulaCell,
     FunctionFiber,
     FunctionRunner,
+    FunctionSkolem,
     FunctionTask,
     PendingTask,
     Range,
@@ -19,9 +23,9 @@ import {
 } from "./types";
 
 export function makePendingFunction<V>(
-    name: FunctionTask, range: Range, context: RangeContext, row: number, column: number, runner: FunctionRunner<V>
+    state: FunctionTask, range: Range, context: RangeContext, row: number, column: number, runner: FunctionRunner<FunctionSkolem, V>
 ): FunctionFiber<V> {
-    return { flag: name, range, context, row, column, runner };
+    return { state, range, context, flags: CalcFlags.None, row, column, runner };
 }
 
 export function isPending(content: any): content is Pending<unknown> {
@@ -30,6 +34,10 @@ export function isPending(content: any): content is Pending<unknown> {
 
 export function isPendingTask(content: any): content is PendingTask<any> {
     return isPending(content) && "fiber" in content;
+}
+
+export function isFormulaFiber<T>(fiber: Fiber<T>): fiber is FormulaCell<T> {
+    return typeof fiber.state === "number";
 }
 
 /**

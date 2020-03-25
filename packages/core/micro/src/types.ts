@@ -23,11 +23,10 @@ export type FormulaNode = ExpressionNode<string | Reference>;
 /**
  * CalcFlags for Cell Status.
  */
-export const enum CalcFlag {
+export const enum CalcState {
     Clean,
     Dirty,
     InCalc,
-    CleanUnacked,
     Invalid,
 }
 
@@ -36,12 +35,18 @@ export type Value = Primitive | undefined;
 export type CellValue = CalcValue<RangeContext>;
 
 export interface ValueCell {
-    flag: CalcFlag.Clean;
+    state: CalcState.Clean;
     content: Primitive;
 }
 
+export enum CalcFlags {
+    None = 0,
+    InStack = 1,
+}
+
 export interface FormulaCell<T> {
-    flag: CalcFlag;
+    state: CalcState;
+    flags: CalcFlags;
     row: number;
     col: number;
     formula: string;
@@ -55,9 +60,10 @@ declare const function_skolem: unique symbol;
 export type FunctionSkolem = typeof function_skolem;
 
 export interface FunctionFiber<R> {
-    readonly flag: FunctionTask;
+    readonly state: FunctionTask;
     readonly range: Range;
     readonly context: RangeContext,
+    flags: CalcFlags,
     row: number;
     column: number;
     readonly runner: FunctionRunner<FunctionSkolem, R>;

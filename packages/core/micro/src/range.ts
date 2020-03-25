@@ -50,7 +50,7 @@ export function runFunc<Res extends CellValue>(fiber: FunctionFiber<Res>) {
         const content = context.read(row, j);
         if (isPendingTask(content)) {
             fiber.column = j;
-            return context.cache[makeCacheKey(range, fiber.flag)] = { kind: "Pending" as const, fiber };
+            return context.cache[makeCacheKey(range, fiber.state)] = { kind: "Pending" as const, fiber };
         }
         run(content);
     }
@@ -60,12 +60,12 @@ export function runFunc<Res extends CellValue>(fiber: FunctionFiber<Res>) {
             if (isPendingTask(content)) {
                 fiber.row = i;
                 fiber.column = j;
-                return context.cache[makeCacheKey(range, fiber.flag)] = { kind: "Pending" as const, fiber };
+                return context.cache[makeCacheKey(range, fiber.state)] = { kind: "Pending" as const, fiber };
             }
             run(content);
         }
     }
-    return context.cache[makeCacheKey(range, fiber.flag)] = finish(runner[0]);
+    return context.cache[makeCacheKey(range, fiber.state)] = finish(runner[0]);
 }
 
 
