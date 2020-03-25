@@ -1,9 +1,9 @@
 import {
-    parseFormula,
+    parseExpression,
     Pending,
     IConsumer,
     IProducer,
-    FormulaNode,
+    ExpressionNode,
     interpret,
     Primitive,
     TypeMap,
@@ -89,14 +89,14 @@ function createCalcValue(v: Producer) {
 }
 
 export class ListFormula implements FormulaHost {
-    private formulas: FormulaNode[];
+    private formulas: ExpressionNode<string>[];
     constructor(
         private scope: Producer,
         private formulaText: string,
         private withValue: (v: any[]) => void
     ) {
         this.formulas = [];
-        const [errors, formula] = parseFormula(this.formulaText);
+        const [errors, formula] = parseExpression(this.formulaText);
         if (!errors) {
             for (let i = 0; i < 1000000; i += 1) {
                 this.formulas.push(formula);

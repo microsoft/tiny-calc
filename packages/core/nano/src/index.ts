@@ -10,6 +10,7 @@ export {
     CoreRuntime,
     Delay,
     Delayed,
+    isDelayed,
     errors,
     makeError,
     makeTracer,
