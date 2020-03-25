@@ -101,6 +101,7 @@ export interface Binder {
     getVolatile: () => Set<number>;
     bindCell: (fromRow: number, fromCol: number, toRow: number, toCol: number) => void;
     getDependents: (row: number, col: number) => Set<number> | undefined;
+    clearDependents: (row: number, col: number) => void;
     clear: () => void;
 }
 

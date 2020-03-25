@@ -19,17 +19,11 @@ import {
 } from "@tiny-calc/nano";
 
 import { initBinder } from "./binder";
-
 import { errors, isFormulaFiber, isPendingTask } from "./core";
-
 import { createFormulaParser } from "./formula";
-
 import { funcs } from "./functions";
-
 import { keyToPoint } from "./key";
-
 import { createGrid } from "./matrix";
-
 import { isRange, fromReference } from "./range";
 
 import {
@@ -492,6 +486,7 @@ export class Sheetlet implements IMatrixConsumer<Value>, IMatrixProducer<Value>,
     evaluate = (row: number, col: number, node: FormulaNode) => {
         const [data, tracer] = makeTracer();
         const rt = new CoreRuntime(tracer);
+        this.binder.clearDependents(row, col);
         const result = evaluate(evalContext, this.inSheetContext([row, col]), rt, this.resolver, node);
         return rt.isDelayed(result) ? data : result;
     }
@@ -508,18 +503,22 @@ export class Sheetlet implements IMatrixConsumer<Value>, IMatrixProducer<Value>,
     }
 
     read(row: number, col: number): Value {
-        const cell = this.readCache(row, col);
+        let cell = this.readCache(row, col);
         if (cell === undefined) {
             return undefined;
         }
         if (cell.state === CalcState.Dirty || cell.state === CalcState.Invalid) {
             try {
                 rebuild([cell], this);
+                cell = this.readCache(row, col);
             } catch (e) {
                 console.error(`Rebuild failure: ${e}`);
             }
         }
-        if (isFormulaCell(cell)) {
+        if (cell === undefined) {
+            return undefined;
+        }
+        if (cell && isFormulaCell(cell)) {
             if ((cell.flags & CalcFlags.InChain) === 0) {
                 cell.flags |= CalcFlags.InChain;
                 this.chain.push(cell);
@@ -654,4 +653,6 @@ function wrapIMatrix(matrix: IMatrix): IMatrixProducer<Value> {
 
 export const createSheetlet = (matrix: IMatrix) => new Sheetlet(wrapIMatrix(matrix), createGrid());
 
-export const createSheetletProducer = (producer: IMatrixProducer<Value>, matrix?: IGrid<Cell>) => new Sheetlet(producer, matrix || createGrid());
+export function createSheetletProducer(producer: IMatrixProducer<Value>, matrix?: IGrid<Cell>) {
+    return new Sheetlet(producer, matrix || createGrid());
+}

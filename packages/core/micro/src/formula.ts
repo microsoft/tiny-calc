@@ -28,6 +28,9 @@ const enum CharacterCodes {
 
 const isDigit = (ch: number) => ch >= CharacterCodes._0 && ch <= CharacterCodes._9;
 
+const maxRow = 2**20;
+const maxCol = 2**14;
+
 function parseCellRef(id: string): Reference | string {
     let col1 = 0;
 
@@ -54,6 +57,8 @@ function parseCellRef(id: string): Reference | string {
         break;
     }
 
+    if (col1 > maxCol) { return id; }
+
     if (pos < end && id.charCodeAt(pos) === CharacterCodes.$) {
         pos++;
     }
@@ -66,7 +71,7 @@ function parseCellRef(id: string): Reference | string {
     if (start === pos) { return id };
 
     const row1 = Number(id.substring(start, pos));
-    if (isNaN(row1)) {
+    if (isNaN(row1) || row1 > maxRow) {
         return id;
     }
 
@@ -99,6 +104,8 @@ function parseCellRef(id: string): Reference | string {
         break;
     }
 
+    if (col2 > maxCol) { return id; }
+
     if (pos < end && id.charCodeAt(pos) === CharacterCodes.$) {
         pos++;
     }
@@ -111,7 +118,7 @@ function parseCellRef(id: string): Reference | string {
     if (start2 === pos) { return id };
 
     const row2 = Number(id.substring(start2, pos));
-    if (isNaN(row2)) {
+    if (isNaN(row2) || row2 > maxRow) {
         return id;
     }
 

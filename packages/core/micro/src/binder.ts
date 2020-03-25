@@ -23,6 +23,12 @@ export function initBinder(): Binder {
         getDependents(row: number, col: number) {
             return grid.read(row, col);
         },
+        clearDependents(row: number, col: number) {
+            const s = grid.read(row, col);
+            if (s) {
+                s.clear();
+            }
+        },
         clear: () => {
             grid = createGrid();
         },

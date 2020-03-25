@@ -18,11 +18,20 @@ describe("Formula Parser", () => {
         assert.deepStrictEqual(res, expected);
     }
 
-    it("should parse single cell refs", () => {
+    it("should parse refs ok", () => {
         parseTest("A1", ident({ row1: 0, col1: 0 }));
         parseTest("a1", ident({ row1: 0, col1: 0 }));
         parseTest("Aa1", ident({ row1: 0, col1: 26 }));
         parseTest("A1:B1", ident({ row1: 0, col1: 0, row2: 0, col2: 1 }));
+        parseTest("$A$1:$B$1", ident({ row1: 0, col1: 0, row2: 0, col2: 1 }));
+        parseTest("A1:$B$1", ident({ row1: 0, col1: 0, row2: 0, col2: 1 }));
+        parseTest("A$1:$B$1", ident({ row1: 0, col1: 0, row2: 0, col2: 1 }));
+    });
+    it("should handle size limits", () => {
+        parseTest("A1048576:B1048576", ident({ row1: 1048576 - 1, col1: 0, row2: 1048576 - 1, col2: 1 }));
+        parseTest("A1048577", ident("A1048577"));
+        parseTest("A1048576:B1048577", ident("A1048576:B1048577"));
+        parseTest("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA1", ident("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA1"));
     });
 
 });

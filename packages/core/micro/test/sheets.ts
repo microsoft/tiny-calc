@@ -1,5 +1,5 @@
-import { createSheetlet, Sheetlet } from "../src/sheetlet";
-import { createMatrix, matrixProducer } from "../src/matrix";
+import { createSheetletProducer, Sheetlet } from "../src/sheetlet";
+import { createGrid, matrixProducer } from "../src/matrix";
 import { consume } from "../bench/util";
 import { Primitive, IMatrixReader } from "@tiny-calc/nano";
 import { Value } from "../src/types";
@@ -42,7 +42,7 @@ export function makeBenchmark(size: number): { sheet: Sheetlet, setAt: (row: num
     }
 
     const matrix = matrixProducer<Value>(cells);
-    const sheet = createSheetlet(matrix, createMatrix());
+    const sheet = createSheetletProducer(matrix, createGrid());
 
     return {
         sheet,
