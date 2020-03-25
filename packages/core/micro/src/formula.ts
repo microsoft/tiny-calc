@@ -65,7 +65,6 @@ function parseCellRef(id: string): Reference | string {
 
     if (start === pos) { return id };
 
-    // Parse row numbers
     const row1 = Number(id.substring(start, pos));
     if (isNaN(row1)) {
         return id;
@@ -77,7 +76,7 @@ function parseCellRef(id: string): Reference | string {
         return id;
     }
 
-    // Skips the ':'.
+    // Skips the ':'
     pos++;
 
     if (pos < end && id.charCodeAt(pos) === CharacterCodes.$) {
@@ -111,7 +110,6 @@ function parseCellRef(id: string): Reference | string {
 
     if (start2 === pos) { return id };
 
-    // Parse row numbers
     const row2 = Number(id.substring(start2, pos));
     if (isNaN(row2)) {
         return id;

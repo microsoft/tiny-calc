@@ -38,6 +38,7 @@ export function isPendingTask(content: any): content is PendingTask<any> {
 export const errors = {
     ...errorsC,
     unknownField: makeError("#UNKNOWN!"),
+    calc: makeError("#CALC!"),
     cycle: makeError("#CYCLE!"),
     ref: makeError("#REF!"),
     fallbackCoercion: makeError("#VALUE!"),

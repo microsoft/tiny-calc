@@ -28,6 +28,7 @@ export const enum CalcFlag {
     Dirty,
     InCalc,
     CleanUnacked,
+    Invalid,
 }
 
 export type Value = Primitive | undefined;
@@ -48,7 +49,6 @@ export interface FormulaCell<T> {
     node: FormulaNode | undefined;
 }
 
-// Keep calling accum (that updates the state), then run the finaliser.
 export type FunctionRunner<A, R> = [A, (accum: unknown) => void, (finalise: A) => R];
 
 declare const function_skolem: unique symbol;
@@ -77,6 +77,7 @@ export interface PendingTask<T> {
 export type PendingValue = PendingTask<CalcValue<RangeContext>>;
 
 export interface RangeContext {
+    /** Cache for aggregations */
     cache: Record<string, PendingValue | CellValue | undefined>;
     origin: Point | undefined;
     read: (row: number, col: number) => CellValue | PendingTask<CellValue>;
