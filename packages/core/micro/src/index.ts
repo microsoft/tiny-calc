@@ -3,5 +3,5 @@
  * Licensed under the MIT License.
  */
 
-export { IMatrix } from "./types";
-export { createSheetlet } from "./sheetlet";
+export { IGrid, IMatrix } from "./types";
+export { createSheetletProducer, createSheetlet, ISheetlet } from "./sheetlet";

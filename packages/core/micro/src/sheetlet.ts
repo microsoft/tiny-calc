@@ -28,6 +28,8 @@ import { funcs } from "./functions";
 
 import { keyToPoint } from "./key";
 
+import { createGrid } from "./matrix";
+
 import { isRange, fromReference } from "./range";
 
 import {
@@ -38,6 +40,7 @@ import {
     Fiber,
     FormulaCell,
     FormulaNode,
+    IGrid,
     IMatrix,
     PendingValue,
     Point,
@@ -219,6 +222,7 @@ function rebuild(chain: FormulaCell<CellValue>[], host: BuildHost): FormulaCell<
                         chain[chainIdx] = cell;
                         continue;
                     }
+                    chainIdx++;
                     continue;
 
                 case CalcState.InCalc:
@@ -292,7 +296,13 @@ function rebuild(chain: FormulaCell<CellValue>[], host: BuildHost): FormulaCell<
     }
 }
 
-export class Sheetlet implements IMatrixConsumer<Value>, IMatrixProducer<Value>, IMatrixReader<Value> {
+export interface ISheetlet {
+    invalidate: (row: number, col: number) => void;
+    evaluateCell: (row: number, col: number) => Primitive | undefined;
+    evaluateFormula: (formula: string) => Primitive | undefined;
+}
+
+export class Sheetlet implements IMatrixConsumer<Value>, IMatrixProducer<Value>, IMatrixReader<Value>, ISheetlet {
     private static readonly blank = "";
 
     readonly binder = initBinder();
@@ -326,7 +336,9 @@ export class Sheetlet implements IMatrixConsumer<Value>, IMatrixProducer<Value>,
         }
     };
 
-    constructor(readonly producer: IMatrixProducer<Value>, readonly cache: IMatrix<Cell>) { }
+    constructor(readonly producer: IMatrixProducer<Value>, readonly cache: IGrid<Cell>) {
+        this.connect();
+    }
 
     connect() {
         this.reader = this.producer.openMatrix(this);
@@ -491,6 +503,10 @@ export class Sheetlet implements IMatrixConsumer<Value>, IMatrixProducer<Value>,
         return value;
     }
 
+    evaluateCell(row: number, col: number) {
+        return this.read(row, col);
+    }
+
     read(row: number, col: number): Value {
         const cell = this.readCache(row, col);
         if (cell === undefined) {
@@ -538,6 +554,9 @@ export class Sheetlet implements IMatrixConsumer<Value>, IMatrixProducer<Value>,
      * encounter anything dirty during calc.
      */
     evaluateFormula(formula: string): Value {
+        if (formula[0] === "=") {
+            formula = formula.substring(1);
+        }
         const [hasError, node] = this.parser(formula);
         if (hasError) {
             return errors.parseFailure.serialise(undefined);
@@ -617,4 +636,22 @@ export class Sheetlet implements IMatrixConsumer<Value>, IMatrixProducer<Value>,
     }
 }
 
-export const createSheetlet = (producer: IMatrixProducer<Value>, matrix: IMatrix<Cell>) => new Sheetlet(producer, matrix);
+function wrapIMatrix(matrix: IMatrix): IMatrixProducer<Value> {
+    const producer = {
+        get numRows() { return matrix.numRows },
+        get numCols() { return matrix.numCols },
+        read(row: number, col: number) {
+            const raw = matrix.loadCellText(row, col);
+            return typeof raw === "object"
+                ? undefined
+                : raw;
+        },
+        openMatrix() { return producer },
+        removeMatrixConsumer() { },
+    }
+    return producer;
+}
+
+export const createSheetlet = (matrix: IMatrix) => new Sheetlet(wrapIMatrix(matrix), createGrid());
+
+export const createSheetletProducer = (producer: IMatrixProducer<Value>, matrix?: IGrid<Cell>) => new Sheetlet(producer, matrix || createGrid());

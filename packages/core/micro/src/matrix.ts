@@ -3,7 +3,7 @@ import {
     IMatrixReader,
 } from "@tiny-calc/nano";
 
-import { IMatrix } from "./types";
+import { IGrid } from "./types";
 
 const enum CONSTS {
     LOGW = 4,
@@ -236,7 +236,7 @@ function initGrid<T>(): SparseGrid<T> {
     return [];
 }
 
-export function createMatrix<T>(): IMatrix<T> {
+export function createGrid<T>(): IGrid<T> {
     const cells: SparseGrid<T> = initGrid();
     return {
         read(row: number, col: number) {
@@ -254,8 +254,8 @@ export function createMatrix<T>(): IMatrix<T> {
     }
 }
 
-export function matrixProducer<T>(data: T[][]): IMatrixProducer<T | undefined> & IMatrixReader<T | undefined> & IMatrix<T> {
-    const grid = createMatrix<T>();
+export function matrixProducer<T>(data: T[][]): IMatrixProducer<T | undefined> & IMatrixReader<T | undefined> & IGrid<T> {
+    const grid = createGrid<T>();
     for (let i = 0; i < data.length; i++) {
         const row = data[i];
         for (let j = 0; j < row.length; j++) {

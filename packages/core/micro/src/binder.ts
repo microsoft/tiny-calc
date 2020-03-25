@@ -4,13 +4,13 @@
  */
 
 import { pointToKey } from "./key";
-import { createMatrix } from "./matrix";
+import { createGrid } from "./matrix";
 import { Binder } from "./types";
 
 const newSet = () => new Set<number>();
 
 export function initBinder(): Binder {
-    let grid = createMatrix<Set<number>>();
+    let grid = createGrid<Set<number>>();
     const volatile = new Set<number>();
     return {
         getVolatile: () => volatile,
@@ -24,7 +24,7 @@ export function initBinder(): Binder {
             return grid.read(row, col);
         },
         clear: () => {
-            grid = createMatrix();
+            grid = createGrid();
         },
     };
 }
