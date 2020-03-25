@@ -19,6 +19,7 @@ import {
 } from "@tiny-calc/nano";
 
 import { initBinder } from "./binder";
+import { isFormulaCell, makeCell } from "./cell";
 import { errors, isFormulaFiber, isPendingTask } from "./core";
 import { createFormulaParser } from "./formula";
 import { funcs } from "./functions";
@@ -41,7 +42,6 @@ import {
     RangeContext,
     Reference,
     Value,
-    ValueCell
 } from "./types";
 
 import * as assert from "assert";
@@ -55,64 +55,6 @@ Stack: ${new Error().stack}
 
 const ROW = 0 as const;
 const COL = 1 as const;
-
-function valueCell(content: Primitive): ValueCell {
-    return { state: CalcState.Clean, content };
-}
-
-function isFormulaCell(cell: Cell): cell is FormulaCell<CellValue> {
-    return "formula" in cell;
-}
-
-function makeValueCell(value: Primitive) {
-    let content: Primitive;
-    switch (typeof value) {
-        case "number":
-        case "boolean":
-            content = value;
-            break;
-        case "string":
-            content = parseValue(value);
-            break;
-        default:
-            return assertNever(value);
-    }
-    return valueCell(content);
-}
-
-function makeFormulaCell(row: number, col: number, text: string): FormulaCell<CellValue> {
-    return {
-        state: CalcState.Dirty,
-        flags: CalcFlags.None,
-        row,
-        col,
-        formula: text,
-        value: undefined,
-        node: undefined,
-    };
-}
-
-function makeCell(row: number, col: number, value: Value) {
-    if (value === undefined || value === "") {
-        return undefined;
-    }
-    if (typeof value === "string" && value[0] === "=") {
-        return makeFormulaCell(row, col, value.substring(1));
-    }
-    return makeValueCell(value);
-}
-
-function parseValue(value: string): Primitive {
-    const upper = value.toUpperCase();
-    if (upper === "TRUE") {
-        return true;
-    }
-    if (upper === "FALSE") {
-        return false;
-    }
-    const asNumber = Number(value);
-    return isNaN(asNumber) ? value : asNumber;
-}
 
 interface BuildHost {
     parser: Parser<boolean, FormulaNode>;
@@ -268,6 +210,7 @@ function rebuild(chain: FormulaCell<CellValue>[], host: BuildHost): FormulaCell<
             const [hasError, node] = parser(cell.formula);
             if (hasError) {
                 cell.state = CalcState.Clean;
+                cell.flags |= CalcFlags.PendingNotification;
                 cell.value = errors.parseFailure;
                 return true;
             }
@@ -285,6 +228,7 @@ function rebuild(chain: FormulaCell<CellValue>[], host: BuildHost): FormulaCell<
             return [nonRange];
         }
         cell.state = CalcState.Clean;
+        cell.flags |= CalcFlags.PendingNotification;
         cell.value = nonRange;
         return true;
     }
@@ -303,7 +247,11 @@ export class Sheetlet implements IMatrixConsumer<Value>, IMatrixProducer<Value>,
     readonly parser = createFormulaParser();
 
     chain: FormulaCell<CellValue>[] = [];
-    reader: IMatrixReader<Value> | undefined;
+    reader: IMatrixReader<Value> = {
+        numRows: 0,
+        numCols: 0,
+        read: () => undefined
+    };
     numRows: number = -1;
     numCols: number = -1;
     consumer0: IMatrixConsumer<Value> | undefined;
@@ -330,20 +278,17 @@ export class Sheetlet implements IMatrixConsumer<Value>, IMatrixProducer<Value>,
         }
     };
 
-    constructor(readonly producer: IMatrixProducer<Value>, readonly cache: IGrid<Cell>) {
-        this.connect();
-    }
+    constructor(readonly cache: IGrid<Cell>) { }
 
-    connect() {
-        this.reader = this.producer.openMatrix(this);
+    connect(producer: IMatrixProducer<Value>) {
+        this.reader = producer.openMatrix(this);
         this.numRows = this.reader.numRows;
         this.numCols = this.reader.numCols;
         return this;
     }
 
     rowsChanged(row: number, numRemoved: number, numInserted: number) {
-        assert(this.reader, "Reader should be opened on rowsChanged");
-        this.numRows = this.reader!.numRows;
+        this.numRows = this.reader.numRows;
         if (this.consumer0) {
             this.consumer0.rowsChanged(row, numRemoved, numInserted, this);
             this.consumers.forEach(consumer => consumer.rowsChanged(row, numRemoved, numInserted, this));
@@ -351,8 +296,7 @@ export class Sheetlet implements IMatrixConsumer<Value>, IMatrixProducer<Value>,
     }
 
     colsChanged(col: number, numRemoved: number, numInserted: number) {
-        assert(this.reader, "Reader should be opened on colsChanged");
-        this.numCols = this.reader!.numCols;
+        this.numCols = this.reader.numCols;
         if (this.consumer0) {
             this.consumer0.colsChanged(col, numRemoved, numInserted, this);
             this.consumers.forEach(consumer => consumer.colsChanged(col, numRemoved, numInserted, this));
@@ -370,12 +314,19 @@ export class Sheetlet implements IMatrixConsumer<Value>, IMatrixProducer<Value>,
         }
     }
 
-    cellsChanged(row: number, col: number, numRows: number, numCols: number, values: readonly Value[] | undefined) {
+    addToChain(cell: FormulaCell<CellValue>) {
+        if ((cell.flags & CalcFlags.InChain) === 0) {
+            cell.flags |= CalcFlags.InChain;
+            this.chain.push(cell);
+        }
+    }
+
+    cellsChanged(row: number, col: number, numRows: number, numCols: number) {
         const endR = row + numRows;
         const endC = col + numCols;
         const dirty = this.createDirtier();
         for (let i = row; i < endR; i++) {
-            for (let j = col; i < endC; j++) {
+            for (let j = col; j < endC; j++) {
                 const formula = dirty(i, j);
                 if (formula) {
                     formula.state = CalcState.Invalid;
@@ -383,14 +334,36 @@ export class Sheetlet implements IMatrixConsumer<Value>, IMatrixProducer<Value>,
                 else {
                     this.cache.clear(row, col);
                 }
+                const cell = this.readCache(i, j);
+                if (cell && isFormulaCell(cell)) {
+                    this.addToChain(cell);
+                }
             }
         }
         if (!this.consumer0) {
             return;
         }
+        
         this.chain = rebuild(this.chain, this);
-        this.consumer0!.cellsChanged(row, col, numRows, numCols, values, this);
-        this.consumers.forEach(consumer => consumer.cellsChanged(row, col, numRows, numCols, values, this));
+        for (let i = row; i < endR; i++) {
+            for (let j = col; j < endC; j++) {
+                const cell = this.readCache(i, j)
+                if (cell && isFormulaCell(cell) && (cell.flags & CalcFlags.PendingNotification)) {
+                    cell.flags &= ~CalcFlags.PendingNotification;
+                }
+            }
+        }
+        this.consumer0!.cellsChanged(row, col, numRows, numCols, undefined, this);
+        this.consumers.forEach(consumer => consumer.cellsChanged(row, col, numRows, numCols, undefined, this));
+
+        for (let i = 0; i < this.chain.length; i++) {
+            const cell = this.chain[i];
+            if ((cell.flags & CalcFlags.PendingNotification)) {
+                cell.flags &= ~CalcFlags.PendingNotification;
+                this.consumer0!.cellsChanged(cell.row, cell.col, 1, 1, undefined, this);
+                this.consumers.forEach(consumer => consumer.cellsChanged(cell.row, cell.col, 1, 1, undefined, this));
+            }
+        }
     }
 
     openMatrix(consumer: IMatrixConsumer<Value>): IMatrixReader<Value> {
@@ -401,7 +374,7 @@ export class Sheetlet implements IMatrixConsumer<Value>, IMatrixProducer<Value>,
         } else {
             this.consumer0 = consumer;
         }
-        return this.connect();
+        return this;
     }
 
     removeMatrixConsumer(consumer: IMatrixConsumer<Value>) {
@@ -472,7 +445,6 @@ export class Sheetlet implements IMatrixConsumer<Value>, IMatrixProducer<Value>,
     }
 
     readCache = (row: number, col: number) => {
-        assert(this.reader, "Reader should be opened on readCell");
         let cell = this.cache.read(row, col);
         if (cell === undefined) {
             cell = makeCell(row, col, this.reader!.read(row, col));
@@ -519,10 +491,7 @@ export class Sheetlet implements IMatrixConsumer<Value>, IMatrixProducer<Value>,
             return undefined;
         }
         if (cell && isFormulaCell(cell)) {
-            if ((cell.flags & CalcFlags.InChain) === 0) {
-                cell.flags |= CalcFlags.InChain;
-                this.chain.push(cell);
-            }
+            this.addToChain(cell);
             if (cell.value === undefined) {
                 return undefined;
             }
@@ -651,8 +620,8 @@ function wrapIMatrix(matrix: IMatrix): IMatrixProducer<Value> {
     return producer;
 }
 
-export const createSheetlet = (matrix: IMatrix) => new Sheetlet(wrapIMatrix(matrix), createGrid());
+export const createSheetlet = (matrix: IMatrix) => new Sheetlet(createGrid()).connect(wrapIMatrix(matrix));
 
 export function createSheetletProducer(producer: IMatrixProducer<Value>, matrix?: IGrid<Cell>) {
-    return new Sheetlet(producer, matrix || createGrid());
+    return new Sheetlet(matrix || createGrid()).connect(producer);
 }

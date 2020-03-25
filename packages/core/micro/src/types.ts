@@ -43,6 +43,7 @@ export enum CalcFlags {
     None = 0,
     InStack = 1 << 0,
     InChain = 1 << 1,
+    PendingNotification = 1 << 2,
 }
 
 export interface FormulaCell<T> {
