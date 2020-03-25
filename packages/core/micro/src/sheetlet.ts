@@ -158,7 +158,11 @@ function rebuild(chain: FormulaCell<CellValue>[], host: BuildHost): FormulaCell<
                         continue;
 
                     case CalcState.Invalid:
-                        return assert.fail("TODO");
+                        const cell = host.refresh(fiber);
+                        if (cell && isFormulaCell(cell) && cell.state === CalcState.Dirty) {
+                            pushFiberIfOut(cell);
+                        }
+                        continue;
 
                     default:
                         return assert.fail("TODO");
@@ -170,7 +174,6 @@ function rebuild(chain: FormulaCell<CellValue>[], host: BuildHost): FormulaCell<
             const startC = range.tlCol;
             const endR = range.tlRow + range.height;
             const endC = range.tlCol + range.width;
-            // We let the function deal with cycles here.
             for (let j = column; j < endC; j += 1) {
                 const cell = host.readCache(row, j);
                 if (cell && isFormulaCell(cell) && cell.state === CalcState.Dirty) {
@@ -218,8 +221,6 @@ function rebuild(chain: FormulaCell<CellValue>[], host: BuildHost): FormulaCell<
                     }
                     continue;
 
-                // read from the cache. if it's the same cell then we clear cache and read again.
-
                 case CalcState.InCalc:
                 default:
                     chainIdx++;
@@ -263,11 +264,12 @@ function rebuild(chain: FormulaCell<CellValue>[], host: BuildHost): FormulaCell<
     }
 
     function evalCell(cell: FormulaCell<CellValue>, host: BuildHost): true | PendingValue[] {
+        // TODO: We don't cache the contexts for the cells. Maybe we should?
         const { parser, evaluate, dereference } = host;
         if (cell.node === undefined) {
             const [hasError, node] = parser(cell.formula);
             if (hasError) {
-                cell.state = CalcState.Clean; // TODO: ack?
+                cell.state = CalcState.Clean;
                 cell.value = errors.parseFailure;
                 return true;
             }
@@ -284,7 +286,7 @@ function rebuild(chain: FormulaCell<CellValue>[], host: BuildHost): FormulaCell<
         if (isPendingTask(nonRange)) {
             return [nonRange];
         }
-        cell.state = CalcState.Clean // TODO: ack;
+        cell.state = CalcState.Clean;
         cell.value = nonRange;
         return true;
     }
@@ -502,6 +504,10 @@ export class Sheetlet implements IMatrixConsumer<Value>, IMatrixProducer<Value>,
             }
         }
         if (isFormulaCell(cell)) {
+            if ((cell.flags & CalcFlags.InChain) === 0) {
+                cell.flags |= CalcFlags.InChain;
+                this.chain.push(cell);
+            }
             if (cell.value === undefined) {
                 return undefined;
             }

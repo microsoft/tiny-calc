@@ -41,7 +41,8 @@ export interface ValueCell {
 
 export enum CalcFlags {
     None = 0,
-    InStack = 1,
+    InStack = 1 << 0,
+    InChain = 1 << 1,
 }
 
 export interface FormulaCell<T> {
