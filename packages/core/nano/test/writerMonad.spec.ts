@@ -10,10 +10,10 @@
 import "mocha";
 import { strict as assert } from "assert";
 
-import { parseFormula } from "../src/ast";
-import { CoreRuntime, Delay } from "../src/core";
+import { parseExpression } from "../src/ast";
+import { CoreRuntime, Delay, createObjectResolver } from "../src/core";
 import { evalContext, evaluate } from "../src/interpreter";
-import { TypeMap, CalcObj, TypeName, Pending, CalcValue, Runtime } from "../src/types";
+import { TypeMap, CalcObj, TypeName, Pending, CalcValue, Resolver, Runtime } from "../src/types";
 import { createObjFromMap, createReadMap } from "./util/objectTypes";
 
 function createTracingRefMap(value: CalcValue<string>): TypeMap<CalcObj<string>, string> {
@@ -41,7 +41,7 @@ interface Effect<T> {
     message: string;
 }
 
-export const createTracingRuntime = (): [string[], Runtime<Delay>] => {
+export const createTracingRuntime = <C>(ctx: CalcObj<C>): [string[], Runtime<Delay>, Resolver<C, string, Delay>] => {
     const delay = {} as Delay;
     const data: string[] = [];
     const trace = <T>(value: T | Pending<T>) => {
@@ -54,14 +54,14 @@ export const createTracingRuntime = (): [string[], Runtime<Delay>] => {
         }
         return value as T;
     }
-    return [data, new CoreRuntime(trace)];
+    return [data, new CoreRuntime(trace), createObjectResolver(ctx, trace)];
 }
 
 
 describe("writer monad example", () => {
-    const formula = parseFormula("A + B + C");
-    const rt = createTracingRuntime();
-    const result = evaluate(evalContext, "My context", rt[1], ctx, formula[1])
+    const formula = parseExpression("A + B + C");
+    const rt = createTracingRuntime(ctx);
+    const result = evaluate(evalContext, "My context", rt[1], rt[2], formula[1])
     it("should return an evaluated result", () => {
         assert.equal(result, 60)
     });

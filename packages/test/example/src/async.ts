@@ -8,8 +8,8 @@ import {
     CalcObj,
     CalcValue,
     interpret,
-    parseFormula,
-    FormulaNode
+    parseExpression,
+    ExpressionNode,
 } from "@tiny-calc/nano";
 
 let cache: Record<string, CalcObj<unknown> | PendingPromise> = {};
@@ -70,17 +70,17 @@ const read = (prop: string) => {
 const delayedCalcValue: CalcObj<unknown> = createObjFromMap(createReadMap(read));
 
 
-const f = parseFormula(`Q978185.labels.en.value + ' was last modified ' + Q978185.modified + '. ' +
+const f = parseExpression(`Q978185.labels.en.value + ' was last modified ' + Q978185.modified + '. ' +
 Q2005.labels.en.value + ' was last modified ' + Q2005.modified
 `)[1];
 
-const g = parseFormula("Q5")[1];
+const g = parseExpression("Q5")[1];
 
 /**
  * Care needs to be taken when using promise loops as they have a
  * tendency to leak memory.
  */
-async function runFormula(f: FormulaNode, attempts: number): Promise<CalcValue<unknown>> {
+async function runFormula(f: ExpressionNode<string>, attempts: number): Promise<CalcValue<unknown>> {
     let [pendings, value] = interpret(undefined as unknown, delayedCalcValue, f);
     while (isDelayed(value)) {
         if (attempts > 0) {

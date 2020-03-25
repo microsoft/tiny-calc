@@ -1,4 +1,4 @@
-import { parseFormula } from "../src/ast";
+import { parseExpression } from "../src/ast";
 import { createDiagnosticErrorHandler, createParser, SyntaxKind, ExpAlgebra } from "../src/parser";
 import { compile } from "../src/compiler";
 import { interpret } from "../src/interpreter";
@@ -190,7 +190,7 @@ describe("nano", () => {
 
     function interpretTest(expression: string, expected: CalcValue<unknown>, serialise: boolean | undefined) {
         it(`Interpret: ${expression}`, () => {
-            const [errors, formula] = parseFormula(expression);
+            const [errors, formula] = parseExpression(expression);
             assert.strictEqual(errors, false);
             const [pending, actual] = interpret(undefined, testContext, formula);
             assert.deepEqual(pending, []);

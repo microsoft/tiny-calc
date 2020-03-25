@@ -1,15 +1,19 @@
 export {
-    parseFormula,
-    FormulaNode
+    createAlgebra,
+    ExpressionNode,
+    ident,
+    NodeKind,
+    parseExpression,
 } from "./ast"
 
 export {
-    createRuntime,
+    CoreRuntime,
     Delay,
     Delayed,
-    errors,
     isDelayed,
+    errors,
     makeError,
+    makeTracer,
 } from "./core";
 
 export {
@@ -18,6 +22,9 @@ export {
 } from "./compiler";
 
 export {
+    evaluate,
+    evalContext,
+    EvalContext,
     interpret,
     Interpreter
 } from "./interpreter";
@@ -42,10 +49,19 @@ export {
     Primitive,
     ReadableType,
     ReferenceType,
+    Resolver,
     Runtime,
     TypeMap,
     TypeName,
 } from "./types";
+
+export {
+    createBooleanErrorHandler,
+    createParser,
+    ExpAlgebra,
+    ParserErrorHandler,
+    Parser,
+} from "./parser";
 
 export {
     produce

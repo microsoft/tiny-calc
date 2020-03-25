@@ -9,6 +9,7 @@ import {
     TypedCalcObj,
     TypeMap,
     TypeName,
+    Resolver,
     Runtime,
     TypedBinOp,
     TypedUnaryOp,
@@ -33,6 +34,7 @@ const functionArity = makeError("#ARITY!");
 const functionAsOpArgument = makeError("Operator argument must be a primitive.");
 const nonStringField = makeError("A field expression must be of type string");
 const readOnNonObject = makeError("The target of a dot-operation must be a calc object.");
+const resolveError = makeError("#RESOLVE!");
 const typeError = makeError("#TYPE!");
 
 export const errors = {
@@ -42,6 +44,7 @@ export const errors = {
     functionAsOpArgument,
     nonStringField,
     readOnNonObject,
+    resolveError,
     typeError
 } as const;
 
@@ -241,9 +244,9 @@ export function isDelayed<T>(x: T | Delay): x is Delay {
  * records any pending value. This allows us to gather multiple
  * pending values in a single computation
  */
-type Trace = <T>(value: T | Pending<T>) => Delayed<T>;
+export type Trace = <T>(value: T | Pending<T>) => Delayed<T>;
 
-function makeTracer(): [Pending<unknown>[], Trace] {
+export function makeTracer(): [Pending<unknown>[], Trace] {
     // The trace function is used to catch pending values early and
     // replace them with a sentinel so that we can use pointer
     // equality throughout the rest of a calculation. The
@@ -278,10 +281,10 @@ function errorOr<C, F>(value: CalcObj<C>, fallback: F): CalcObj<C> | F {
  * To find the actual `Pending` values see the results of `trace`.
  */
 export class CoreRuntime implements Runtime<Delay> {
-    constructor(public trace: Trace) { }
+    constructor(public readonly trace: Trace) { }
 
     isDelayed = isDelayed
-    
+
     read<C, F>(context: C, receiver: Delayed<CalcValue<C>>, prop: string, fallback: F): Delayed<CalcValue<C> | F> {
         if (isDelayed(receiver)) { return receiver; }
         if (typeof receiver === "object") {
@@ -379,6 +382,15 @@ export class CoreRuntime implements Runtime<Delay> {
     }
 }
 
+export function createObjectResolver<C>(root: CalcObj<C>, trace: Trace): Resolver<C, string, Delay> {
+    return {
+        resolve<F>(context: C, ident: string, failure: F) {
+            let reader = root.typeMap()[TypeName.Readable];
+            return reader ? trace(reader.read(root, ident, context)) : failure;
+        }
+    }
+}
+
 /**
  * Exports the basic building blocks of a formula runtime.
  * - Error values
@@ -389,8 +401,3 @@ export class CoreRuntime implements Runtime<Delay> {
 export type Errors = typeof errors;
 export type BinaryOps = typeof binOps;
 export type UnaryOps = typeof unaryOps;
-
-export const createRuntime = (): [Pending<unknown>[], Runtime<Delay>] => {
-    const [data, trace] = makeTracer();
-    return [data, new CoreRuntime(trace)];
-}

@@ -5,10 +5,11 @@ import {
     createBooleanErrorHandler,
     createParser,
     ExpAlgebra,
+    ParserErrorHandler,
     UnaryOperatorToken,
 } from "./parser";
 
-export const enum NodeKind {
+export enum NodeKind {
     Literal,
     Ident,
     Paren,
@@ -26,48 +27,48 @@ interface LiteralNode {
     value: Primitive;
 }
 
-interface IdentNode {
+interface IdentNode<I> {
     kind: NodeKind.Ident;
-    value: string;
+    value: I;
 }
 
-interface ParenNode {
+interface ParenNode<I> {
     kind: NodeKind.Paren;
-    value: FormulaNode;
+    value: ExpressionNode<I>;
 }
 
-interface FunNode {
+interface FunNode<I> {
     kind: NodeKind.Fun;
-    children: FormulaNode[];
+    children: ExpressionNode<I>[];
 }
 
-interface AppNode {
+interface AppNode<I> {
     kind: NodeKind.App;
-    children: FormulaNode[];
+    children: ExpressionNode<I>[];
 }
 
-interface ConditionalNode {
+interface ConditionalNode<I> {
     kind: NodeKind.Conditional;
-    children: FormulaNode[];
+    children: ExpressionNode<I>[];
 }
 
-interface DotNode {
+interface DotNode<I> {
     kind: NodeKind.Dot;
-    operand1: FormulaNode;
-    operand2: FormulaNode;
+    operand1: ExpressionNode<I>;
+    operand2: ExpressionNode<I>;
 }
 
-interface BinaryOpNode {
+interface BinaryOpNode<I> {
     kind: NodeKind.BinaryOp;
     op: BinaryOperatorToken;
-    operand1: FormulaNode;
-    operand2: FormulaNode;
+    operand1: ExpressionNode<I>;
+    operand2: ExpressionNode<I>;
 }
 
-interface UnaryOpNode {
+interface UnaryOpNode<I> {
     kind: NodeKind.UnaryOp;
     op: UnaryOperatorToken;
-    operand1: FormulaNode;
+    operand1: ExpressionNode<I>;
 }
 
 interface MissingNode {
@@ -75,16 +76,16 @@ interface MissingNode {
     value: undefined;
 }
 
-export type FormulaNode =
+export type ExpressionNode<I> =
     | LiteralNode
-    | IdentNode
-    | ParenNode
-    | FunNode
-    | AppNode
-    | ConditionalNode
-    | DotNode
-    | BinaryOpNode
-    | UnaryOpNode
+    | IdentNode<I>
+    | ParenNode<I>
+    | FunNode<I>
+    | AppNode<I>
+    | ConditionalNode<I>
+    | DotNode<I>
+    | BinaryOpNode<I>
+    | UnaryOpNode<I>
     | MissingNode;
 
 
@@ -106,81 +107,88 @@ type NaryNode =
     | NodeKind.App
     | NodeKind.Conditional;
 
-type NodeOfKind<K extends NodeKind> = Extract<FormulaNode, Record<"kind", K>>;
-type Value<K extends UnaryNode> = NodeOfKind<K> extends { value: infer V } ? V : never;
-type Op<K extends NodeKind> = NodeOfKind<K> extends { op: infer V } ? V : undefined;
-type Operand2<K extends NodeKind> = NodeOfKind<K> extends { operand2: infer V } ? V : undefined;
+type NodeOfKind<K extends NodeKind, I> = Extract<ExpressionNode<I>, Record<"kind", K>>;
+type Value<K extends UnaryNode, I> = NodeOfKind<K, I> extends { value: infer V } ? V : never;
+type Op<K extends NodeKind, I> = NodeOfKind<K, I> extends { op: infer V } ? V : undefined;
+type Operand2<K extends NodeKind, I> = NodeOfKind<K, I> extends { operand2: infer V } ? V : undefined;
 
-function createUnaryNode<K extends UnaryNode>(kind: K, value: Value<K>): NodeOfKind<K> {
+function createUnaryNode<K extends UnaryNode, I>(kind: K, value: Value<K, I>): NodeOfKind<K, I> {
     return { kind, value } as any;
 }
 
-function createBinaryNode<K extends BinaryNode>(
+function createBinaryNode<K extends BinaryNode, I>(
     kind: K,
-    op: Op<K>,
-    operand1: FormulaNode,
-    operand2: Operand2<K>
-): NodeOfKind<K> {
+    op: Op<K, I>,
+    operand1: ExpressionNode<I>,
+    operand2: Operand2<K, I>
+): NodeOfKind<K, I> {
     return { kind, op, operand1, operand2 } as any;
 }
 
-function createNaryNode<K extends NaryNode>(kind: K, children: FormulaNode[]): NodeOfKind<K> {
+function createNaryNode<K extends NaryNode, I>(kind: K, children: ExpressionNode<I>[]): NodeOfKind<K, I> {
     return { kind, children } as any;
 }
 
-const errorHandler = createBooleanErrorHandler();
+// Public Constructors
 
-const astSink: ExpAlgebra<FormulaNode> = {
-    lit(value: number | string | boolean) {
-        return createUnaryNode(NodeKind.Literal, value);
-    },
-    ident(id) {
-        return createUnaryNode(NodeKind.Ident, id);
-    },
-    paren(expr: FormulaNode) {
-        return createUnaryNode(NodeKind.Paren, expr);
-    },
-    app(head: FormulaNode, args: FormulaNode[], start: number, end: number) {
-        if (head.kind === NodeKind.Ident) {
-            switch (head.value) {
-                case "if":
-                case "IF":
-                    return createNaryNode(NodeKind.Conditional, args);
-                case "fun":
-                case "FUN":
-                    if (args.length === 0) {
-                        errorHandler.onError("Empty function definition", start, end);
-                    }
-                    let error = false;
-                    for (let i = 0; i < args.length - 1; i += 1) {
-                        if (args[i].kind !== NodeKind.Ident) {
-                            error = true;
-                            break;
+export function ident<I>(id: I): IdentNode<I> {
+    return createUnaryNode(NodeKind.Ident, id);
+}
+
+export function createAlgebra<T, I>(resolve: (id: string) => I, handler: ParserErrorHandler<T>): ExpAlgebra<ExpressionNode<I>> {
+    return {
+        lit(value: number | string | boolean) {
+            return createUnaryNode(NodeKind.Literal, value);
+        },
+        ident(id: string) {
+            return ident(resolve(id));
+        },
+        paren(expr: ExpressionNode<I>) {
+            return createUnaryNode(NodeKind.Paren, expr);
+        },
+        app(head: ExpressionNode<I>, args: ExpressionNode<I>[], start: number, end: number) {
+            if (head.kind === NodeKind.Ident && typeof head.value === "string") {
+                switch (head.value) {
+                    case "if":
+                    case "IF":
+                        return createNaryNode(NodeKind.Conditional, args);
+                    case "fun":
+                    case "FUN":
+                        if (args.length === 0) {
+                            handler.onError("Empty function definition", start, end);
                         }
-                    }
-                    if (error) {
-                        // TODO: Better spans;
-                        errorHandler.onError("Illegal function parameter node", start, end);
-                    }
-                    return createNaryNode(NodeKind.Fun, args);
+                        let error = false;
+                        for (let i = 0; i < args.length - 1; i += 1) {
+                            if (args[i].kind !== NodeKind.Ident) {
+                                error = true;
+                                break;
+                            }
+                        }
+                        if (error) {
+                            // TODO: Better spans;
+                            handler.onError("Illegal function parameter node", start, end);
+                        }
+                        return createNaryNode(NodeKind.Fun, args);
+                }
             }
+            return createNaryNode(NodeKind.App, [head].concat(args));
+
+        },
+        dot(operand1: ExpressionNode<I>, operand2: ExpressionNode<I>) {
+            return createBinaryNode(NodeKind.Dot, undefined, operand1, operand2);
+        },
+        binOp(op: BinaryOperatorToken, left: ExpressionNode<I>, right: ExpressionNode<I>) {
+            return createBinaryNode(NodeKind.BinaryOp, op, left, right);
+        },
+        unaryOp(op: UnaryOperatorToken, expr: ExpressionNode<I>) {
+            return createBinaryNode(NodeKind.UnaryOp, op, expr, undefined);
+        },
+        missing(position: number) {
+            errorHandler.onError("missing", position, position);
+            return createUnaryNode(NodeKind.Missing, undefined);
         }
-        return createNaryNode(NodeKind.App, [head].concat(args));
-
-    },
-    dot(operand1: FormulaNode, operand2: FormulaNode) {
-        return createBinaryNode(NodeKind.Dot, undefined, operand1, operand2);
-    },
-    binOp(op: BinaryOperatorToken, left: FormulaNode, right: FormulaNode) {
-        return createBinaryNode(NodeKind.BinaryOp, op, left, right);
-    },
-    unaryOp(op: UnaryOperatorToken, expr: FormulaNode) {
-        return createBinaryNode(NodeKind.UnaryOp, op, expr, undefined);
-    },
-    missing(position: number) {
-        errorHandler.onError("missing", position, position);
-        return createUnaryNode(NodeKind.Missing, undefined);
     }
-};
+}
 
-export const parseFormula = createParser(astSink, errorHandler);
+const errorHandler = createBooleanErrorHandler();
+export const parseExpression = createParser(createAlgebra(x => x, errorHandler), errorHandler);
