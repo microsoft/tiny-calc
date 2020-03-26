@@ -115,14 +115,14 @@ function rebuild(chain: FormulaCell<CellValue>[], host: BuildHost): FormulaCell<
             const endC = range.tlCol + range.width;
             for (let j = column; j < endC; j += 1) {
                 const cell = host.readCache(row, j);
-                if (cell && isFormulaCell(cell) && cell.state === CalcState.Dirty) {
+                if (cell && isFormulaCell(cell) && (cell.state === CalcState.Dirty || cell.state === CalcState.Invalid)) {
                     pushFiberIfOut(cell);
                 }
             }
             for (let i = row + 1; i < endR; i += 1) {
                 for (let j = startC; j < endC; j += 1) {
                     const cell = host.readCache(i, j);
-                    if (cell && isFormulaCell(cell) && cell.state === CalcState.Dirty) {
+                    if (cell && isFormulaCell(cell) && (cell.state === CalcState.Dirty || cell.state === CalcState.Invalid)) {
                         pushFiberIfOut(cell);
                     }
                 }
