@@ -172,6 +172,37 @@ describe("Sheetlet", () => {
 
         });
 
+        it("invalid in aggregation repro", () => {
+            const [data, sheet] = initTest([
+                [1, 2, 3, 4, 5]
+            ]);
+
+            const reader = sheet.openMatrix(nullConsumer);
+
+            assert.deepEqual(
+                extract(reader, 1, 5), [
+                [1, 2, 3, 4, 5]
+            ]);
+
+            data.write(0, 1, "=42");
+            sheet.invalidate(0, 1);
+
+            assert.deepEqual(
+                extract(reader, 1, 5), [
+                [1, 42, 3, 4, 5]
+            ]);
+
+            data.write(0, 1, "=-42");
+            data.write(0, 0, "=SUM(B1:E1)+E1");
+            sheet.invalidate(0, 1);
+            sheet.invalidate(0, 0);
+
+            assert.deepEqual(
+                extract(reader, 1, 5), [
+                [-25, -42, 3, 4, 5]
+            ]);
+        })
+        
         it("should handle conditional trickery", () => {
             const [data, sheet] = initTest([
                 [1,
