@@ -1,3 +1,8 @@
+/*!
+ * Copyright (c) Microsoft Corporation. All rights reserved.
+ * Licensed under the MIT License.
+ */
+
 import { assert } from "./debug";
 
 const enum CharacterCodes {
@@ -160,6 +165,28 @@ export enum SyntaxKind {
     SlashToken
 }
 
+function tokenToString(token: SyntaxKind): string  {
+    switch (token) {
+        case SyntaxKind.AsteriskToken: return "*";
+        case SyntaxKind.CaretToken: return "^";
+        case SyntaxKind.PlusToken: return "+";
+        case SyntaxKind.MinusToken: return "-";
+        case SyntaxKind.DotToken: return ".";
+        case SyntaxKind.LessThanToken: return "<";
+        case SyntaxKind.GreaterThanToken: return ">";
+        case SyntaxKind.LessThanEqualsToken: return "<=";
+        case SyntaxKind.GreaterThanEqualsToken: return ">=";
+        case SyntaxKind.EqualsToken: return "=";
+        case SyntaxKind.NotEqualsToken: return "<>";
+        case SyntaxKind.OpenParenToken: return "(";
+        case SyntaxKind.CloseParenToken: return ")";
+        case SyntaxKind.CommaToken: return ",";
+        case SyntaxKind.SlashToken: return "/";
+        default:
+            return "";
+    }
+}
+
 function isDigit(ch: number): boolean {
     return ch >= CharacterCodes._0 && ch <= CharacterCodes._9;
 }
@@ -186,7 +213,7 @@ function isIdentifierPart(ch: number): boolean {
 }
 
 function isWhitespaceChar(ch: number): boolean {
-    switch(ch) {
+    switch (ch) {
         case CharacterCodes.space:
         case CharacterCodes.tab:
         case CharacterCodes.verticalTab:
@@ -473,15 +500,21 @@ export interface ParserErrorHandler<E> {
     onError: (message: string, start: number, end: number) => void;
 }
 
+export interface AlgebraContext {
+    text: string;
+    onError: (message: string, start: number, end: number) => void;
+}
+
 export interface ExpAlgebra<R> {
-    lit: (value: boolean | number | string, start: number, end: number) => R;
-    ident: (id: string, kind: TokenFlags, fieldAccess: boolean, start: number, end: number) => R;
-    paren: (expr: R, start: number, end: number) => R;
-    app: (head: R, args: R[], start: number, end: number) => R;
-    dot: (left: R, right: R, start: number, end: number) => R;
-    binOp: (op: BinaryOperatorToken, left: R, right: R, start: number, end: number) => R;
-    unaryOp: (op: UnaryOperatorToken, expr: R, start: number, end: number) => R;
-    missing: (position: number) => R;
+    lit: (value: boolean | number | string, start: number, end: number, ctx: AlgebraContext) => R;
+    ident: (id: string, kind: TokenFlags, fieldAccess: boolean, start: number, end: number, ctx: AlgebraContext) => R;
+    paren: (expr: R, start: number, end: number, ctx: AlgebraContext) => R;
+    app: (head: R, args: R[], start: number, end: number, ctx: AlgebraContext) => R;
+    dot: (left: R, right: R, start: number, end: number, ctx: AlgebraContext) => R;
+    binOp: (op: BinaryOperatorToken, left: R, right: R, start: number, end: number, ctx: AlgebraContext) => R;
+    unaryOp: (op: UnaryOperatorToken, expr: R, start: number, end: number, ctx: AlgebraContext) => R;
+    missing: (position: number, ctx: AlgebraContext) => R;
+    sequence: (expressions: R[], start: number, end: number, ctx: AlgebraContext) => R;
 }
 
 export type Diagnostic = [string, number, number];
@@ -505,6 +538,8 @@ function operatorPrecedence(kind: SyntaxKind): number {
         case SyntaxKind.AsteriskToken:
         case SyntaxKind.SlashToken:
             return 3;
+        case SyntaxKind.CaretToken:
+            return 4;
     }
     return -1;
 }
@@ -519,8 +554,10 @@ function isStartOfExpression(kind: SyntaxKind): boolean {
         case SyntaxKind.OpenParenToken:
         case SyntaxKind.PlusToken:
         case SyntaxKind.MinusToken:
+
         // These cases are for error handling so that we look ahead
         // and create the binOp node with missing children.
+        case SyntaxKind.CaretToken:
         case SyntaxKind.AsteriskToken:
         case SyntaxKind.SlashToken:
         case SyntaxKind.EqualsToken:
@@ -545,7 +582,8 @@ export type BinaryOperatorToken =
     | SyntaxKind.PlusToken
     | SyntaxKind.MinusToken
     | SyntaxKind.AsteriskToken
-    | SyntaxKind.SlashToken;
+    | SyntaxKind.SlashToken
+    | SyntaxKind.CaretToken;
 
 export type UnaryOperatorToken = SyntaxKind.PlusToken | SyntaxKind.MinusToken;
 
@@ -570,6 +608,7 @@ export const createBooleanErrorHandler: () => ParserErrorHandler<boolean> = () =
 export const createParser = <R, E>(algebra: ExpAlgebra<R>, handler: ParserErrorHandler<E>) => {
     const scanner = createScanner(handler.onError, "");
     let currentToken: SyntaxKind;
+    let algContext: AlgebraContext = { text: "", onError: handler.onError };
 
     type ExpressionConstructor = (lhs: R, start: number, token: BinaryOperatorToken, precedence: number) => R;
     const binOpMap: Partial<Record<BinaryOperatorToken, ExpressionConstructor>> = {
@@ -583,24 +622,23 @@ export const createParser = <R, E>(algebra: ExpAlgebra<R>, handler: ParserErrorH
         [SyntaxKind.MinusToken]: parseBinOp,
         [SyntaxKind.AsteriskToken]: parseBinOp,
         [SyntaxKind.SlashToken]: parseBinOp,
+        [SyntaxKind.CaretToken]: parseBinOp,
     };
 
     const dotAppMap = {
         [SyntaxKind.OpenParenToken]: (lhs: R, start: number) => {
-            return algebra.app(lhs, parseArgumentList(), start, scanner.getWSTokenPos());
+            return algebra.app(lhs, parseArgumentList(), start, scanner.getWSTokenPos(), algContext);
         },
         [SyntaxKind.DotToken]: (lhs: R, start: number) => {
-            return algebra.dot(lhs, parseField(), start, scanner.getWSTokenPos());
+            return algebra.dot(lhs, parseField(), start, scanner.getWSTokenPos(), algContext);
         }
     } as const;
 
-    const parseExpression = () => parseExpr(/* precedence */ 0);
-
     const parse = (input: string): [E, R] => {
         freshenContext(input);
+        algContext = { text: input, onError: handler.onError };
         nextToken();
-        const exp = parseExpression();
-        parseExpected(SyntaxKind.EndOfInputToken);
+        const exp = parseExpressionSequence();
         return [handler.errors(), exp];
     };
 
@@ -621,7 +659,7 @@ export const createParser = <R, E>(algebra: ExpAlgebra<R>, handler: ParserErrorH
             nextToken();
             return true;
         }
-        handler.onError(`Expected: ${kind}`, scanner.getTokenPos(), scanner.getTextPos());
+        handler.onError(`'${tokenToString(kind)}' expected.`, scanner.getTokenPos(), scanner.getTextPos());
         return false;
     }
 
@@ -633,18 +671,78 @@ export const createParser = <R, E>(algebra: ExpAlgebra<R>, handler: ParserErrorH
         return false;
     }
 
-    function parseIdentifer(fieldAccess: boolean): R {
-        const start = scanner.getWSTokenPos();
-        const tokenValue = scanner.getTokenValue();
-        const flags = scanner.getTokenFlags();
-        nextToken();
-        return algebra.ident(tokenValue, flags, fieldAccess, start, scanner.getWSTokenPos());
+    function parseExpressionSequence(): R {
+        const exp = parseExpression();
+        if (currentToken === SyntaxKind.EndOfInputToken) {
+            return exp;
+        }
+        const exprs = [exp];
+        while (scanner.getToken() !== SyntaxKind.EndOfInputToken) {
+            const start = scanner.getTokenPos();
+            if (isStartOfExpression(currentToken)) {
+                exprs.push(parseExpression());
+                handler.onError("Operator expected.", start, scanner.getWSTokenPos());
+                continue;
+            }
+            nextToken();
+            handler.onError("Unexpected.", start, scanner.getWSTokenPos());
+        }
+        return exprs.length === 1 ? exp : algebra.sequence(exprs, 0, scanner.getWSTokenPos(), algContext);
     }
 
-    function parseLiteral(value: boolean | number | string): R {
+    function parseExpression() {
+        return parseExpr(/* precedence */ 0);
+    }
+
+    function parseExpr(precedence: number): R {
         const start = scanner.getWSTokenPos();
-        nextToken();
-        return algebra.lit(value, start, scanner.getWSTokenPos());
+        let expression = parsePrefixUnary();
+        while (true) {
+            const token = currentToken;
+            const newPrecedence = operatorPrecedence(token);
+            if (newPrecedence <= precedence) {
+                break;
+            }
+            nextToken();
+            const makeTerm = binOpMap[token as BinaryOperatorToken];
+            assert(makeTerm !== undefined);
+            expression = makeTerm!(expression, start, token as BinaryOperatorToken, newPrecedence);
+        }
+        return expression;
+    }
+
+    function parseBinOp(lhs: R, start: number, token: BinaryOperatorToken, precedence: number) {
+        return algebra.binOp(token, lhs, parseExpr(precedence), start, scanner.getWSTokenPos(), algContext);
+    }
+
+    function parsePrefixUnary(): R {
+        const token = currentToken;
+        switch (token) {
+            case SyntaxKind.PlusToken:
+            case SyntaxKind.MinusToken:
+                const start = scanner.getWSTokenPos();
+                nextToken();
+                return algebra.unaryOp(token, parsePrefixUnary(), start, scanner.getWSTokenPos(), algContext);
+            default:
+                return parseDotOrApp();
+        }
+    }
+
+    function parseDotOrApp(): R {
+        const start = scanner.getWSTokenPos();
+        let expression = parsePrimary();
+        while (true) {
+            const token = currentToken;
+            switch (token) {
+                case SyntaxKind.OpenParenToken:
+                case SyntaxKind.DotToken:
+                    nextToken();
+                    expression = dotAppMap[token](expression, start);
+                    continue;
+                default:
+                    return expression;
+            }
+        }
     }
 
     function parseField(): R {
@@ -652,11 +750,7 @@ export const createParser = <R, E>(algebra: ExpAlgebra<R>, handler: ParserErrorH
         if (currentToken === SyntaxKind.Identifier) {
             return parseIdentifer(/*fieldAccess */ true);
         }
-        return algebra.missing(scanner.getWSTokenPos());
-    }
-
-    function parseBinOp(lhs: R, start: number, token: BinaryOperatorToken, precedence: number) {
-        return algebra.binOp(token, lhs, parseExpr(precedence), start, scanner.getWSTokenPos());
+        return algebra.missing(scanner.getWSTokenPos(), algContext);
     }
 
     function isListEnd() {
@@ -689,7 +783,7 @@ export const createParser = <R, E>(algebra: ExpAlgebra<R>, handler: ParserErrorH
             }
             if (parseOptional(SyntaxKind.CommaToken)) {
                 if (freshArgument) {
-                    list.push(algebra.missing(nextArgPos));
+                    list.push(algebra.missing(nextArgPos, algContext));
                 }
                 freshArgument = true;
                 nextArgPos = scanner.getWSTokenPos();
@@ -698,57 +792,10 @@ export const createParser = <R, E>(algebra: ExpAlgebra<R>, handler: ParserErrorH
             nextToken();
         }
         if (freshArgument && list.length > 0) {
-            list.push(algebra.missing(nextArgPos));
+            list.push(algebra.missing(nextArgPos, algContext));
         }
         parseExpected(SyntaxKind.CloseParenToken);
         return list;
-    }
-
-    function parseExpr(precedence: number): R {
-        const start = scanner.getWSTokenPos();
-        let expression = parsePrefixUnary();
-        while (true) {
-            const token = currentToken;
-            const newPrecedence = operatorPrecedence(token);
-            if (newPrecedence <= precedence) {
-                break;
-            }
-            nextToken();
-            const makeTerm = binOpMap[token as BinaryOperatorToken];
-            assert(makeTerm !== undefined);
-            expression = makeTerm!(expression, start, token as BinaryOperatorToken, newPrecedence);
-        }
-        return expression;
-    }
-
-    function parsePrefixUnary(): R {
-        const token = currentToken;
-        switch (token) {
-            case SyntaxKind.PlusToken:
-            case SyntaxKind.MinusToken:
-                const start = scanner.getWSTokenPos();
-                nextToken();
-                return algebra.unaryOp(token, parsePrefixUnary(), start, scanner.getWSTokenPos());
-            default:
-                return parseDotOrApp();
-        }
-    }
-
-    function parseDotOrApp(): R {
-        const start = scanner.getWSTokenPos();
-        let expression = parsePrimary();
-        while (true) {
-            const token = currentToken;
-            switch (token) {
-                case SyntaxKind.OpenParenToken:
-                case SyntaxKind.DotToken:
-                    nextToken();
-                    expression = dotAppMap[token](expression, start);
-                    continue;
-                default:
-                    return expression;
-            }
-        }
     }
 
     function parsePrimary(): R {
@@ -771,10 +818,24 @@ export const createParser = <R, E>(algebra: ExpAlgebra<R>, handler: ParserErrorH
                 nextToken();
                 const expr = parseExpression();
                 parseExpected(SyntaxKind.CloseParenToken);
-                return algebra.paren(expr, start, scanner.getWSTokenPos());
+                return algebra.paren(expr, start, scanner.getWSTokenPos(), algContext);
 
             default:
-                return algebra.missing(scanner.getWSTokenPos());
+                return algebra.missing(scanner.getWSTokenPos(), algContext);
         }
+    }
+
+    function parseLiteral(value: boolean | number | string): R {
+        const start = scanner.getWSTokenPos();
+        nextToken();
+        return algebra.lit(value, start, scanner.getWSTokenPos(), algContext);
+    }
+
+    function parseIdentifer(fieldAccess: boolean): R {
+        const start = scanner.getWSTokenPos();
+        const tokenValue = scanner.getTokenValue();
+        const flags = scanner.getTokenFlags();
+        nextToken();
+        return algebra.ident(tokenValue, flags, fieldAccess, start, scanner.getWSTokenPos(), algContext);
     }
 };

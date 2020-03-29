@@ -1,3 +1,8 @@
+/*!
+ * Copyright (c) Microsoft Corporation. All rights reserved.
+ * Licensed under the MIT License.
+ */
+
 import {
     CalcObj,
     CalcValue,
@@ -104,6 +109,7 @@ function createNumericUnaryOp(fnPrim: (l: number) => CalcValue<unknown>, fnDispa
             if (typeof value === "number") {
                 return fnPrim(value);
             }
+            // TODO: This is bad and hardcoded.
             if (fnDispatch === undefined) { return value; }
             const tm = value.typeMap()[TypeName.Numeric];
             return tm[fnDispatch](value, context);
@@ -186,6 +192,12 @@ export const binOps = {
         (x: any, y: any) => y === 0 ? errors.div0 : x / y,
         "div"
     ),
+    // TODO: Should we overload exponentiation?
+    [SyntaxKind.CaretToken]: pack<number, Skolem>({
+        check: <C>(_context: C, value: CalcValue<C>): value is number => typeof value === "number",
+        fn: (_context, x: any, y: any) => x ** y,
+        blame: typeErrorOrForward
+    }),
     [SyntaxKind.EqualsToken]: createComparableBinOp(
         (x: any, y: any) => x === y,
         result => typeof result === "object" ? result : result === 0

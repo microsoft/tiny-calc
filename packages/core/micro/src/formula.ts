@@ -127,5 +127,5 @@ function parseCellRef(id: string): Reference | string {
 
 export function createFormulaParser(): Parser<boolean, FormulaNode> {
     const handler = createBooleanErrorHandler();
-    return createParser(createAlgebra(parseCellRef, handler), handler);
+    return createParser(createAlgebra(parseCellRef), handler);
 }

@@ -42,7 +42,10 @@ const astSink: ExpAlgebra<object> = {
     },
     missing(pos: number) {
         return { pos }
-    }
+    },
+    sequence(args: object[], start: number, end: number) {
+        return { start, end, args }
+    },
 };
 
 export const astParse = createParser(astSink, createDiagnosticErrorHandler());
@@ -192,19 +195,12 @@ describe("nano", () => {
         it(`Interpret: ${expression}`, () => {
             const [errors, formula] = parseExpression(expression);
             assert.strictEqual(errors, false);
-            const [pending, actual] = interpret(undefined, testContext, formula);
+            const [pending, result] = interpret(undefined, testContext, formula);
             assert.deepEqual(pending, []);
-            if (serialise) {
-                if (typeof actual === "object") {
-                    assert.strictEqual((actual as CalcObj<void>).serialise(), expected);
-                }
-                else {
-                    assert.strictEqual(actual.toString(), expected);
-                }
-            }
-            else {
-                assert.strictEqual(actual, expected);
-            }
+            const actual = serialise ?
+                typeof result === "object" ? (result as CalcObj<void>).serialise() : result.toString()
+                : result;
+            assert.strictEqual(actual, expected);
         });
     }
 
@@ -892,18 +888,39 @@ describe("nano", () => {
             expression: "10 + 42.Foobar + 3",
             expected: {
                 "start": 0,
-                "end": 8,
-                "op": 9,
-                "left": {
-                    "start": 0,
-                    "end": 2,
-                    "value": 10
-                },
-                "right": {
-                    "start": 4,
-                    "end": 8,
-                    "value": 42
-                }
+                "end": 18,
+                "args": [
+                    {
+                        "start": 0,
+                        "end": 8,
+                        "left": {
+                            "end": 2,
+                            "start": 0,
+                            "value": 10,
+                        },
+                        "op": 9,
+                        "right": {
+                            "end": 8,
+                            "start": 4,
+                            "value": 42,
+                        },
+                    },
+                    {
+                        "start": 8,
+                        "end": 18,
+                        "left": {
+                            "end": 14,
+                            "id": "Foobar",
+                            "start": 8
+                        },
+                        "op": 9,
+                        "right": {
+                            "end": 18,
+                            "start": 16,
+                            "value": 3,
+                        },
+                    }
+                ]
             },
             errorCount: 1
         },
@@ -970,6 +987,25 @@ describe("nano", () => {
                 }
             },
             errorCount: 0
+        },
+        {
+            expression: "      4 +  4",
+            expected: {
+                "start": 0,
+                "end": 12,
+                "left": {
+                    "start": 0,
+                    "end": 7,
+                    "value": 4,
+                },
+                "op": 9,
+                "right": {
+                    "start": 9,
+                    "end": 12,
+                    "value": 4,
+                },
+            },
+            errorCount: 0,
         },
         {
             expression: "-4+-4+",
@@ -1051,6 +1087,7 @@ Product(1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
         },
         { expression: "42.", expected: 42 },
         { expression: "42.01", expected: 42.01 },
+        { expression: "4^(4/2)", expected: 16 },
         { expression: "1/1", expected: 1 },
         { expression: "1/0", expected: errors.div0 },
         { expression: "(1/0)", expected: "#DIV/0!", serialise: true },
@@ -1077,6 +1114,7 @@ Product(1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
         { expression: "Something.{Property A}", expected: "A" },
         { expression: "Something.{Property B}", expected: "B" },
         { expression: "----4", expected: 4 },
+        { expression: "4^(4/2)", expected: 16 },
         { expression: "-4+-4", expected: -8 },
         { expression: "-4++-4", expected: -8 },
         { expression: "-4--4", expected: 0 },

@@ -1,3 +1,8 @@
+/*!
+ * Copyright (c) Microsoft Corporation. All rights reserved.
+ * Licensed under the MIT License.
+ */
+
 export {
     createAlgebra,
     ExpressionNode,
@@ -56,6 +61,7 @@ export {
 } from "./types";
 
 export {
+    AlgebraContext,
     createBooleanErrorHandler,
     createParser,
     ExpAlgebra,
