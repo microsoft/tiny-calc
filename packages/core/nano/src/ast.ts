@@ -1,11 +1,16 @@
+/*!
+ * Copyright (c) Microsoft Corporation. All rights reserved.
+ * Licensed under the MIT License.
+ */
+
 import { Primitive } from "./types";
 
 import {
+    AlgebraContext,
     BinaryOperatorToken,
     createBooleanErrorHandler,
     createParser,
     ExpAlgebra,
-    ParserErrorHandler,
     UnaryOperatorToken,
 } from "./parser";
 
@@ -20,6 +25,7 @@ export enum NodeKind {
     BinaryOp,
     UnaryOp,
     Missing,
+    Sequence,
 }
 
 interface LiteralNode {
@@ -76,6 +82,11 @@ interface MissingNode {
     value: undefined;
 }
 
+interface SequenceNode<I> {
+    kind: NodeKind.Sequence;
+    children: ExpressionNode<I>[];
+}
+
 export type ExpressionNode<I> =
     | LiteralNode
     | IdentNode<I>
@@ -86,7 +97,8 @@ export type ExpressionNode<I> =
     | DotNode<I>
     | BinaryOpNode<I>
     | UnaryOpNode<I>
-    | MissingNode;
+    | MissingNode
+    | SequenceNode<I>;
 
 
 // Types below are for internal constructors.
@@ -105,7 +117,8 @@ type BinaryNode =
 type NaryNode =
     | NodeKind.Fun
     | NodeKind.App
-    | NodeKind.Conditional;
+    | NodeKind.Conditional
+    | NodeKind.Sequence;
 
 type NodeOfKind<K extends NodeKind, I> = Extract<ExpressionNode<I>, Record<"kind", K>>;
 type Value<K extends UnaryNode, I> = NodeOfKind<K, I> extends { value: infer V } ? V : never;
@@ -135,7 +148,7 @@ export function ident<I>(id: I): IdentNode<I> {
     return createUnaryNode(NodeKind.Ident, id);
 }
 
-export function createAlgebra<T, I>(resolve: (id: string) => I, handler: ParserErrorHandler<T>): ExpAlgebra<ExpressionNode<I>> {
+export function createAlgebra<T, I>(resolve: (id: string) => I): ExpAlgebra<ExpressionNode<I>> {
     return {
         lit(value: number | string | boolean) {
             return createUnaryNode(NodeKind.Literal, value);
@@ -146,7 +159,7 @@ export function createAlgebra<T, I>(resolve: (id: string) => I, handler: ParserE
         paren(expr: ExpressionNode<I>) {
             return createUnaryNode(NodeKind.Paren, expr);
         },
-        app(head: ExpressionNode<I>, args: ExpressionNode<I>[], start: number, end: number) {
+        app(head: ExpressionNode<I>, args: ExpressionNode<I>[], start: number, end: number, context: AlgebraContext) {
             if (head.kind === NodeKind.Ident && typeof head.value === "string") {
                 switch (head.value) {
                     case "if":
@@ -155,7 +168,7 @@ export function createAlgebra<T, I>(resolve: (id: string) => I, handler: ParserE
                     case "fun":
                     case "FUN":
                         if (args.length === 0) {
-                            handler.onError("Empty function definition", start, end);
+                            context.onError("Empty function definition", start, end);
                         }
                         let error = false;
                         for (let i = 0; i < args.length - 1; i += 1) {
@@ -166,7 +179,7 @@ export function createAlgebra<T, I>(resolve: (id: string) => I, handler: ParserE
                         }
                         if (error) {
                             // TODO: Better spans;
-                            handler.onError("Illegal function parameter node", start, end);
+                            context.onError("Illegal function parameter node", start, end);
                         }
                         return createNaryNode(NodeKind.Fun, args);
                 }
@@ -183,12 +196,14 @@ export function createAlgebra<T, I>(resolve: (id: string) => I, handler: ParserE
         unaryOp(op: UnaryOperatorToken, expr: ExpressionNode<I>) {
             return createBinaryNode(NodeKind.UnaryOp, op, expr, undefined);
         },
-        missing(position: number) {
-            errorHandler.onError("missing", position, position);
+        missing(position: number, context: AlgebraContext) {
+            context.onError("missing", position, position);
             return createUnaryNode(NodeKind.Missing, undefined);
+        },
+        sequence(args: ExpressionNode<I>[]) {
+            return createNaryNode(NodeKind.Sequence, args);
         }
     }
 }
-
 const errorHandler = createBooleanErrorHandler();
-export const parseExpression = createParser(createAlgebra(x => x, errorHandler), errorHandler);
+export const parseExpression = createParser(createAlgebra(x => x), errorHandler);

@@ -1,3 +1,8 @@
+/*!
+ * Copyright (c) Microsoft Corporation. All rights reserved.
+ * Licensed under the MIT License.
+ */
+
 /** Names of known types (traits) within the runtime */
 export enum TypeName {
     Comparable,

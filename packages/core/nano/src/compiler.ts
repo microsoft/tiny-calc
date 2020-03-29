@@ -1,3 +1,13 @@
+/*!
+ * Copyright (c) Microsoft Corporation. All rights reserved.
+ * Licensed under the MIT License.
+ */
+
+/**
+ * NOTE: This might be deprecated.
+ * Prefer using the interpreter.
+ */
+
 import { assert, assertNever } from "./debug";
 
 import {
@@ -92,6 +102,10 @@ const simpleSink = {
     missing() {
         errorHandler.onError("missing", 0, 0);
         return "";
+    },
+    sequence(expressions: string[]) {
+        errorHandler.onError("missing op", 0, 0);
+        return expressions.length > 0 ? expressions[0] : "";
     }
 };
 

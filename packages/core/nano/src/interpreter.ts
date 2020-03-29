@@ -1,3 +1,8 @@
+/*!
+ * Copyright (c) Microsoft Corporation. All rights reserved.
+ * Licensed under the MIT License.
+ */
+
 import { ExpressionNode, NodeKind } from "./ast";
 import {
     binOps,
@@ -90,6 +95,12 @@ export function evaluate<O, I, Delay>(ctx: EvalContext, origin: O, rt: Runtime<D
             );
 
         case NodeKind.Missing:
+            throw "TODO: missing";
+
+        case NodeKind.Sequence:
+            if (expr.children.length > 0) {
+                return evaluate(ctx, origin, rt, resolver, expr.children[0]);
+            }
             throw "TODO: missing";
 
         default:
