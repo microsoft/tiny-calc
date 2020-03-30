@@ -289,6 +289,37 @@ describe("Sheetlet", () => {
                 [4, 4, 4, 4]
             ]);
         });
+
+        it("should compute mixed averages", () => {
+            const [data, sheet] = initTest([
+                [1, 2, 3, 5, 5]
+            ]);
+
+            const reader = sheet.openMatrix(nullConsumer);
+
+            assert.deepEqual(
+                extract(reader, 1, 5), [
+                    [1, 2, 3, 5, 5]
+                ]);
+
+            data.write(0, 4, "=AVERAGE(A1:D1, 10, C1:C3)");
+
+            sheet.invalidate(0, 4);
+
+            assert.deepEqual(
+                extract(reader, 1, 5), [
+                    [1, 2, 3, 5, 4]
+                ]);
+
+            data.write(0, 4, "=AVERAGE(A2)");
+
+            sheet.invalidate(0, 4);
+
+            assert.deepEqual(
+                extract(reader, 1, 5), [
+                    [1, 2, 3, 5, "#DIV/0!"]
+                ]);
+        });
     });
 
     describe("producer tests", () => {

@@ -79,7 +79,7 @@ const count: CalcFun<unknown> = (runtime, origin, args) => {
 
 const average: CalcFun<unknown> = (runtime, origin, args) => {
     const totals = args.map((arg) => extractNumberFromProperty(runtime, origin, arg, "sum"));
-    const counts = args.map((arg) => extractNumberFromProperty(runtime, origin, arg, "count"));
+    const counts = args.map((arg) => typeof arg === "number" ? 1 : extractNumberFromProperty(runtime, origin, arg, "count"));
     const total = reduceNumbers(totals, (prev, current) => prev + current, 0);
     if (typeof total === "number") {
         const count = reduceNumbers(counts, (prev, current) => prev + current, 0);
