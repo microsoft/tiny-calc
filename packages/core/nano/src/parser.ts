@@ -700,7 +700,7 @@ export const createParser = <R, E>(algebra: ExpAlgebra<R>, handler: ParserErrorH
         while (true) {
             const token = currentToken;
             const newPrecedence = operatorPrecedence(token);
-            if (newPrecedence <= precedence) {
+            if (token === SyntaxKind.CaretToken ? newPrecedence < precedence : newPrecedence <= precedence) {
                 break;
             }
             nextToken();
