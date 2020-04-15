@@ -1,7 +1,7 @@
 {
     "scripts": {
         "rush": "node common/scripts/install-run-rush.js",
-        "rush:repair": "git clean -xfd && rm common/config/rush/pnpm-lock.yaml && npm run rush:update -- --purge --recheck",
+        "rush:repair": "git clean -xfd && (rm common/config/rush/pnpm-lock.yaml || true) && npm run rush -- update --purge --recheck",
         "postinstall": "npm run rush -- install",
         "build": "npm run rush -- build",
         "test": "npm run rush -- test",
