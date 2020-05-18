@@ -182,7 +182,7 @@ export interface IConsumer<T> {
     /**
      * Invoked whenever the data this object is bound to is changed.
      */
-    valueChanged<U extends T, K extends keyof U>(property: K, value: U[K], producer: IProducer<U>): void;
+    valueChanged<U extends T, K extends keyof U>(property: K, producer: IProducer<U>): void;
 }
 
 export interface IReader<T> {
@@ -218,7 +218,7 @@ export interface IProducer<T> {
 
 export interface IVectorConsumer<T> {
     /** Notification that a range of items have been inserted, removed, and/or replaced in the given vector. */
-    itemsChanged(index: number, numRemoved: number, itemsInserted: ReadonlyArray<T>, producer: IVectorProducer<T>): void;
+    itemsChanged(index: number, numRemoved: number, numInserted: number, producer: IVectorProducer<T>): void;
 }
 
 export interface IVectorReader<T> {
@@ -249,7 +249,7 @@ export interface IMatrixConsumer<T> {
      * matrix has the new cell values already in an array, it may optionally pass these to consumers
      * as an optimization.
      */
-    cellsChanged(row: number, col: number, numRows: number, numCols: number, values: ReadonlyArray<T> | undefined, producer: IMatrixProducer<T>): void;
+    cellsChanged(row: number, col: number, numRows: number, numCols: number, producer: IMatrixProducer<T>): void;
 }
 
 export interface IMatrixReader<T> {

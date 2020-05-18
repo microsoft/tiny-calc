@@ -8,14 +8,14 @@ export class LoggingConsumer<T> implements IConsumer<T>, IVectorConsumer<T>, IMa
     private getProducerId(producer: any) { return producer.id || "Error: Missing call to LoggingConsumer.setProducerId(..)"; }
 
     // #region IConsumer<T>
-    public valueChanged<U extends T, K extends keyof U>(property: K, value: U[K], producer: IProducer<U>): void {
-        this.log.push({ property, value, producer: this.getProducerId(producer) });
+    public valueChanged<U extends T, K extends keyof U>(property: K, producer: IProducer<U>): void {
+        this.log.push({ property, producer: this.getProducerId(producer) });
     }
     // #endregion IConsumer<T>
     
     // #region IVectorConsumer<T>
-    public itemsChanged(index: number, numRemoved: number, itemsInserted: ReadonlyArray<T>, producer: IVectorProducer<T>): void {
-        this.log.push({ index, numRemoved, itemsInserted, producer: this.getProducerId(producer) });
+    public itemsChanged(index: number, numRemoved: number, numInserted: number, producer: IVectorProducer<T>): void {
+        this.log.push({ index, numRemoved, numInserted, producer: this.getProducerId(producer) });
     }
     // #endregion IVectorConsumer<T>
     
@@ -28,8 +28,8 @@ export class LoggingConsumer<T> implements IConsumer<T>, IVectorConsumer<T>, IMa
         this.log.push({ col, numRemoved, numInserted, producer: this.getProducerId(producer) });
     }
     
-    public cellsChanged(row: number, col: number, numRows: number, numCols: number, values: ReadonlyArray<T>, producer: IMatrixProducer<T>): void {
-        this.log.push({ row, col, numRows, numCols, values, producer: this.getProducerId(producer) });
+    public cellsChanged(row: number, col: number, numRows: number, numCols: number, producer: IMatrixProducer<T>): void {
+        this.log.push({ row, col, numRows, numCols, producer: this.getProducerId(producer) });
     }
     // #endregion IMatrixConsumer<T>
 

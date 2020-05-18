@@ -4,6 +4,7 @@ import "mocha";
 import { createGrid, matrixProducer } from "../src/matrix";
 import { createSheetletProducer, Sheetlet } from "../src/sheetlet";
 import { makeBenchmark } from "./sheets";
+import { LoggingConsumer } from "@tiny-calc/nano/test/util/loggingConsumer";
 
 type Value = Primitive | undefined;
 
@@ -11,26 +12,6 @@ const nullConsumer: IMatrixConsumer<unknown> = {
     rowsChanged() { },
     colsChanged() { },
     cellsChanged() { },
-}
-
-const testConsumer = (values: Primitive[][]): IMatrixConsumer<Primitive> & { notifications: () => number } => {
-    let notifications = 0;
-    return {
-        notifications: () => notifications,
-        rowsChanged() { },
-        colsChanged() { },
-        cellsChanged(row, col, numRows, numCols, _, producer) {
-            notifications++;
-            const reader = producer.openMatrix(nullConsumer);
-            const endR = row + numRows;
-            const endC = col + numCols;
-            for (let i = row; i < endR; i++) {
-                for (let j = col; j < endC; j++) {
-                    assert.deepEqual(reader.read(i, j), values[i][j]);
-                }
-            }
-        }
-    }
 }
 
 describe("Sheetlet", () => {
@@ -327,19 +308,43 @@ describe("Sheetlet", () => {
             const [data, sheet] = initTest([
                 [1, 2, 3, 4, "=A1 + B1 + C1 + D1"]
             ]);
-            const consumer = testConsumer([[1, 2, 3, 4, 10]])
+
+            LoggingConsumer.setProducerId(sheet, "sheet");
+            const consumer = new LoggingConsumer();
             sheet.openMatrix(consumer);
             sheet.cellsChanged(0, 0, 1, 5);
-            assert.strictEqual(consumer.notifications(), 1);
+            consumer.expect([
+                {
+                    "producer": "sheet",
+                    "row": 0,
+                    "col": 0,
+                    "numRows": 1,
+                    "numCols": 5,
+                }
+            ]);
 
             sheet.removeMatrixConsumer(consumer);
             data.write(0, 0, 20);
             
-            const consumer2 = testConsumer([[20, 2, 3, 4, 29]])
+            const consumer2 = new LoggingConsumer();
             sheet.openMatrix(consumer2);
             sheet.cellsChanged(0, 0, 1, 1);
-            assert.strictEqual(consumer2.notifications(), 2);
-            
+            consumer2.expect([
+                {
+                    "producer": "sheet",
+                    "row": 0,
+                    "col": 0,
+                    "numRows": 1,
+                    "numCols": 1,
+                },
+                {
+                    "producer": "sheet",
+                    "row": 0,
+                    "col": 4,
+                    "numRows": 1,
+                    "numCols": 1,
+                }
+            ]);
         })
     });
 });

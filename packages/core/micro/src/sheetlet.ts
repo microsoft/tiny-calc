@@ -353,15 +353,15 @@ export class Sheetlet implements IMatrixConsumer<Value>, IMatrixProducer<Value>,
                 }
             }
         }
-        this.consumer0!.cellsChanged(row, col, numRows, numCols, undefined, this);
-        this.consumers.forEach(consumer => consumer.cellsChanged(row, col, numRows, numCols, undefined, this));
+        this.consumer0!.cellsChanged(row, col, numRows, numCols, this);
+        this.consumers.forEach(consumer => consumer.cellsChanged(row, col, numRows, numCols, this));
 
         for (let i = 0; i < this.chain.length; i++) {
             const cell = this.chain[i];
             if ((cell.flags & CalcFlags.PendingNotification)) {
                 cell.flags &= ~CalcFlags.PendingNotification;
-                this.consumer0!.cellsChanged(cell.row, cell.col, 1, 1, undefined, this);
-                this.consumers.forEach(consumer => consumer.cellsChanged(cell.row, cell.col, 1, 1, undefined, this));
+                this.consumer0!.cellsChanged(cell.row, cell.col, 1, 1, this);
+                this.consumers.forEach(consumer => consumer.cellsChanged(cell.row, cell.col, 1, 1, this));
             }
         }
     }
