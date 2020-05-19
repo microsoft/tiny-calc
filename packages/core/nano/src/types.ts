@@ -249,12 +249,12 @@ export interface IMatrixConsumer<T> {
      * matrix has the new cell values already in an array, it may optionally pass these to consumers
      * as an optimization.
      */
-    cellsChanged(row: number, col: number, numRows: number, numCols: number, producer: IMatrixProducer<T>): void;
+    cellsChanged(row: number, col: number, rowCount: number, colCount: number, producer: IMatrixProducer<T>): void;
 }
 
 export interface IMatrixReader<T> {
-    readonly numRows: number;
-    readonly numCols: number;
+    readonly rowCount: number;
+    readonly colCount: number;
     getCell(row: number, col: number): T;
 }
 

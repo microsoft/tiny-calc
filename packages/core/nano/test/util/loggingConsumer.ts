@@ -28,8 +28,8 @@ export class LoggingConsumer<T> implements IConsumer<T>, IVectorConsumer<T>, IMa
         this.log.push({ col, numRemoved, numInserted, producer: this.getProducerId(producer) });
     }
     
-    public cellsChanged(row: number, col: number, numRows: number, numCols: number, producer: IMatrixProducer<T>): void {
-        this.log.push({ row, col, numRows, numCols, producer: this.getProducerId(producer) });
+    public cellsChanged(row: number, col: number, rowCount: number, colCount: number, producer: IMatrixProducer<T>): void {
+        this.log.push({ row, col, rowCount, colCount, producer: this.getProducerId(producer) });
     }
     // #endregion IMatrixConsumer<T>
 

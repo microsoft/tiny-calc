@@ -27,12 +27,12 @@ describe("Sheetlet", () => {
         });
     }
 
-    function extract(sheet: IMatrixReader<Value>, numRows: number, numCols: number) {
+    function extract(sheet: IMatrixReader<Value>, rowCount: number, colCount: number) {
         let matrix = [];
-        for (let r = 0; r < numRows; r++) {
+        for (let r = 0; r < rowCount; r++) {
             let row: (Primitive | undefined)[] = [];
             matrix.push(row);
-            for (let c = 0; c < numCols; c++) {
+            for (let c = 0; c < colCount; c++) {
                 row.push(sheet.getCell(r, c));
             }
         }
@@ -318,8 +318,8 @@ describe("Sheetlet", () => {
                     "producer": "sheet",
                     "row": 0,
                     "col": 0,
-                    "numRows": 1,
-                    "numCols": 5,
+                    "rowCount": 1,
+                    "colCount": 5,
                 }
             ]);
 
@@ -334,15 +334,15 @@ describe("Sheetlet", () => {
                     "producer": "sheet",
                     "row": 0,
                     "col": 0,
-                    "numRows": 1,
-                    "numCols": 1,
+                    "rowCount": 1,
+                    "colCount": 1,
                 },
                 {
                     "producer": "sheet",
                     "row": 0,
                     "col": 4,
-                    "numRows": 1,
-                    "numCols": 1,
+                    "rowCount": 1,
+                    "colCount": 1,
                 }
             ]);
         })

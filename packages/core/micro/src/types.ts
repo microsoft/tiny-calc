@@ -121,8 +121,8 @@ export interface IGrid<T> {
  * Legacy Interface
  */
 export interface IMatrix {
-   readonly numRows: number;
-   readonly numCols: number;
+   readonly rowCount: number;
+   readonly colCount: number;
    loadCellText: (row: number, col: number) => Primitive | undefined;
    loadCellData: (row: number, col: number) => object | undefined;
    storeCellData: (row: number, col: number, value: object | undefined) => void;
