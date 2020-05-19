@@ -56,7 +56,7 @@ export function makeBenchmark(size: number): { sheet: Sheetlet, setAt: (row: num
 export function evalSheet(sheet: IMatrixReader<Value>, size: number) {
     for (let r = 0; r < size; r++) {
         for (let c = 0; c < size; c++) {
-            consume(sheet.read(r, c));
+            consume(sheet.getCell(r, c));
         }
     }
     return sheet;

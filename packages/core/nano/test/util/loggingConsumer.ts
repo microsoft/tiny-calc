@@ -8,28 +8,28 @@ export class LoggingConsumer<T> implements IConsumer<T>, IVectorConsumer<T>, IMa
     private getProducerId(producer: any) { return producer.id || "Error: Missing call to LoggingConsumer.setProducerId(..)"; }
 
     // #region IConsumer<T>
-    public valueChanged<U extends T, K extends keyof U>(property: K, value: U[K], producer: IProducer<U>): void {
-        this.log.push({ property, value, producer: this.getProducerId(producer) });
+    public valueChanged<U extends T, K extends keyof U>(property: K, producer: IProducer<U>): void {
+        this.log.push({ property, producer: this.getProducerId(producer) });
     }
     // #endregion IConsumer<T>
     
     // #region IVectorConsumer<T>
-    public itemsChanged(index: number, numRemoved: number, itemsInserted: ReadonlyArray<T>, producer: IVectorProducer<T>): void {
-        this.log.push({ index, numRemoved, itemsInserted, producer: this.getProducerId(producer) });
+    public itemsChanged(start: number, removedCount: number, insertedCount: number, producer: IVectorProducer<T>): void {
+        this.log.push({ start, removedCount, insertedCount, producer: this.getProducerId(producer) });
     }
     // #endregion IVectorConsumer<T>
     
     // #region IMatrixConsumer<T>
-    public rowsChanged(row: number, numRemoved: number, numInserted: number, producer: IMatrixProducer<T>): void {
-        this.log.push({ row, numRemoved, numInserted, producer: this.getProducerId(producer) });
+    public rowsChanged(rowStart: number, removedCount: number, insertedCount: number, producer: IMatrixProducer<T>): void {
+        this.log.push({ rowStart, removedCount, insertedCount, producer: this.getProducerId(producer) });
     }
     
-    public colsChanged(col: number, numRemoved: number, numInserted: number, producer: IMatrixProducer<T>): void {
-        this.log.push({ col, numRemoved, numInserted, producer: this.getProducerId(producer) });
+    public colsChanged(colStart: number, removedCount: number, insertedCount: number, producer: IMatrixProducer<T>): void {
+        this.log.push({ colStart, removedCount, insertedCount, producer: this.getProducerId(producer) });
     }
     
-    public cellsChanged(row: number, col: number, numRows: number, numCols: number, values: ReadonlyArray<T>, producer: IMatrixProducer<T>): void {
-        this.log.push({ row, col, numRows, numCols, values, producer: this.getProducerId(producer) });
+    public cellsChanged(rowStart: number, colStart: number, rowCount: number, colCount: number, producer: IMatrixProducer<T>): void {
+        this.log.push({ rowStart, colStart, rowCount, colCount, producer: this.getProducerId(producer) });
     }
     // #endregion IMatrixConsumer<T>
 

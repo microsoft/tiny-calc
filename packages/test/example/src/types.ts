@@ -26,7 +26,7 @@ export class Context implements Producer {
     removeConsumer() { }
 
     open() {
-        return { read: (key: string) => this.fields[key] };
+        return { get: (key: string) => this.fields[key] };
     }
 }
 
@@ -39,7 +39,7 @@ export class TimeProducer implements Producer {
 
     open() {
         const time = Date.now();
-        const reader = { read: () => time };
+        const reader = { get: () => time };
         return reader;
     }
 }
@@ -71,7 +71,7 @@ function createCalcValue(v: Producer) {
             if (cache[message] !== undefined) {
                 return cache[message];
             }
-            const value = v.open(consumer).read(message);
+            const value = v.open(consumer).get(message);
             switch (typeof value) {
                 case "string":
                 case "number":
@@ -129,7 +129,7 @@ export class MathProducer implements Producer {
 
     open() {
         return {
-            read: (property: string) => {
+            get: (property: string) => {
                 switch (property) {
                     case "Max": return MathProducer.max;
                     case "Min": return MathProducer.min;

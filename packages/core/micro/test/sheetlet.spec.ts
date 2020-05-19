@@ -4,6 +4,7 @@ import "mocha";
 import { createGrid, matrixProducer } from "../src/matrix";
 import { createSheetletProducer, Sheetlet } from "../src/sheetlet";
 import { makeBenchmark } from "./sheets";
+import { LoggingConsumer } from "@tiny-calc/nano/test/util/loggingConsumer";
 
 type Value = Primitive | undefined;
 
@@ -13,30 +14,10 @@ const nullConsumer: IMatrixConsumer<unknown> = {
     cellsChanged() { },
 }
 
-const testConsumer = (values: Primitive[][]): IMatrixConsumer<Primitive> & { notifications: () => number } => {
-    let notifications = 0;
-    return {
-        notifications: () => notifications,
-        rowsChanged() { },
-        colsChanged() { },
-        cellsChanged(row, col, numRows, numCols, _, producer) {
-            notifications++;
-            const reader = producer.openMatrix(nullConsumer);
-            const endR = row + numRows;
-            const endC = col + numCols;
-            for (let i = row; i < endR; i++) {
-                for (let j = col; j < endC; j++) {
-                    assert.deepEqual(reader.read(i, j), values[i][j]);
-                }
-            }
-        }
-    }
-}
-
 describe("Sheetlet", () => {
     function evalCellTest(sheet: IMatrixReader<Value>, row: number, col: number, expected: Primitive) {
         it(`[${row},${col}] -> ${JSON.stringify(expected)}`, () => {
-            assert.deepEqual(sheet.read(row, col), expected);
+            assert.deepEqual(sheet.getCell(row, col), expected);
         });
     }
 
@@ -46,13 +27,13 @@ describe("Sheetlet", () => {
         });
     }
 
-    function extract(sheet: IMatrixReader<Value>, numRows: number, numCols: number) {
+    function extract(sheet: IMatrixReader<Value>, rowCount: number, colCount: number) {
         let matrix = [];
-        for (let r = 0; r < numRows; r++) {
+        for (let r = 0; r < rowCount; r++) {
             let row: (Primitive | undefined)[] = [];
             matrix.push(row);
-            for (let c = 0; c < numCols; c++) {
-                row.push(sheet.read(r, c));
+            for (let c = 0; c < colCount; c++) {
+                row.push(sheet.getCell(r, c));
             }
         }
         return matrix;
@@ -327,19 +308,43 @@ describe("Sheetlet", () => {
             const [data, sheet] = initTest([
                 [1, 2, 3, 4, "=A1 + B1 + C1 + D1"]
             ]);
-            const consumer = testConsumer([[1, 2, 3, 4, 10]])
+
+            LoggingConsumer.setProducerId(sheet, "sheet");
+            const consumer = new LoggingConsumer();
             sheet.openMatrix(consumer);
             sheet.cellsChanged(0, 0, 1, 5);
-            assert.strictEqual(consumer.notifications(), 1);
+            consumer.expect([
+                {
+                    "producer": "sheet",
+                    "rowStart": 0,
+                    "colStart": 0,
+                    "rowCount": 1,
+                    "colCount": 5,
+                }
+            ]);
 
             sheet.removeMatrixConsumer(consumer);
             data.write(0, 0, 20);
             
-            const consumer2 = testConsumer([[20, 2, 3, 4, 29]])
+            const consumer2 = new LoggingConsumer();
             sheet.openMatrix(consumer2);
             sheet.cellsChanged(0, 0, 1, 1);
-            assert.strictEqual(consumer2.notifications(), 2);
-            
-        })
+            consumer2.expect([
+                {
+                    "producer": "sheet",
+                    "rowStart": 0,
+                    "colStart": 0,
+                    "rowCount": 1,
+                    "colCount": 1,
+                },
+                {
+                    "producer": "sheet",
+                    "rowStart": 0,
+                    "colStart": 4,
+                    "rowCount": 1,
+                    "colCount": 1,
+                }
+            ]);
+        });
     });
 });

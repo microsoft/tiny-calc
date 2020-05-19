@@ -188,8 +188,8 @@ function colIdxUnshifted(col: number, level: 0 | 1 | 2 | 3): number {
     return ((col >> (level * CONSTS.LOGW)) & CONSTS.MW);
 }
 
-export function forEachCellInColumns<T>(grid: SparseGrid<T>, columnStart: number, numCols: number, cb: (r: number, c: number, value: T) => void): void {
-    const colEnd = columnStart + numCols - 1;
+export function forEachCellInColumns<T>(grid: SparseGrid<T>, columnStart: number, colCount: number, cb: (r: number, c: number, value: T) => void): void {
+    const colEnd = columnStart + colCount - 1;
     for (let r1 = 0; r1 < CONSTS.H; r1++) {
         const cStart1 = colIdxUnshifted(columnStart, 3);
         const cEnd1 = colIdxUnshifted(colEnd, 3);
@@ -239,7 +239,7 @@ function initGrid<T>(): SparseGrid<T> {
 export function createGrid<T>(): IGrid<T> {
     const cells: SparseGrid<T> = initGrid();
     return {
-        read(row: number, col: number) {
+        getCell(row: number, col: number) {
             return getCell(row, col, cells);
         },
         write(row: number, col: number, value: T) {
@@ -263,8 +263,8 @@ export function matrixProducer<T>(data: T[][]): IMatrixProducer<T | undefined> &
         }
     }
     return {
-        numRows: data.length,
-        numCols: data.length > 0 ? data[0].length : 0,
+        rowCount: data.length,
+        colCount: data.length > 0 ? data[0].length : 0,
         ...grid,
         removeMatrixConsumer() { },
         openMatrix() { return this },

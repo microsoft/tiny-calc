@@ -110,7 +110,7 @@ export interface Binder {
  * IGrid denotes a 2D cache for values of type `T`.
  */
 export interface IGrid<T> {
-    read(row: number, col: number): T | undefined;
+    getCell(row: number, col: number): T | undefined;
     write(row: number, col: number, value: T): void;
     // Undefined means invalid row or col.
     readOrWrite(row: number, col: number, value: () => T): T | undefined;
@@ -121,8 +121,8 @@ export interface IGrid<T> {
  * Legacy Interface
  */
 export interface IMatrix {
-   readonly numRows: number;
-   readonly numCols: number;
+   readonly rowCount: number;
+   readonly colCount: number;
    loadCellText: (row: number, col: number) => Primitive | undefined;
    loadCellData: (row: number, col: number) => object | undefined;
    storeCellData: (row: number, col: number, value: object | undefined) => void;

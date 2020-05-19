@@ -25,7 +25,7 @@ export type Primitive = boolean | number | string;
 
 export interface CalcObj<C> {
     /** 
-     * An object's type map descibes the behaviours the object
+     * An object's type map describes the behaviours the object
      * supports. Type maps are immutable.
      *
      * The purpose of the `this` type is to allow authors to implement
@@ -182,7 +182,7 @@ export interface IConsumer<T> {
     /**
      * Invoked whenever the data this object is bound to is changed.
      */
-    valueChanged<U extends T, K extends keyof U>(property: K, value: U[K], producer: IProducer<U>): void;
+    valueChanged<U extends T, K extends keyof U>(property: K, producer: IProducer<U>): void;
 }
 
 export interface IReader<T> {
@@ -190,7 +190,7 @@ export interface IReader<T> {
      * Return the value associated with `property`.
      * @param property - The property of the Producer to read.
      */
-    read<K extends keyof T>(property: K): T[K] | Pending<T[K]>;
+    get<K extends keyof T>(property: K): T[K] | Pending<T[K]>;
 }
 
 /**
@@ -218,12 +218,12 @@ export interface IProducer<T> {
 
 export interface IVectorConsumer<T> {
     /** Notification that a range of items have been inserted, removed, and/or replaced in the given vector. */
-    itemsChanged(index: number, numRemoved: number, itemsInserted: ReadonlyArray<T>, producer: IVectorProducer<T>): void;
+    itemsChanged(start: number, removedCount: number, insertedCount: number, producer: IVectorProducer<T>): void;
 }
 
 export interface IVectorReader<T> {
     readonly length: number;
-    read(index: number): T;
+    getItem(index: number): T;
 }
 
 /** Provides more efficient access to 1D data for vector-aware consumers. */
@@ -239,23 +239,23 @@ export interface IVectorProducer<T> {
 
 export interface IMatrixConsumer<T> {
     /** Notification that rows have been inserted, removed, and/or replaced in the given matrix. */
-    rowsChanged(row: number, numRemoved: number, numInserted: number, producer: IMatrixProducer<T>): void;
+    rowsChanged(rowStart: number, removedCount: number, insertedCount: number, producer: IMatrixProducer<T>): void;
 
     /** Notification that cols have been inserted, removed, and/or replaced in the given matrix. */
-    colsChanged(col: number, numRemoved: number, numInserted: number, producer: IMatrixProducer<T>): void;
+    colsChanged(colStart: number, removedCount: number, insertedCount: number, producer: IMatrixProducer<T>): void;
 
     /**
      * Notification that a range of cells have been replaced in the given matrix.  If the source
      * matrix has the new cell values already in an array, it may optionally pass these to consumers
      * as an optimization.
      */
-    cellsChanged(row: number, col: number, numRows: number, numCols: number, values: ReadonlyArray<T> | undefined, producer: IMatrixProducer<T>): void;
+    cellsChanged(rowStart: number, colStart: number, rowCount: number, colCount: number, producer: IMatrixProducer<T>): void;
 }
 
 export interface IMatrixReader<T> {
-    readonly numRows: number;
-    readonly numCols: number;
-    read(row: number, col: number): T;
+    readonly rowCount: number;
+    readonly colCount: number;
+    getCell(row: number, col: number): T;
 }
 
 /** Provides more efficient access to 2D data for matrix-aware consumers. */

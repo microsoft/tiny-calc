@@ -248,12 +248,12 @@ export class Sheetlet implements IMatrixConsumer<Value>, IMatrixProducer<Value>,
 
     chain: FormulaCell<CellValue>[] = [];
     reader: IMatrixReader<Value> = {
-        numRows: 0,
-        numCols: 0,
-        read: () => undefined
+        rowCount: 0,
+        colCount: 0,
+        getCell: () => undefined
     };
-    numRows: number = -1;
-    numCols: number = -1;
+    rowCount: number = -1;
+    colCount: number = -1;
     consumer0: IMatrixConsumer<Value> | undefined;
     consumers: IMatrixConsumer<Value>[] = [];
 
@@ -282,24 +282,24 @@ export class Sheetlet implements IMatrixConsumer<Value>, IMatrixProducer<Value>,
 
     connect(producer: IMatrixProducer<Value>) {
         this.reader = producer.openMatrix(this);
-        this.numRows = this.reader.numRows;
-        this.numCols = this.reader.numCols;
+        this.rowCount = this.reader.rowCount;
+        this.colCount = this.reader.colCount;
         return this;
     }
 
-    rowsChanged(row: number, numRemoved: number, numInserted: number) {
-        this.numRows = this.reader.numRows;
+    rowsChanged(rowStart: number, removedCount: number, insertedCount: number) {
+        this.rowCount = this.reader.rowCount;
         if (this.consumer0) {
-            this.consumer0.rowsChanged(row, numRemoved, numInserted, this);
-            this.consumers.forEach(consumer => consumer.rowsChanged(row, numRemoved, numInserted, this));
+            this.consumer0.rowsChanged(rowStart, removedCount, insertedCount, this);
+            this.consumers.forEach(consumer => consumer.rowsChanged(rowStart, removedCount, insertedCount, this));
         }
     }
 
-    colsChanged(col: number, numRemoved: number, numInserted: number) {
-        this.numCols = this.reader.numCols;
+    colsChanged(colStart: number, removedCount: number, insertedCount: number) {
+        this.colCount = this.reader.colCount;
         if (this.consumer0) {
-            this.consumer0.colsChanged(col, numRemoved, numInserted, this);
-            this.consumers.forEach(consumer => consumer.colsChanged(col, numRemoved, numInserted, this));
+            this.consumer0.colsChanged(colStart, removedCount, insertedCount, this);
+            this.consumers.forEach(consumer => consumer.colsChanged(colStart, removedCount, insertedCount, this));
         }
     }
 
@@ -321,18 +321,18 @@ export class Sheetlet implements IMatrixConsumer<Value>, IMatrixProducer<Value>,
         }
     }
 
-    cellsChanged(row: number, col: number, numRows: number, numCols: number) {
-        const endR = row + numRows;
-        const endC = col + numCols;
+    cellsChanged(rowStart: number, colStart: number, rowCount: number, colCount: number) {
+        const endR = rowStart + rowCount;
+        const endC = colStart + colCount;
         const dirty = this.createDirtier();
-        for (let i = row; i < endR; i++) {
-            for (let j = col; j < endC; j++) {
+        for (let i = rowStart; i < endR; i++) {
+            for (let j = colStart; j < endC; j++) {
                 const formula = dirty(i, j);
                 if (formula) {
                     formula.state = CalcState.Invalid;
                 }
                 else {
-                    this.cache.clear(row, col);
+                    this.cache.clear(rowStart, colStart);
                 }
                 const cell = this.readCache(i, j);
                 if (cell && isFormulaCell(cell)) {
@@ -345,23 +345,23 @@ export class Sheetlet implements IMatrixConsumer<Value>, IMatrixProducer<Value>,
         }
         
         this.chain = rebuild(this.chain, this);
-        for (let i = row; i < endR; i++) {
-            for (let j = col; j < endC; j++) {
+        for (let i = rowStart; i < endR; i++) {
+            for (let j = colStart; j < endC; j++) {
                 const cell = this.readCache(i, j)
                 if (cell && isFormulaCell(cell) && (cell.flags & CalcFlags.PendingNotification)) {
                     cell.flags &= ~CalcFlags.PendingNotification;
                 }
             }
         }
-        this.consumer0!.cellsChanged(row, col, numRows, numCols, undefined, this);
-        this.consumers.forEach(consumer => consumer.cellsChanged(row, col, numRows, numCols, undefined, this));
+        this.consumer0!.cellsChanged(rowStart, colStart, rowCount, colCount, this);
+        this.consumers.forEach(consumer => consumer.cellsChanged(rowStart, colStart, rowCount, colCount, this));
 
         for (let i = 0; i < this.chain.length; i++) {
             const cell = this.chain[i];
             if ((cell.flags & CalcFlags.PendingNotification)) {
                 cell.flags &= ~CalcFlags.PendingNotification;
-                this.consumer0!.cellsChanged(cell.row, cell.col, 1, 1, undefined, this);
-                this.consumers.forEach(consumer => consumer.cellsChanged(cell.row, cell.col, 1, 1, undefined, this));
+                this.consumer0!.cellsChanged(cell.row, cell.col, 1, 1, this);
+                this.consumers.forEach(consumer => consumer.cellsChanged(cell.row, cell.col, 1, 1, this));
             }
         }
     }
@@ -392,7 +392,7 @@ export class Sheetlet implements IMatrixConsumer<Value>, IMatrixProducer<Value>,
     createDirtier() {
         const { cache, binder } = this;
         function runDirtier(row: number, col: number) {
-            const cell = cache.read(row, col);
+            const cell = cache.getCell(row, col);
             if (cell === undefined || !isFormulaCell(cell)) {
                 const deps = binder.getDependents(row, col);
                 if (deps) {
@@ -436,7 +436,7 @@ export class Sheetlet implements IMatrixConsumer<Value>, IMatrixProducer<Value>,
 
     refresh = (formula: FormulaCell<CellValue>) => {
         const { row, col } = formula;
-        const cell = this.cache.read(row, col);
+        const cell = this.cache.getCell(row, col);
         if (cell === formula) {
             this.cache.clear(row, col);
             return this.readCache(row, col);
@@ -445,9 +445,9 @@ export class Sheetlet implements IMatrixConsumer<Value>, IMatrixProducer<Value>,
     }
 
     readCache = (row: number, col: number) => {
-        let cell = this.cache.read(row, col);
+        let cell = this.cache.getCell(row, col);
         if (cell === undefined) {
-            cell = makeCell(row, col, this.reader!.read(row, col));
+            cell = makeCell(row, col, this.reader!.getCell(row, col));
             if (cell !== undefined) {
                 this.cache.write(row, col, cell);
             }
@@ -471,10 +471,10 @@ export class Sheetlet implements IMatrixConsumer<Value>, IMatrixProducer<Value>,
     }
 
     evaluateCell(row: number, col: number) {
-        return this.read(row, col);
+        return this.getCell(row, col);
     }
 
-    read(row: number, col: number): Value {
+    getCell(row: number, col: number): Value {
         let cell = this.readCache(row, col);
         if (cell === undefined) {
             return undefined;
@@ -606,9 +606,9 @@ export class Sheetlet implements IMatrixConsumer<Value>, IMatrixProducer<Value>,
 
 function wrapIMatrix(matrix: IMatrix): IMatrixProducer<Value> {
     const producer = {
-        get numRows() { return matrix.numRows },
-        get numCols() { return matrix.numCols },
-        read(row: number, col: number) {
+        get rowCount() { return matrix.rowCount },
+        get colCount() { return matrix.colCount },
+        getCell(row: number, col: number) {
             const raw = matrix.loadCellText(row, col);
             return typeof raw === "object"
                 ? undefined
