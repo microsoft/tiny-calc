@@ -10,13 +10,14 @@ const unitFn = () => {};
 const props = {
     open: { value: function() { return this; }},
     removeConsumer: { value: unitFn },
-    read: { value: function(key: PropertyKey) { return (this as any)[key]; }},
+    get: { value: function(key: PropertyKey) { return (this as any)[key]; }},
 }
 
 const vectorProps = {
     ...props,
-    openVector: { value: function() { return this; }},
-    removeVectorConsumer: { value: unitFn },
+    openVector: props.open,
+    removeVectorConsumer: props.removeConsumer,
+    getItem: props.get,
 }
 
 export function produce<T>(subject: ArrayLike<T>): IProducer<ArrayLike<T>> & IVectorProducer<T>;

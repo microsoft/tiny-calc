@@ -239,7 +239,7 @@ function initGrid<T>(): SparseGrid<T> {
 export function createGrid<T>(): IGrid<T> {
     const cells: SparseGrid<T> = initGrid();
     return {
-        read(row: number, col: number) {
+        getCell(row: number, col: number) {
             return getCell(row, col, cells);
         },
         write(row: number, col: number, value: T) {

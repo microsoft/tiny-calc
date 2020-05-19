@@ -25,7 +25,7 @@ export type Primitive = boolean | number | string;
 
 export interface CalcObj<C> {
     /** 
-     * An object's type map descibes the behaviours the object
+     * An object's type map describes the behaviours the object
      * supports. Type maps are immutable.
      *
      * The purpose of the `this` type is to allow authors to implement
@@ -190,7 +190,7 @@ export interface IReader<T> {
      * Return the value associated with `property`.
      * @param property - The property of the Producer to read.
      */
-    read<K extends keyof T>(property: K): T[K] | Pending<T[K]>;
+    get<K extends keyof T>(property: K): T[K] | Pending<T[K]>;
 }
 
 /**
@@ -223,7 +223,7 @@ export interface IVectorConsumer<T> {
 
 export interface IVectorReader<T> {
     readonly length: number;
-    read(index: number): T;
+    getItem(index: number): T;
 }
 
 /** Provides more efficient access to 1D data for vector-aware consumers. */
@@ -255,7 +255,7 @@ export interface IMatrixConsumer<T> {
 export interface IMatrixReader<T> {
     readonly numRows: number;
     readonly numCols: number;
-    read(row: number, col: number): T;
+    getCell(row: number, col: number): T;
 }
 
 /** Provides more efficient access to 2D data for matrix-aware consumers. */

@@ -21,10 +21,10 @@ export function initBinder(): Binder {
             }
         },
         getDependents(row: number, col: number) {
-            return grid.read(row, col);
+            return grid.getCell(row, col);
         },
         clearDependents(row: number, col: number) {
-            const s = grid.read(row, col);
+            const s = grid.getCell(row, col);
             if (s) {
                 s.clear();
             }

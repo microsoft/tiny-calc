@@ -250,7 +250,7 @@ export class Sheetlet implements IMatrixConsumer<Value>, IMatrixProducer<Value>,
     reader: IMatrixReader<Value> = {
         numRows: 0,
         numCols: 0,
-        read: () => undefined
+        getCell: () => undefined
     };
     numRows: number = -1;
     numCols: number = -1;
@@ -392,7 +392,7 @@ export class Sheetlet implements IMatrixConsumer<Value>, IMatrixProducer<Value>,
     createDirtier() {
         const { cache, binder } = this;
         function runDirtier(row: number, col: number) {
-            const cell = cache.read(row, col);
+            const cell = cache.getCell(row, col);
             if (cell === undefined || !isFormulaCell(cell)) {
                 const deps = binder.getDependents(row, col);
                 if (deps) {
@@ -436,7 +436,7 @@ export class Sheetlet implements IMatrixConsumer<Value>, IMatrixProducer<Value>,
 
     refresh = (formula: FormulaCell<CellValue>) => {
         const { row, col } = formula;
-        const cell = this.cache.read(row, col);
+        const cell = this.cache.getCell(row, col);
         if (cell === formula) {
             this.cache.clear(row, col);
             return this.readCache(row, col);
@@ -445,9 +445,9 @@ export class Sheetlet implements IMatrixConsumer<Value>, IMatrixProducer<Value>,
     }
 
     readCache = (row: number, col: number) => {
-        let cell = this.cache.read(row, col);
+        let cell = this.cache.getCell(row, col);
         if (cell === undefined) {
-            cell = makeCell(row, col, this.reader!.read(row, col));
+            cell = makeCell(row, col, this.reader!.getCell(row, col));
             if (cell !== undefined) {
                 this.cache.write(row, col, cell);
             }
@@ -471,10 +471,10 @@ export class Sheetlet implements IMatrixConsumer<Value>, IMatrixProducer<Value>,
     }
 
     evaluateCell(row: number, col: number) {
-        return this.read(row, col);
+        return this.getCell(row, col);
     }
 
-    read(row: number, col: number): Value {
+    getCell(row: number, col: number): Value {
         let cell = this.readCache(row, col);
         if (cell === undefined) {
             return undefined;
@@ -608,7 +608,7 @@ function wrapIMatrix(matrix: IMatrix): IMatrixProducer<Value> {
     const producer = {
         get numRows() { return matrix.numRows },
         get numCols() { return matrix.numCols },
-        read(row: number, col: number) {
+        getCell(row: number, col: number) {
             const raw = matrix.loadCellText(row, col);
             return typeof raw === "object"
                 ? undefined

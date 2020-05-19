@@ -17,7 +17,7 @@ const nullConsumer: IMatrixConsumer<unknown> = {
 describe("Sheetlet", () => {
     function evalCellTest(sheet: IMatrixReader<Value>, row: number, col: number, expected: Primitive) {
         it(`[${row},${col}] -> ${JSON.stringify(expected)}`, () => {
-            assert.deepEqual(sheet.read(row, col), expected);
+            assert.deepEqual(sheet.getCell(row, col), expected);
         });
     }
 
@@ -33,7 +33,7 @@ describe("Sheetlet", () => {
             let row: (Primitive | undefined)[] = [];
             matrix.push(row);
             for (let c = 0; c < numCols; c++) {
-                row.push(sheet.read(r, c));
+                row.push(sheet.getCell(r, c));
             }
         }
         return matrix;
