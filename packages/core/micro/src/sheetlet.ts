@@ -287,19 +287,19 @@ export class Sheetlet implements IMatrixConsumer<Value>, IMatrixProducer<Value>,
         return this;
     }
 
-    rowsChanged(row: number, numRemoved: number, numInserted: number) {
+    rowsChanged(rowStart: number, removedCount: number, insertedCount: number) {
         this.rowCount = this.reader.rowCount;
         if (this.consumer0) {
-            this.consumer0.rowsChanged(row, numRemoved, numInserted, this);
-            this.consumers.forEach(consumer => consumer.rowsChanged(row, numRemoved, numInserted, this));
+            this.consumer0.rowsChanged(rowStart, removedCount, insertedCount, this);
+            this.consumers.forEach(consumer => consumer.rowsChanged(rowStart, removedCount, insertedCount, this));
         }
     }
 
-    colsChanged(col: number, numRemoved: number, numInserted: number) {
+    colsChanged(colStart: number, removedCount: number, insertedCount: number) {
         this.colCount = this.reader.colCount;
         if (this.consumer0) {
-            this.consumer0.colsChanged(col, numRemoved, numInserted, this);
-            this.consumers.forEach(consumer => consumer.colsChanged(col, numRemoved, numInserted, this));
+            this.consumer0.colsChanged(colStart, removedCount, insertedCount, this);
+            this.consumers.forEach(consumer => consumer.colsChanged(colStart, removedCount, insertedCount, this));
         }
     }
 
@@ -321,18 +321,18 @@ export class Sheetlet implements IMatrixConsumer<Value>, IMatrixProducer<Value>,
         }
     }
 
-    cellsChanged(row: number, col: number, rowCount: number, colCount: number) {
-        const endR = row + rowCount;
-        const endC = col + colCount;
+    cellsChanged(rowStart: number, colStart: number, rowCount: number, colCount: number) {
+        const endR = rowStart + rowCount;
+        const endC = colStart + colCount;
         const dirty = this.createDirtier();
-        for (let i = row; i < endR; i++) {
-            for (let j = col; j < endC; j++) {
+        for (let i = rowStart; i < endR; i++) {
+            for (let j = colStart; j < endC; j++) {
                 const formula = dirty(i, j);
                 if (formula) {
                     formula.state = CalcState.Invalid;
                 }
                 else {
-                    this.cache.clear(row, col);
+                    this.cache.clear(rowStart, colStart);
                 }
                 const cell = this.readCache(i, j);
                 if (cell && isFormulaCell(cell)) {
@@ -345,16 +345,16 @@ export class Sheetlet implements IMatrixConsumer<Value>, IMatrixProducer<Value>,
         }
         
         this.chain = rebuild(this.chain, this);
-        for (let i = row; i < endR; i++) {
-            for (let j = col; j < endC; j++) {
+        for (let i = rowStart; i < endR; i++) {
+            for (let j = colStart; j < endC; j++) {
                 const cell = this.readCache(i, j)
                 if (cell && isFormulaCell(cell) && (cell.flags & CalcFlags.PendingNotification)) {
                     cell.flags &= ~CalcFlags.PendingNotification;
                 }
             }
         }
-        this.consumer0!.cellsChanged(row, col, rowCount, colCount, this);
-        this.consumers.forEach(consumer => consumer.cellsChanged(row, col, rowCount, colCount, this));
+        this.consumer0!.cellsChanged(rowStart, colStart, rowCount, colCount, this);
+        this.consumers.forEach(consumer => consumer.cellsChanged(rowStart, colStart, rowCount, colCount, this));
 
         for (let i = 0; i < this.chain.length; i++) {
             const cell = this.chain[i];

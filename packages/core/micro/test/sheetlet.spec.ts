@@ -316,8 +316,8 @@ describe("Sheetlet", () => {
             consumer.expect([
                 {
                     "producer": "sheet",
-                    "row": 0,
-                    "col": 0,
+                    "rowStart": 0,
+                    "colStart": 0,
                     "rowCount": 1,
                     "colCount": 5,
                 }
@@ -332,19 +332,19 @@ describe("Sheetlet", () => {
             consumer2.expect([
                 {
                     "producer": "sheet",
-                    "row": 0,
-                    "col": 0,
+                    "rowStart": 0,
+                    "colStart": 0,
                     "rowCount": 1,
                     "colCount": 1,
                 },
                 {
                     "producer": "sheet",
-                    "row": 0,
-                    "col": 4,
+                    "rowStart": 0,
+                    "colStart": 4,
                     "rowCount": 1,
                     "colCount": 1,
                 }
             ]);
-        })
+        });
     });
 });

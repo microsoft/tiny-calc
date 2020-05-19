@@ -14,22 +14,22 @@ export class LoggingConsumer<T> implements IConsumer<T>, IVectorConsumer<T>, IMa
     // #endregion IConsumer<T>
     
     // #region IVectorConsumer<T>
-    public itemsChanged(index: number, numRemoved: number, numInserted: number, producer: IVectorProducer<T>): void {
-        this.log.push({ index, numRemoved, numInserted, producer: this.getProducerId(producer) });
+    public itemsChanged(start: number, removedCount: number, insertedCount: number, producer: IVectorProducer<T>): void {
+        this.log.push({ start, removedCount, insertedCount, producer: this.getProducerId(producer) });
     }
     // #endregion IVectorConsumer<T>
     
     // #region IMatrixConsumer<T>
-    public rowsChanged(row: number, numRemoved: number, numInserted: number, producer: IMatrixProducer<T>): void {
-        this.log.push({ row, numRemoved, numInserted, producer: this.getProducerId(producer) });
+    public rowsChanged(rowStart: number, removedCount: number, insertedCount: number, producer: IMatrixProducer<T>): void {
+        this.log.push({ rowStart, removedCount, insertedCount, producer: this.getProducerId(producer) });
     }
     
-    public colsChanged(col: number, numRemoved: number, numInserted: number, producer: IMatrixProducer<T>): void {
-        this.log.push({ col, numRemoved, numInserted, producer: this.getProducerId(producer) });
+    public colsChanged(colStart: number, removedCount: number, insertedCount: number, producer: IMatrixProducer<T>): void {
+        this.log.push({ colStart, removedCount, insertedCount, producer: this.getProducerId(producer) });
     }
     
-    public cellsChanged(row: number, col: number, rowCount: number, colCount: number, producer: IMatrixProducer<T>): void {
-        this.log.push({ row, col, rowCount, colCount, producer: this.getProducerId(producer) });
+    public cellsChanged(rowStart: number, colStart: number, rowCount: number, colCount: number, producer: IMatrixProducer<T>): void {
+        this.log.push({ rowStart, colStart, rowCount, colCount, producer: this.getProducerId(producer) });
     }
     // #endregion IMatrixConsumer<T>
 
