@@ -202,18 +202,19 @@ export interface IReader<T> {
  */
 export interface IProducer<T> {
     /**
-     * Unsubscribes a consumer from this producer.
-     * @param consumer - The consumer to unregister from the Producer.
-     */
-    removeConsumer(consumer: IConsumer<T>): void;
-
-    /**
-     * Returns a reader for this producer's values and implicitly subscribes the given
-     * consumer to change notifications from this producer (if it isn't already).
+     * Acquire a reader for this producer's values and implicitly subscribe the consumer
+     * to value change notifications.
      * 
-     * @param consumer - The object to be notified of value changes.
+     * @param consumer - The consumer to be notified of value changes.
      */
     open(consumer: IConsumer<T>): IReader<T>;
+
+    /**
+     * Unsubscribe the consumer from this producer's change notifications.
+     * 
+     * @param consumer - The consumer to unregister from the producer.
+     */
+    close(consumer: IConsumer<T>): void;
 }
 
 export interface IVectorConsumer<T> {
@@ -229,12 +230,19 @@ export interface IVectorReader<T> {
 /** Provides more efficient access to 1D data for vector-aware consumers. */
 export interface IVectorProducer<T> {
     /**
-     * Unsubscribes a consumer from this producer.
-     * @param consumer - The consumer to unregister from the Producer.
+     * Acquire a reader for this vector's values and implicitly subscribe the consumer
+     * to value change notifications.
+     * 
+     * @param consumer - The consumer to be notified of vector changes.
      */
-    removeVectorConsumer(consumer: IVectorConsumer<T>): void;
-
     openVector(consumer: IVectorConsumer<T>): IVectorReader<T>;
+
+    /**
+     * Unsubscribe the consumer from this vector's change notifications.
+     * 
+     * @param consumer - The consumer to unregister from the vector.
+     */
+    closeVector(consumer: IVectorConsumer<T>): void;
 }
 
 export interface IMatrixConsumer<T> {
@@ -261,10 +269,17 @@ export interface IMatrixReader<T> {
 /** Provides more efficient access to 2D data for matrix-aware consumers. */
 export interface IMatrixProducer<T> {
     /**
-     * Unsubscribes a consumer from this producer.
-     * @param consumer - The consumer to unregister from the Producer.
+     * Acquire a reader for this matrix's values and implicitly subscribe the consumer
+     * to value change notifications.
+     * 
+     * @param consumer - The consumer to be notified of matrix changes.
      */
-    removeMatrixConsumer(consumer: IMatrixConsumer<T>): void;
-
     openMatrix(consumer: IMatrixConsumer<T>): IMatrixReader<T>;
+    
+    /**
+     * Unsubscribe the consumer from this matrix's change notifications.
+     * 
+     * @param consumer - The consumer to unregister from the matrix.
+     */
+    closeMatrix(consumer: IMatrixConsumer<T>): void;
 }

@@ -23,7 +23,7 @@ export class Context implements Producer {
 
     id = "context";
 
-    removeConsumer() { }
+    close() { }
 
     open() {
         return { get: (key: string) => this.fields[key] };
@@ -35,7 +35,7 @@ export class TimeProducer implements Producer {
 
     id = "Time";
 
-    removeConsumer() { }
+    close() { }
 
     open() {
         const time = Date.now();
@@ -125,7 +125,7 @@ export class MathProducer implements Producer {
 
     id = "Math";
 
-    removeConsumer() { }
+    close() { }
 
     open() {
         return {

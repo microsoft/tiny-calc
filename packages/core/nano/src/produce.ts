@@ -9,21 +9,21 @@ const unitFn = () => {};
 
 const props = {
     open: { value: function() { return this; }},
-    removeConsumer: { value: unitFn },
+    close: { value: unitFn },
     get: { value: function(key: PropertyKey) { return (this as any)[key]; }},
 }
 
 const vectorProps = {
     ...props,
     openVector: props.open,
-    removeVectorConsumer: props.removeConsumer,
+    removeVectorConsumer: props.close,
     getItem: props.get,
 }
 
 export function produce<T>(subject: ArrayLike<T>): IProducer<ArrayLike<T>> & IVectorProducer<T>;
 export function produce<T extends Readonly<object>>(subject: T): IProducer<T>;
 export function produce<T extends Readonly<object>>(subject: T): IProducer<T> {
-    if ((subject as any).removeConsumer === unitFn) {
+    if ((subject as any).close === unitFn) {
         return subject as any;
     }
 

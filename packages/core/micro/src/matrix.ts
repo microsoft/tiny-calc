@@ -266,7 +266,7 @@ export function matrixProducer<T>(data: T[][]): IMatrixProducer<T | undefined> &
         rowCount: data.length,
         colCount: data.length > 0 ? data[0].length : 0,
         ...grid,
-        removeMatrixConsumer() { },
+        closeMatrix() { },
         openMatrix() { return this },
     }
 }

@@ -377,7 +377,7 @@ export class Sheetlet implements IMatrixConsumer<Value>, IMatrixProducer<Value>,
         return this;
     }
 
-    removeMatrixConsumer(consumer: IMatrixConsumer<Value>) {
+    closeMatrix(consumer: IMatrixConsumer<Value>) {
         if (consumer === this.consumer0) {
             this.consumer0 = this.consumers.pop();
             return;
@@ -615,7 +615,7 @@ function wrapIMatrix(matrix: IMatrix): IMatrixProducer<Value> {
                 : raw;
         },
         openMatrix() { return producer },
-        removeMatrixConsumer() { },
+        closeMatrix() { },
     }
     return producer;
 }
