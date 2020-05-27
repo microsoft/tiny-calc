@@ -26,7 +26,11 @@ export class Context implements Producer {
     close() { }
 
     open() {
-        return { get: (key: string) => this.fields[key] };
+        const producer: Producer = this;
+        return { 
+            get: (key: string) => this.fields[key],
+            producer
+        };
     }
 }
 
@@ -39,8 +43,11 @@ export class TimeProducer implements Producer {
 
     open() {
         const time = Date.now();
-        const reader = { get: () => time };
-        return reader;
+        const producer: Producer = this;
+        return { 
+            get: () => time,
+            producer
+        };
     }
 }
 
@@ -128,6 +135,8 @@ export class MathProducer implements Producer {
     close() { }
 
     open() {
+        const producer: Producer = this;
+
         return {
             get: (property: string) => {
                 switch (property) {
@@ -136,6 +145,7 @@ export class MathProducer implements Producer {
                     default: return Math.PI; // a stupid default;
                 }
             },
+            producer
         };
     }
 }

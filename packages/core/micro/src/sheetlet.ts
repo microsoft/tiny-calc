@@ -250,7 +250,8 @@ export class Sheetlet implements IMatrixConsumer<Value>, IMatrixProducer<Value>,
     reader: IMatrixReader<Value> = {
         rowCount: 0,
         colCount: 0,
-        getCell: () => undefined
+        getCell: () => undefined,
+        matrixProducer: undefined as any,
     };
     rowCount: number = -1;
     colCount: number = -1;
@@ -388,6 +389,8 @@ export class Sheetlet implements IMatrixConsumer<Value>, IMatrixProducer<Value>,
             }
         }
     }
+
+    get matrixProducer() { return this; }
 
     createDirtier() {
         const { cache, binder } = this;
@@ -616,7 +619,11 @@ function wrapIMatrix(matrix: IMatrix): IMatrixProducer<Value> {
         },
         openMatrix() { return producer },
         closeMatrix() { },
+        matrixProducer: undefined as any as IMatrixProducer<Value>,
     }
+
+    producer.matrixProducer = producer;
+
     return producer;
 }
 

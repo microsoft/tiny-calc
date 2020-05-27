@@ -11,13 +11,15 @@ const props = {
     open: { value: function() { return this; }},
     close: { value: unitFn },
     get: { value: function(key: PropertyKey) { return (this as any)[key]; }},
+    producer: { get: function() { return this; }},
 }
 
 const vectorProps = {
     ...props,
     openVector: props.open,
-    removeVectorConsumer: props.close,
+    closeVector: props.close,
     getItem: props.get,
+    vectorProducer: props.producer,
 }
 
 export function produce<T>(subject: ArrayLike<T>): IProducer<ArrayLike<T>> & IVectorProducer<T>;

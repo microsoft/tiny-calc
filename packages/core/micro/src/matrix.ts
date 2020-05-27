@@ -262,11 +262,17 @@ export function matrixProducer<T>(data: T[][]): IMatrixProducer<T | undefined> &
             grid.write(i, j, row[j]);
         }
     }
-    return {
+    
+    const producer = {
         rowCount: data.length,
         colCount: data.length > 0 ? data[0].length : 0,
         ...grid,
         closeMatrix() { },
         openMatrix() { return this },
+        matrixProducer: undefined as any as IMatrixProducer<T | undefined>
     }
+
+    producer.matrixProducer = producer;
+
+    return producer;
 }

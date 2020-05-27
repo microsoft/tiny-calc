@@ -191,6 +191,11 @@ export interface IReader<T> {
      * @param property - The property of the Producer to read.
      */
     get<K extends keyof T>(property: K): T[K] | Pending<T[K]>;
+
+    /**
+     * A reference to the underlying producer that provides values for this reader.
+     */
+    readonly producer: IProducer<T>;
 }
 
 /**
@@ -225,6 +230,11 @@ export interface IVectorConsumer<T> {
 export interface IVectorReader<T> {
     readonly length: number;
     getItem(index: number): T;
+
+    /**
+     * A reference to the underlying vector producer that provides values for this reader.
+     */
+    readonly vectorProducer: IVectorProducer<T>;
 }
 
 /** Provides more efficient access to 1D data for vector-aware consumers. */
@@ -264,6 +274,11 @@ export interface IMatrixReader<T> {
     readonly rowCount: number;
     readonly colCount: number;
     getCell(row: number, col: number): T;
+
+    /**
+     * A reference to the underlying matrix producer that provides values for this reader.
+     */
+    readonly matrixProducer: IMatrixProducer<T>;
 }
 
 /** Provides more efficient access to 2D data for matrix-aware consumers. */
