@@ -250,7 +250,8 @@ export class Sheetlet implements IMatrixConsumer<Value>, IMatrixProducer<Value>,
     reader: IMatrixReader<Value> = {
         rowCount: 0,
         colCount: 0,
-        getCell: () => undefined
+        getCell: () => undefined,
+        matrixProducer: undefined as any,
     };
     rowCount: number = -1;
     colCount: number = -1;
@@ -377,7 +378,7 @@ export class Sheetlet implements IMatrixConsumer<Value>, IMatrixProducer<Value>,
         return this;
     }
 
-    removeMatrixConsumer(consumer: IMatrixConsumer<Value>) {
+    closeMatrix(consumer: IMatrixConsumer<Value>) {
         if (consumer === this.consumer0) {
             this.consumer0 = this.consumers.pop();
             return;
@@ -388,6 +389,8 @@ export class Sheetlet implements IMatrixConsumer<Value>, IMatrixProducer<Value>,
             }
         }
     }
+
+    get matrixProducer() { return this; }
 
     createDirtier() {
         const { cache, binder } = this;
@@ -604,8 +607,8 @@ export class Sheetlet implements IMatrixConsumer<Value>, IMatrixProducer<Value>,
     }
 }
 
-function wrapIMatrix(matrix: IMatrix): IMatrixProducer<Value> {
-    const producer = {
+function wrapIMatrix(matrix: IMatrix): IMatrixProducer<Value> & IMatrixReader<Value> {
+    return {
         get rowCount() { return matrix.rowCount },
         get colCount() { return matrix.colCount },
         getCell(row: number, col: number) {
@@ -614,10 +617,10 @@ function wrapIMatrix(matrix: IMatrix): IMatrixProducer<Value> {
                 ? undefined
                 : raw;
         },
-        openMatrix() { return producer },
-        removeMatrixConsumer() { },
-    }
-    return producer;
+        openMatrix() { return this },
+        closeMatrix() { },
+        get matrixProducer() { return this; }
+    };
 }
 
 export const createSheetlet = (matrix: IMatrix) => new Sheetlet(createGrid()).connect(wrapIMatrix(matrix));

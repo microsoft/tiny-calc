@@ -262,11 +262,13 @@ export function matrixProducer<T>(data: T[][]): IMatrixProducer<T | undefined> &
             grid.write(i, j, row[j]);
         }
     }
+    
     return {
         rowCount: data.length,
         colCount: data.length > 0 ? data[0].length : 0,
         ...grid,
-        removeMatrixConsumer() { },
+        closeMatrix() { },
         openMatrix() { return this },
+        get matrixProducer(): IMatrixProducer<T | undefined> { return this; }
     }
 }

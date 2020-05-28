@@ -323,7 +323,7 @@ describe("Sheetlet", () => {
                 }
             ]);
 
-            sheet.removeMatrixConsumer(consumer);
+            sheet.closeMatrix(consumer);
             data.write(0, 0, 20);
             
             const consumer2 = new LoggingConsumer();
