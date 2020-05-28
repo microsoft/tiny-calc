@@ -7,6 +7,7 @@ dependencies:
   '@types/mocha': 5.2.7
   '@types/node': 10.17.19
   benchmark: 2.1.4
+  best-random: 1.0.3
   mocha: 6.2.3
   node-fetch: 2.6.0
   rimraf: 2.7.1
@@ -73,6 +74,10 @@ packages:
     dev: false
     resolution:
       integrity: sha1-CfPeMckWQl1JjMLuVloOvzwqVik=
+  /best-random/1.0.3:
+    dev: false
+    resolution:
+      integrity: sha512-zrncs76CBFyhE7KVsq85lsc/TT5PUfGTS8arh2aJZcIzQU+WdGNwWYwFsn+w/nuedk04efQdqMy8g5C5pw4shQ==
   /brace-expansion/1.1.11:
     dependencies:
       balanced-match: 1.0.0
@@ -761,6 +766,7 @@ packages:
       '@types/mocha': 5.2.7
       '@types/node': 10.17.19
       benchmark: 2.1.4
+      best-random: 1.0.3
       mocha: 6.2.3
       rimraf: 2.7.1
       ts-node: 8.8.2_typescript@3.8.3
@@ -768,7 +774,7 @@ packages:
     dev: false
     name: '@rush-temp/micro'
     resolution:
-      integrity: sha512-2Xx45XGzRtf6dbHy7UBE3A6kAaeQDUtQjg8s8XETIHkBuRJPlYimGR2l/TDjVDU6fSb62vCbsofLeia9JRZC5Q==
+      integrity: sha512-68XRZxxYhR3/jnOUMzii8LB6RS/4VkOpg7/vcXe7dweo+ZlH8AzoMA863HfuyVo9+IcFpNlba0YhN43oOphwiQ==
       tarball: 'file:projects/micro.tgz'
     version: 0.0.0
   'file:projects/nano.tgz':
@@ -804,6 +810,7 @@ specifiers:
   '@types/mocha': ^5.2.6
   '@types/node': ^10.0.0
   benchmark: ^2.1.4
+  best-random: ^1.0.3
   mocha: ^6.1.4
   node-fetch: ^2.6.0
   rimraf: ^2.6.3
