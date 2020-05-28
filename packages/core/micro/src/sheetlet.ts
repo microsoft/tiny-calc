@@ -607,8 +607,8 @@ export class Sheetlet implements IMatrixConsumer<Value>, IMatrixProducer<Value>,
     }
 }
 
-function wrapIMatrix(matrix: IMatrix): IMatrixProducer<Value> {
-    const producer = {
+function wrapIMatrix(matrix: IMatrix): IMatrixProducer<Value> & IMatrixReader<Value> {
+    return {
         get rowCount() { return matrix.rowCount },
         get colCount() { return matrix.colCount },
         getCell(row: number, col: number) {
@@ -617,14 +617,10 @@ function wrapIMatrix(matrix: IMatrix): IMatrixProducer<Value> {
                 ? undefined
                 : raw;
         },
-        openMatrix() { return producer },
+        openMatrix() { return this },
         closeMatrix() { },
-        matrixProducer: undefined as any as IMatrixProducer<Value>,
-    }
-
-    producer.matrixProducer = producer;
-
-    return producer;
+        get matrixProducer() { return this; }
+    };
 }
 
 export const createSheetlet = (matrix: IMatrix) => new Sheetlet(createGrid()).connect(wrapIMatrix(matrix));

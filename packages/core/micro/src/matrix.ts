@@ -263,16 +263,12 @@ export function matrixProducer<T>(data: T[][]): IMatrixProducer<T | undefined> &
         }
     }
     
-    const producer = {
+    return {
         rowCount: data.length,
         colCount: data.length > 0 ? data[0].length : 0,
         ...grid,
         closeMatrix() { },
         openMatrix() { return this },
-        matrixProducer: undefined as any as IMatrixProducer<T | undefined>
+        get matrixProducer(): IMatrixProducer<T | undefined> { return this; }
     }
-
-    producer.matrixProducer = producer;
-
-    return producer;
 }
