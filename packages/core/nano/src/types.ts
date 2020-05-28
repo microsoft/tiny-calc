@@ -198,6 +198,11 @@ export interface IReader<T> {
     readonly producer: IProducer<T>;
 }
 
+export interface IWriter<T> {
+    set<K extends keyof T>(property: K, value: T[K]): void;
+    delete<K extends keyof T>(property: K): void;
+}
+
 /**
  * The interface for an object whose data can be bound to. We use this contract for
  * components that want to expose their data and its changes to other components.
@@ -235,6 +240,11 @@ export interface IVectorReader<T> {
      * A reference to the underlying vector producer that provides values for this reader.
      */
     readonly vectorProducer: IVectorProducer<T>;
+}
+
+export interface IVectorWriter<T> {
+    splice(start: number, deleteCount: number, insertCount: number): void;
+    setItem(index: number, item: T): void;
 }
 
 /** Provides more efficient access to 1D data for vector-aware consumers. */
@@ -279,6 +289,10 @@ export interface IMatrixReader<T> {
      * A reference to the underlying matrix producer that provides values for this reader.
      */
     readonly matrixProducer: IMatrixProducer<T>;
+}
+
+export interface IMatrixWriter<T> {
+    setCell(row: number, col: number, value: T): void;
 }
 
 /** Provides more efficient access to 2D data for matrix-aware consumers. */
