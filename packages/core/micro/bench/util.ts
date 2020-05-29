@@ -1,4 +1,3 @@
-import { Suite } from "benchmark";
 const process = require("process");
 
 let count = 0;
@@ -9,7 +8,7 @@ let cached: any;
  */
 export function consume(value: any) {
     count++;
-    if ((count >>> 0) === 0) {
+    if (count === 0) {
         cached = value;
     }
 }
@@ -20,28 +19,3 @@ process.on('exit', () => {
         console.log(`Ignore this: ${cached}`);
     }
 });
-
-export function runSuite(suite: Suite) {
-    count = 0;
-
-    console.log();
-    console.group((suite as any)["name"]);
-    return suite
-        .on("cycle", (event: any) => {
-            console.log(String(event.target));
-        })
-        .on("error", (event: any) => {
-            console.error(String(event.target.error));
-        })
-        .on("complete", (event: any) => {
-            console.groupEnd();
-            console.log(`Fastest is ${event.currentTarget.filter("fastest").map("name")}`);
-        })
-        .run();
-}
-
-export function runSuites(suites: Iterable<Suite>) {
-    for (const suite of suites) {
-        runSuite(suite);
-    }
-}

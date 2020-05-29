@@ -3,7 +3,7 @@
   "version": "0.0.2",
   "main": "dist/index.js",
   "scripts": {
-    "bench": "ts-node bench/index.ts",
+    "bench": "cd bench && ts-node index.ts",
     "build": "tsc",
     "clean": "rimraf ./dist *.build.log",
     "dev": "npm run build -- --watch",
@@ -15,10 +15,10 @@
   },
   "devDependencies": {
     "@tiny-calc/tool-config": "^0.0.2",
-    "@types/benchmark": "^1.0.31",
     "@types/mocha": "^5.2.6",
     "@types/node": "^10.0.0",
-    "benchmark": "^2.1.4",
+    "best-random": "^1.0.3",
+    "hotloop": "^1.0.0",
     "mocha": "^6.1.4",
     "rimraf": "^2.6.3",
     "ts-node": "^8.1.0",
