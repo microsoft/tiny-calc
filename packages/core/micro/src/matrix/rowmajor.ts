@@ -10,6 +10,8 @@ export class RowMajorMatrix<T, TRow = unknown, TCol = unknown> extends DenseMatr
 
         this.rowReader = rows.openVector(this);
         this.colReader = cols.openVector(this);
+
+        this.cells = new Array(this.rowCount * this.colCount).fill(undefined);
     }
 
     //#region IMatrixReader
