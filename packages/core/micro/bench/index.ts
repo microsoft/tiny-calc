@@ -1,4 +1,13 @@
-import { runSuites } from "./util";
-import { suites as sheetletSuites } from "./sheetlet.suite";
+import { run } from "hotloop";
 
-runSuites(sheetletSuites);
+(async () => {
+    await run([
+        { "path": "./sheetlet/cached-2x2.ts" },
+        { "path": "./sheetlet/recalc-2x2.ts" },
+    ]);
+
+    await run([
+        { "path": "./sheetlet/cached-10x10.ts" },
+        { "path": "./sheetlet/recalc-10x10.ts" },
+    ]);
+})();
