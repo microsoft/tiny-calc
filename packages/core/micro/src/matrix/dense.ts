@@ -9,8 +9,7 @@ import { MatrixProducer } from "./producer";
  * A row/col-major agnostic base class 
  */
 export abstract class DenseMatrix<T> extends MatrixProducer<T> {
-    private readonly cells: T[] = [];
-
+    protected cells: T[] = [];
     protected abstract get majorCount(): number;
     protected abstract get stride(): number;
     

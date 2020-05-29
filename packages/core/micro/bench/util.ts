@@ -1,4 +1,11 @@
+import { IMatrixConsumer } from "@tiny-calc/nano";
 const process = require("process");
+
+export const nullConsumer: IMatrixConsumer<unknown> = {
+    rowsChanged() { },
+    colsChanged() { },
+    cellsChanged() { },
+}
 
 let count = 0;
 let cached: any;

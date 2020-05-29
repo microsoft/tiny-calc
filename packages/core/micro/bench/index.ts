@@ -10,4 +10,9 @@ import { run } from "hotloop";
         { "path": "./sheetlet/cached-10x10.ts" },
         { "path": "./sheetlet/recalc-10x10.ts" },
     ]);
+
+    await run([
+        { "path": "./matrix/rowmajor-256x256-read-baseline.ts" },
+        { "path": "./matrix/rowmajor-256x256-read.ts" },
+    ]);
 })();
