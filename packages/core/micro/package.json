@@ -22,6 +22,7 @@
     "mocha": "^6.1.4",
     "rimraf": "^2.6.3",
     "ts-node": "^8.1.0",
-    "typescript": "^3.8.2"
+    "typescript": "^3.8.2",
+    "best-random": "^1.0.3"
   }
 }
