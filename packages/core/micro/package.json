@@ -8,7 +8,8 @@
     "clean": "rimraf ./dist *.build.log",
     "dev": "npm run build -- --watch",
     "prof": "tsc --project tsconfig.prof.json && node --prof temp/bench/profile.js && node --prof-process isolate-*-v8.log > profile.log && rm isolate-*-v8.log",
-    "test": "mocha -r ts-node/register test/**/*.spec.ts"
+    "test": "mocha -r ts-node/register test/**/*.spec.ts",
+    "adjust-random": "ts-node test/random-adjust-tree.ts"
   },
   "dependencies": {
     "@tiny-calc/nano": "^0.0.2"
