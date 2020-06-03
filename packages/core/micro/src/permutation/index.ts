@@ -3,6 +3,7 @@ import { performance } from "perf_hooks";
 import {
     AdjustTree,
     createTree,
+    SegmentRange,
     TreeConfiguration,
 } from "../adjust-tree/index";
 
@@ -60,7 +61,7 @@ const permutationConfig: TreeConfiguration<PermutationSegment> = {
                 if (startIndex === endIndex) {
                     const len = content[startIndex];
                     const base = content[startIndex + 1];
-                    const removed = content.splice(startIndex, 2, startPos, base, len - endPos, base);
+                    const removed = content.splice(startIndex, 2, startPos, base, len - endPos, base + endPos);
                     return { retained: segment, removed: { kind: PermutationKind.RunLength, content: removed } };
                 }
 
@@ -122,10 +123,117 @@ export class IdentityVector {
     deleteRange(position: number, length: number) {
         return this.permutationTree.deleteRange(position, length);
     }
-
 }
 
-const v = new IdentityVector();
+export class PermutationVector {
+
+    permutationTree: AdjustTree<PermutationSegment> = createTree(permutationConfig);
+    next: number = 0;
+    freeList: SegmentRange<PermutationSegment> | undefined;
+
+    getItem(position: number) {
+        const { offset, segment } = this.permutationTree.getItem(position);
+        switch (segment.kind) {
+            case PermutationKind.Empty:
+                return -1;
+
+            case PermutationKind.Direct:
+                return segment.content[offset];
+
+            case PermutationKind.RunLength:
+                const content = segment.content;
+                const size = content.length;
+                let startIndex = 0;
+                let end = offset;
+                while (startIndex < size) {
+                    const len = content[startIndex];
+                    if (end < len) {
+                        break;
+                    }
+                    end -= len;
+                    startIndex += 2;
+                }
+                return end + content[startIndex + 1];
+        }
+    }
+
+    insertRange(position: number, length: number) {
+        let toAlloc = length;
+        let free = this.freeList;
+        let pos = position;
+        while (free) {
+            const { lengths, segments } = free;
+            for (let i = 0; i < free.size; i++) {
+                const len = lengths[i];
+                const segment = segments[i];
+                if (segment.kind === PermutationKind.Empty) {
+                    (<PermutationSegment[]>segments)[i] = empty;
+                    continue;
+                }
+                if (len === toAlloc) {
+                    this.permutationTree.insertRange(pos, len, segment);
+                    (<PermutationSegment[]>segments)[i] = empty;
+                    return;
+                }
+                if (len < toAlloc) {
+                    this.permutationTree.insertRange(pos, len, segment);
+                    pos += len;
+                    toAlloc -= len;
+                    continue;
+                }
+                const { retained, removed } = permutationConfig.extractSegmentRange(segment, 0, toAlloc);
+                (<number[]>lengths)[i] = len - toAlloc;
+                (<PermutationSegment[]>segments)[i] = removed;
+                this.permutationTree.insertRange(pos, toAlloc, retained);
+                return;
+            }
+            free = free.next;
+        }
+        if (toAlloc > 0) {
+            this.permutationTree.insertRange(position, length, { kind: PermutationKind.RunLength, content: [toAlloc, this.next] });
+            this.next += toAlloc;
+        }
+    }
+
+    deleteRange(position: number, length: number) {
+        const freed = this.permutationTree.deleteRange(position, length);
+        if (this.freeList) {
+            (<any>this.freeList).prev = freed;
+        }
+        (<any>freed).next = this.freeList;
+        return this.freeList = freed;
+    }
+}
+
+// const v = new PermutationVector();
+// v.insertRange(0, 100);
+// let ranges = [];
+// let t1 = performance.now();
+// for (let i = 0; i < 100; i++) {
+//     ranges.push(v.getItem(i));
+// }
+// console.log(performance.now() - t1);
+// console.log(ranges);
+// 
+// t1 = performance.now();
+// v.deleteRange(90, 10);
+// console.log(performance.now() - t1);
+// 
+// t1 = performance.now();
+// v.insertRange(0, 5);
+// v.insertRange(0, 5);
+// console.log(performance.now() - t1);
+// 
+// ranges = [];
+// t1 = performance.now();
+// for (let i = 0; i < 100; i++) {
+//     ranges.push(v.getItem(i));
+// }
+// console.log(performance.now() - t1);
+// console.log(ranges);
+
+
+const v = new PermutationVector();
 v.insertRange(0, 100000);
 const t = performance.now();
 v.insertRange(10, 100);
@@ -173,3 +281,40 @@ for (let i = 0; i < 1000; i++) {
 }
 console.log(performance.now() - t2);
 console.log(ranges2);
+
+const t3 = performance.now();
+v.insertRange(10, 100);
+v.insertRange(1442, 2);
+v.insertRange(1242, 2);
+v.insertRange(12, 343);
+v.insertRange(12, 2);
+v.insertRange(422, 2);
+v.insertRange(422, 119);
+v.insertRange(422, 2);
+v.insertRange(4225, 65);
+v.insertRange(4221, 2);
+v.insertRange(4242, 32);
+v.insertRange(422, 2);
+v.insertRange(1422, 432);
+v.insertRange(422, 2);
+v.insertRange(3422, 431);
+v.insertRange(9422, 2);
+v.insertRange(3322, 2);
+v.insertRange(7422, 432);
+v.insertRange(625, 4);
+v.insertRange(64564, 4535);
+v.insertRange(644, 455);
+console.log(performance.now() - t3);
+
+const t4 = performance.now();
+v.deleteRange(12, 1);
+v.insertRange(0, 1);
+console.log(performance.now() - t4);
+
+const ranges3 = [];
+const t5 = performance.now();
+for (let i = 0; i < 1000; i++) {
+    ranges3.push(v.getItem(i));
+}
+console.log(performance.now() - t5);
+console.log(ranges3);
