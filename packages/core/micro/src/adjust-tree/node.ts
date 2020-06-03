@@ -359,13 +359,13 @@ function insertLeaf<T>(ctx: TreeContext<T>, node: LeafNode<T>, position: number,
              */
             shiftR(lengths, insertionPoint + 1, size - 1, 2)
             shiftR(segments, insertionPoint + 1, size - 1, 2)
-            const [l, r] = ctx.deleteSegmentRange(segments[insertionPoint], pos, oldLen - pos);
+            const { retained, removed } = ctx.extractSegmentRange(segments[insertionPoint], pos, oldLen - pos);
             lengths[insertionPoint] = pos;
             lengths[insertionPoint + 1] = length;
             lengths[insertionPoint + 2] = oldLen - pos;
-            segments[insertionPoint] = l;
+            segments[insertionPoint] = retained;
             segments[insertionPoint + 1] = payload;
-            segments[insertionPoint + 2] = r;
+            segments[insertionPoint + 2] = removed;
             newSize = size + 2;
         }
         else {

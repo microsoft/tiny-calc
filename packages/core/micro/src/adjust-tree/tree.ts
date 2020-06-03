@@ -39,7 +39,7 @@ function createTreeContext<T>(config: TreeConfiguration<T>): TreeContext<T> {
         interiorChidrenSize: 2 * order + 1,
         leafLengthSize: 2 * order + 2,
         leafSegmentSize: 2 * order + 2,
-        deleteSegmentRange: config.deleteSegmentRange,
+        extractSegmentRange: config.extractSegmentRange,
     };
 }
 

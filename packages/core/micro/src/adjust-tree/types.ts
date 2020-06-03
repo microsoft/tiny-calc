@@ -30,7 +30,7 @@ export interface SegmentRange<T> {
 export interface TreeConfiguration<T> {
     readonly emptySegment: T;
     readonly order: number;
-    readonly deleteSegmentRange: (segment: T, start: number, length: number) => [T, T];
+    readonly extractSegmentRange: (segment: T, start: number, length: number) => { retained: T, removed: T };
 }
 
 export interface AdjustTree<T> {
@@ -59,10 +59,7 @@ export interface TreeContext<T> {
     readonly interiorChidrenSize: number;
     readonly leafLengthSize: number;
     readonly leafSegmentSize: number;
-    /**
-     * Delete a range from a segment, returning the tuple: [remaining, deleted].
-     */
-    readonly deleteSegmentRange: (segment: T, start: number, length: number) => [T, T];
+    readonly extractSegmentRange: (segment: T, start: number, length: number) => { retained: T, removed: T };
 }
 
 export interface Orphan<T> {
