@@ -111,9 +111,9 @@ function partitionNode<T>(ctx: TreeContext<T>, node: InteriorNode<T>, startOffse
 
     const secondSplit: Deletion<T> | undefined = endOffset === 0 ?
         endIndex === size
-        ? undefined
-        : { orphan: undefined, deleted: leftmostLeaf(segments[endIndex]).prev! }
-    : splitChildR(ctx, node, endIndex, endOffset);
+            ? undefined
+            : { orphan: undefined, deleted: leftmostLeaf(segments[endIndex]).prev! }
+        : splitChildR(ctx, node, endIndex, endOffset);
 
     if (endOffset !== 0) {
         lengths[endIndex] -= endOffset;
@@ -169,7 +169,7 @@ function partitionNode<T>(ctx: TreeContext<T>, node: InteriorNode<T>, startOffse
         if (node.size === 1) {
             return remainingOrphan.heightDelta++, { orphan: remainingOrphan, deleted: firstDeletedLeaf };
         }
-        
+
         deleteNodeRange(node, remainingOrphanIndex, 1, undefined!);
         if (leftSplitState !== undefined && leftSplitState > remainingOrphanIndex) { leftSplitState--; }
         if (rightSplitState !== undefined && rightSplitState > remainingOrphanIndex) { rightSplitState--; }
@@ -179,7 +179,7 @@ function partitionNode<T>(ctx: TreeContext<T>, node: InteriorNode<T>, startOffse
             applyInsertion(ctx, node, 0, remainingOrphan.length, reparent(ctx, node.segments[0], remainingOrphan, /* before */ true));
             const adjustment = node.size - size;
             if (leftSplitState !== undefined) { leftSplitState + adjustment; }
-            if (rightSplitState !== undefined) { rightSplitState  + adjustment; }
+            if (rightSplitState !== undefined) { rightSplitState + adjustment; }
         }
         else {
             const idx = remainingOrphanIndex - 1;
@@ -211,10 +211,10 @@ function deleteLeafRange<T>(ctx: TreeContext<T>, node: LeafNode<T>, position: nu
     const { index: endIndex, offset: endOffset } = find(node, position + length);
 
     if (startIndex === endIndex) {
-        const [remaining, extracted] = ctx.deleteSegmentRange(segments[startIndex], startOffset, length);
-        segments[startIndex] = remaining;
+        const { retained, removed } = ctx.extractSegmentRange(segments[startIndex], startOffset, length);
+        segments[startIndex] = retained;
         lengths[startIndex] -= length;
-        return singletonLeaf(ctx, length, extracted);
+        return singletonLeaf(ctx, length, removed);
     }
 
     const deletedLengths: number[] = initArray(ctx.leafLengthSize, EMPTY);
@@ -223,11 +223,11 @@ function deleteLeafRange<T>(ctx: TreeContext<T>, node: LeafNode<T>, position: nu
 
     if (startOffset !== 0) {
         const len = lengths[startIndex] - startOffset;
-        const [remaining, extracted] = ctx.deleteSegmentRange(segments[startIndex], startOffset, len);
-        segments[startIndex] = remaining;
+        const { retained, removed } = ctx.extractSegmentRange(segments[startIndex], startOffset, len);
+        segments[startIndex] = retained;
         lengths[startIndex] = startOffset;
         deletedLengths[0] = len;
-        deletedSegments[0] = extracted;
+        deletedSegments[0] = removed;
         deletedSize++;
     }
 
@@ -237,11 +237,11 @@ function deleteLeafRange<T>(ctx: TreeContext<T>, node: LeafNode<T>, position: nu
 
     if (endOffset !== 0) {
         const len = endOffset;
-        const [remaining, extracted] = ctx.deleteSegmentRange(segments[endIndex], 0, endOffset);
-        segments[endIndex] = remaining;
+        const { retained, removed } = ctx.extractSegmentRange(segments[endIndex], 0, endOffset);
+        segments[endIndex] = retained;
         lengths[endIndex] -= endOffset;
         deletedLengths[offset + toRemove] = len;
-        deletedSegments[offset + toRemove] = extracted;
+        deletedSegments[offset + toRemove] = removed;
         deletedSize++;
     }
 
@@ -325,7 +325,7 @@ function splitLeaf<T>(ctx: TreeContext<T>, node: LeafNode<T>, position: number):
         return { left: node, right };
     }
     const rest = lengths[index] - offset;
-    const [l, r] = ctx.deleteSegmentRange(segments[index], offset, rest);
+    const { retained, removed } = ctx.extractSegmentRange(segments[index], offset, rest);
     const rightLengths: number[] = initArray(ctx.leafLengthSize, EMPTY);
     const rightSegments: T[] = initArray(ctx.leafSegmentSize, ctx.emptySegment);
     const rhsSize = size - index;
@@ -336,9 +336,9 @@ function splitLeaf<T>(ctx: TreeContext<T>, node: LeafNode<T>, position: number):
         segments[i] = ctx.emptySegment;
     }
     lengths[index] = offset;
-    segments[index] = l;
+    segments[index] = retained;
     rightLengths[0] = rest;
-    rightSegments[0] = r;
+    rightSegments[0] = removed;
     const right = createLeaf(rhsSize, rightLengths, rightSegments, node, node.next);
     node.size = index + 1;
     if (node.next) {

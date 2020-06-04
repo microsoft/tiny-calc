@@ -11,7 +11,7 @@ import { simpleDeletionTest } from "./util";
 const config = (order: number): TreeConfiguration<number> => ({
     emptySegment: -1,
     order,
-    deleteSegmentRange: element => { return [element, element]; }
+    extractSegmentRange: element => { return { retained: element, removed: element }; }
 })
 
 describe('Insertion', () => {
