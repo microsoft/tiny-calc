@@ -1,11 +1,6 @@
 import { performance } from "perf_hooks";
 
-import {
-    AdjustTree,
-    createTree,
-    SegmentRange,
-    TreeConfiguration,
-} from "../adjust-tree/index";
+import { AdjustTree, createTree, SegmentRange, TreeConfiguration } from "../adjust-tree/index";
 
 const enum PermutationKind {
     Empty,
@@ -15,11 +10,11 @@ const enum PermutationKind {
 
 type PermutationSegment =
     | { kind: PermutationKind.Empty }
-    | { kind: PermutationKind.Direct, content: number[] }
-    | { kind: PermutationKind.RunLength, content: number[] };
+    | { kind: PermutationKind.Direct; content: number[] }
+    | { kind: PermutationKind.RunLength; content: number[] };
 
 const empty = { kind: PermutationKind.Empty } as const;
-const emptyPair: { retained: PermutationSegment, removed: PermutationSegment } = { retained: empty, removed: empty };
+const emptyPair: { retained: PermutationSegment; removed: PermutationSegment } = { retained: empty, removed: empty };
 
 const permutationConfig: TreeConfiguration<PermutationSegment> = {
     order: 7,
@@ -32,7 +27,7 @@ const permutationConfig: TreeConfiguration<PermutationSegment> = {
             case PermutationKind.Direct:
                 return {
                     retained: segment,
-                    removed: { kind: PermutationKind.Direct, content: segment.content.splice(start, length) }
+                    removed: { kind: PermutationKind.Direct, content: segment.content.splice(start, length) },
                 };
 
             case PermutationKind.RunLength:
@@ -61,17 +56,27 @@ const permutationConfig: TreeConfiguration<PermutationSegment> = {
                 if (startIndex === endIndex) {
                     const len = content[startIndex];
                     const base = content[startIndex + 1];
-                    const removed = content.splice(startIndex, 2, startPos, base, len - endPos, base + endPos);
+                    if (startPos > 0) {
+                        if (endPos > 0) {
+                            content.splice(startIndex, 2, startPos, base, len - endPos, base + endPos);
+                        } else {
+                            content[startIndex] = startPos;
+                        }
+                    } else {
+                        content[startIndex] = len - endPos;
+                        content[startIndex + 1] = base + endPos;
+                    }
+
+                    const removed = [len, base + startPos];
                     return { retained: segment, removed: { kind: PermutationKind.RunLength, content: removed } };
                 }
 
                 const wholeStartIndex = startPos === 0 ? startIndex : startIndex + 2;
-                const toRemove = (endIndex - wholeStartIndex) / 2;
+                const toRemove = endIndex - wholeStartIndex;
                 endIndex -= toRemove;
                 const removed: number[] = toRemove > 0 ? content.splice(wholeStartIndex, toRemove) : [];
                 if (startPos > 0) {
-                    removed.push(content[startIndex] - startPos);
-                    removed.push(content[startIndex + 1] + startPos);
+                    removed.unshift(content[startIndex] - startPos, content[startIndex + 1] + startPos);
                     content[startIndex] = startPos;
                 }
                 if (endPos > 0) {
@@ -81,11 +86,10 @@ const permutationConfig: TreeConfiguration<PermutationSegment> = {
                 }
                 return { retained: segment, removed: { kind: PermutationKind.RunLength, content: removed } };
         }
-    }
+    },
 };
 
 export class IdentityVector {
-
     permutationTree: AdjustTree<PermutationSegment> = createTree(permutationConfig);
     next: number = 0;
 
@@ -116,7 +120,10 @@ export class IdentityVector {
     }
 
     insertRange(position: number, length: number) {
-        this.permutationTree.insertRange(position, length, { kind: PermutationKind.RunLength, content: [length, this.next] })
+        this.permutationTree.insertRange(position, length, {
+            kind: PermutationKind.RunLength,
+            content: [length, this.next],
+        });
         this.next += length;
     }
 
@@ -126,7 +133,6 @@ export class IdentityVector {
 }
 
 export class PermutationVector {
-
     permutationTree: AdjustTree<PermutationSegment> = createTree(permutationConfig);
     next: number = 0;
     freeList: SegmentRange<PermutationSegment> | undefined;
@@ -172,6 +178,7 @@ export class PermutationVector {
                 }
                 if (len === toAlloc) {
                     this.permutationTree.insertRange(pos, len, segment);
+                    (<number[]>lengths)[i] = 0;
                     (<PermutationSegment[]>segments)[i] = empty;
                     return;
                 }
@@ -179,6 +186,8 @@ export class PermutationVector {
                     this.permutationTree.insertRange(pos, len, segment);
                     pos += len;
                     toAlloc -= len;
+                    (<number[]>lengths)[i] = 0;
+                    (<PermutationSegment[]>segments)[i] = empty;
                     continue;
                 }
                 const { retained, removed } = permutationConfig.extractSegmentRange(segment, 0, toAlloc);
@@ -190,7 +199,10 @@ export class PermutationVector {
             free = free.next;
         }
         if (toAlloc > 0) {
-            this.permutationTree.insertRange(position, length, { kind: PermutationKind.RunLength, content: [toAlloc, this.next] });
+            this.permutationTree.insertRange(pos, toAlloc, {
+                kind: PermutationKind.RunLength,
+                content: [toAlloc, this.next],
+            });
             this.next += toAlloc;
         }
     }
@@ -201,7 +213,7 @@ export class PermutationVector {
             (<any>this.freeList).prev = freed;
         }
         (<any>freed).next = this.freeList;
-        return this.freeList = freed;
+        return (this.freeList = freed);
     }
 }
 
@@ -214,16 +226,16 @@ export class PermutationVector {
 // }
 // console.log(performance.now() - t1);
 // console.log(ranges);
-// 
+//
 // t1 = performance.now();
 // v.deleteRange(90, 10);
 // console.log(performance.now() - t1);
-// 
+//
 // t1 = performance.now();
 // v.insertRange(0, 5);
 // v.insertRange(0, 5);
 // console.log(performance.now() - t1);
-// 
+//
 // ranges = [];
 // t1 = performance.now();
 // for (let i = 0; i < 100; i++) {
@@ -231,7 +243,6 @@ export class PermutationVector {
 // }
 // console.log(performance.now() - t1);
 // console.log(ranges);
-
 
 const v = new PermutationVector();
 v.insertRange(0, 100000);
@@ -307,9 +318,63 @@ v.insertRange(644, 455);
 console.log(performance.now() - t3);
 
 const t4 = performance.now();
+console.time("t4");
 v.deleteRange(12, 1);
 v.insertRange(0, 1);
-console.log(performance.now() - t4);
+v.deleteRange(13, 1);
+v.insertRange(0, 1);
+v.deleteRange(2, 1);
+v.insertRange(11, 1);
+v.deleteRange(2, 1);
+v.insertRange(11, 1);
+v.deleteRange(2, 1);
+v.insertRange(11, 1);
+v.deleteRange(2, 1);
+v.insertRange(11, 1);
+v.deleteRange(2, 1);
+v.insertRange(11, 1);
+v.deleteRange(2, 1);
+v.insertRange(11, 1);
+v.deleteRange(112, 1);
+v.insertRange(0, 1);
+v.deleteRange(113, 1);
+v.insertRange(0, 1);
+v.deleteRange(332, 1);
+v.insertRange(11, 1);
+v.deleteRange(442, 1);
+v.insertRange(11, 14);
+v.deleteRange(552, 41);
+v.insertRange(11, 1);
+v.deleteRange(222, 1);
+v.insertRange(11, 14);
+v.deleteRange(112, 10);
+v.insertRange(11, 12);
+v.deleteRange(6542, 1);
+v.insertRange(11, 14);
+v.deleteRange(422, 14);
+v.insertRange(141, 1);
+v.deleteRange(5432, 41);
+v.insertRange(1421, 1);
+v.deleteRange(1142, 1);
+v.insertRange(4, 15);
+v.deleteRange(11423, 1);
+v.insertRange(52, 1);
+v.deleteRange(3342, 41);
+v.insertRange(411, 14);
+v.deleteRange(4542, 1);
+v.insertRange(101, 14);
+v.deleteRange(952, 1);
+v.insertRange(121, 12);
+v.deleteRange(72, 14);
+v.insertRange(661, 1);
+v.deleteRange(1142, 51);
+v.insertRange(112, 1);
+v.deleteRange(6542, 21);
+v.insertRange(1421, 16);
+v.deleteRange(72, 2);
+v.insertRange(0, 2);
+console.timeEnd("t4");
+console.log(`insert and delete ${performance.now() - t4}`);
 
 const ranges3 = [];
 const t5 = performance.now();
