@@ -13,7 +13,7 @@
   "ensureConsistentVersions": true,
   "projectFolderMaxDepth": 3,
   "repository": {
-    "url": "https://github.com/Microsoft/tiny-calc"
+    "url": "https://github.com/microsoft/tiny-calc.git"
   },
   "projects": [
     {
