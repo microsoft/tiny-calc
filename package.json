@@ -1,11 +1,18 @@
 {
-    "scripts": {
-        "rush": "node common/scripts/install-run-rush.js",
-        "rush:repair": "git clean -xfd && (rm common/config/rush/pnpm-lock.yaml || true) && npm run rush -- update --purge --recheck",
-        "postinstall": "npm run rush -- install",
-        "build": "npm run rush -- build",
-        "test": "npm run rush -- test",
-        "prepublish": "npm run build && npm run test",
-        "setversion": "npm run rush -- version --ensure-version-policy --version-policy public --override-version"
-    }
+  "name": "@tiny-calc/root",
+  "repository": {
+    "type" : "git",
+    "url" : "https://github.com/microsoft/tiny-calc.git"
+  },
+  "author": "Microsoft",
+  "license": "MIT",
+  "scripts": {
+    "rush": "node common/scripts/install-run-rush.js",
+    "rush:repair": "git clean -xfd && (rm common/config/rush/pnpm-lock.yaml || true) && npm run rush -- update --purge --recheck",
+    "postinstall": "npm run rush -- install",
+    "build": "npm run rush -- build",
+    "test": "npm run rush -- test",
+    "prepublish": "npm run build && npm run test",
+    "setversion": "npm run rush -- version --ensure-version-policy --version-policy public --override-version"
+  }
 }
