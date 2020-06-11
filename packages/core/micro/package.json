@@ -1,7 +1,14 @@
 {
   "name": "@tiny-calc/micro",
-  "version": "0.0.2",
+  "version": "0.0.0-alpha.0",
   "main": "dist/index.js",
+  "sideEffects": "false",
+  "repository": {
+    "type" : "git",
+    "url" : "https://github.com/microsoft/tiny-calc.git"
+  },
+  "author": "Microsoft",
+  "license": "MIT",
   "scripts": {
     "bench": "cd bench && ts-node index.ts",
     "build": "tsc",
@@ -12,10 +19,10 @@
     "adjust-random": "ts-node test/random-adjust-tree.ts"
   },
   "dependencies": {
-    "@tiny-calc/nano": "^0.0.2"
+    "@tiny-calc/nano": "0.0.0-alpha.0"
   },
   "devDependencies": {
-    "@tiny-calc/tool-config": "^0.0.2",
+    "@tiny-calc/tool-config": "0.0.0-alpha.0",
     "@types/mocha": "^5.2.6",
     "@types/node": "^10.0.0",
     "best-random": "^1.0.3",
@@ -23,7 +30,6 @@
     "mocha": "^6.1.4",
     "rimraf": "^2.6.3",
     "ts-node": "^8.1.0",
-    "typescript": "^3.8.2",
-    "best-random": "^1.0.3"
+    "typescript": "^3.8.2"
   }
 }

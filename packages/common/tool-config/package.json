@@ -1,12 +1,16 @@
 {
   "name": "@tiny-calc/tool-config",
-  "version": "0.0.2",
+  "version": "0.0.0-alpha.0",
   "description": "Common config for build tools",
   "sideEffects": "false",
+  "repository": {
+    "type" : "git",
+    "url" : "https://github.com/microsoft/tiny-calc.git"
+  },
+  "author": "Microsoft",
+  "license": "MIT",
   "scripts": {
     "build": "echo No build steps necessary.",
     "test": "echo No test steps necessary."
-  },
-  "author": "Microsoft",
-  "license": "MIT"
+  }
 }
