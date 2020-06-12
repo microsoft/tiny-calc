@@ -3,8 +3,8 @@
   "main": "dist/index.js",
   "sideEffects": "false",
   "repository": {
-    "type" : "git",
-    "url" : "https://github.com/microsoft/tiny-calc.git"
+    "type": "git",
+    "url": "https://github.com/microsoft/tiny-calc.git"
   },
   "author": "Microsoft",
   "license": "MIT",
