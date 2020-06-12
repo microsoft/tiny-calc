@@ -36,7 +36,6 @@ import {
     FormulaCell,
     FormulaNode,
     IGrid,
-    IMatrix,
     PendingValue,
     Point,
     RangeContext,
@@ -344,7 +343,7 @@ export class Sheetlet implements IMatrixConsumer<Value>, IMatrixProducer<Value>,
         if (!this.consumer0) {
             return;
         }
-        
+
         this.chain = rebuild(this.chain, this);
         for (let i = rowStart; i < endR; i++) {
             for (let j = colStart; j < endC; j++) {
@@ -606,24 +605,6 @@ export class Sheetlet implements IMatrixConsumer<Value>, IMatrixProducer<Value>,
         }
     }
 }
-
-function wrapIMatrix(matrix: IMatrix): IMatrixProducer<Value> & IMatrixReader<Value> {
-    return {
-        get rowCount() { return matrix.rowCount },
-        get colCount() { return matrix.colCount },
-        getCell(row: number, col: number) {
-            const raw = matrix.loadCellText(row, col);
-            return typeof raw === "object"
-                ? undefined
-                : raw;
-        },
-        openMatrix() { return this },
-        closeMatrix() { },
-        get matrixProducer() { return this; }
-    };
-}
-
-export const createSheetlet = (matrix: IMatrix) => new Sheetlet(createGrid()).connect(wrapIMatrix(matrix));
 
 export function createSheetletProducer(producer: IMatrixProducer<Value>, matrix?: IGrid<Cell>) {
     return new Sheetlet(matrix || createGrid()).connect(producer);

@@ -116,14 +116,3 @@ export interface IGrid<T> {
     readOrWrite(row: number, col: number, value: () => T): T | undefined;
     clear(row: number, col: number): void;
 }
-
-/**
- * Legacy Interface
- */
-export interface IMatrix {
-   readonly rowCount: number;
-   readonly colCount: number;
-   loadCellText: (row: number, col: number) => Primitive | undefined;
-   loadCellData: (row: number, col: number) => object | undefined;
-   storeCellData: (row: number, col: number, value: object | undefined) => void;
-}
