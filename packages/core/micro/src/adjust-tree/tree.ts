@@ -22,6 +22,8 @@ import {
     SegmentRange,
     TreeConfiguration,
     TreeContext,
+    LeafFocus,
+    LeafNode,
 } from "./types";
 
 import {
@@ -65,6 +67,19 @@ export class AdjustTreeBase<T> {
         return this.treeLength
     }
 
+    zoom(position: number): LeafFocus<T> {
+        let node = this.root;
+        let offset = position;
+        let index = 0;
+        while (node.kind !== NodeKind.Leaf) {
+            ({ index, offset } = find(node, offset));
+            node = node.segments[index];
+        }
+        const segmentStart = position - offset;
+        ({ index, offset } = find(node, offset));
+        return { segmentStart, index, offset, leaf: node }
+    }
+
     getItem(position: number): { offset: number, segment: T } {
         let node = this.root;
         let offset = position;
@@ -101,6 +116,25 @@ export class AdjustTreeBase<T> {
         }
         this.treeLength -= length;
         return result.deleted;
+    }
+
+    snapshot<U>(snapshotSegment: (segment: T) => U): (number | U)[] {
+        let node = this.root;
+        let index = 0;
+        while (node.kind !== NodeKind.Leaf) {
+            ({ index } = find(node, 0));
+            node = node.segments[index];
+        }
+        const snapped: (number | U)[] = [];
+        let leaf: LeafNode<T> | undefined = node;
+        while (leaf !== undefined) {
+            for (let i = 0; i < leaf.size; i++) {
+                snapped.push(leaf.lengths[i]);
+                snapped.push(snapshotSegment(leaf.segments[i]));
+            }
+            leaf = leaf.next;
+        }
+        return snapped;
     }
 
     // TODO: get rid of this.
@@ -149,7 +183,18 @@ export function forEachInSegmentRange<T>(range: SegmentRange<T>, callback: (leng
     }
 }
 
+export function loadTree<T, U>(config: TreeConfiguration<T>, loadSegment: (segment: U) => T, data: (number | U)[]) {
+    const tree = createTree(config);
+    let position = 0;
+    for (let i = 0; i < data.length; i += 2) {
+        const len = data[i] as number;
+        const segment = loadSegment(data[i+1] as U);
+        tree.insertRange(position, len, segment);
+        position += len;
+    }
+    return tree;
+}
+
 export const createTreeDebug = <T>(config: TreeConfiguration<T>): AdjustTreeDebug<T> => new AdjustTreeBase(config);
 
 export const createTree = <T>(config: TreeConfiguration<T>): AdjustTree<T> => new AdjustTreeBase(config);
-
