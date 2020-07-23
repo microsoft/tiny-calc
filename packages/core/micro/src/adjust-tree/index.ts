@@ -2,6 +2,7 @@ export {
     createTree,
     createTreeDebug,
     forEachInSegmentRange,
+    loadTree,
 } from "./tree";
 
 export {

@@ -20,3 +20,9 @@ export {
     SegmentRange,
     TreeConfiguration,
 } from "./adjust-tree/types";
+
+export {
+    forEachPermutation,
+    PermutationSequence,
+    PermutationSequenceSnapshot,
+} from "./permutation";
