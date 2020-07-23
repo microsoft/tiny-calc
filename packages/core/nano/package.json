@@ -1,6 +1,6 @@
 {
   "name": "@tiny-calc/nano",
-  "version": "0.0.0-alpha.0",
+  "version": "0.0.0-alpha.1",
   "main": "dist/index.js",
   "sideEffects": "false",
   "repository": {
@@ -17,7 +17,7 @@
     "test": "mocha -r ts-node/register test/**/*.spec.ts"
   },
   "devDependencies": {
-    "@tiny-calc/tool-config": "0.0.0-alpha.0",
+    "@tiny-calc/tool-config": "0.0.0-alpha.1",
     "@types/benchmark": "^1.0.31",
     "@types/mocha": "^5.2.6",
     "@types/node": "^10.0.0",
