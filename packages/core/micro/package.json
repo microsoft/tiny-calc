@@ -1,6 +1,6 @@
 {
   "name": "@tiny-calc/micro",
-  "version": "0.0.0-alpha.1",
+  "version": "0.0.0-alpha.2",
   "main": "dist/index.js",
   "sideEffects": "false",
   "repository": {
@@ -19,10 +19,10 @@
     "adjust-random": "ts-node test/random-adjust-tree.ts"
   },
   "dependencies": {
-    "@tiny-calc/nano": "0.0.0-alpha.1"
+    "@tiny-calc/nano": "0.0.0-alpha.2"
   },
   "devDependencies": {
-    "@tiny-calc/tool-config": "0.0.0-alpha.1",
+    "@tiny-calc/tool-config": "0.0.0-alpha.2",
     "@types/mocha": "^5.2.6",
     "@types/node": "^10.0.0",
     "best-random": "^1.0.3",
