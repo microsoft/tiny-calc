@@ -14,9 +14,8 @@ export interface InteriorNode<T> extends RopeBase<AdjustNode<T>> {
 }
 
 export interface LeafFocus<T> {
-    segmentStart: number;
-    index: number;
     offset: number;
+    index: number;
     leaf: LeafNode<T>;
 }
 

@@ -1,6 +1,6 @@
 {
   "name": "@tiny-calc/tool-config",
-  "version": "0.0.0-alpha.3",
+  "version": "0.0.0-alpha.4",
   "description": "Common config for build tools",
   "sideEffects": "false",
   "repository": {

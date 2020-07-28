@@ -75,9 +75,8 @@ export class AdjustTreeBase<T> {
             ({ index, offset } = find(node, offset));
             node = node.segments[index];
         }
-        const segmentStart = position - offset;
         ({ index, offset } = find(node, offset));
-        return { segmentStart, index, offset, leaf: node }
+        return { offset, index, leaf: node }
     }
 
     getItem(position: number): { offset: number, segment: T } {
