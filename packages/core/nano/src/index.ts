@@ -45,6 +45,8 @@ export {
     IMatrixProducer,
     IMatrixReader,
     IMatrixWriter,
+    IMatrixIterator,
+    MatrixIteratorSpec,
     IProducer,
     IReader,
     IVectorConsumer,
