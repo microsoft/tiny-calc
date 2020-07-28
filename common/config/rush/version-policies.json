@@ -2,7 +2,7 @@
   {
     "policyName": "public",
     "definitionName": "lockStepVersion",
-    "version": "0.0.0-alpha.2",
+    "version": "0.0.0-alpha.3",
     "nextBump": "prerelease"
   }
 ]

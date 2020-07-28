@@ -279,6 +279,7 @@ export class Recycler {
                     direct = [];
                 }
                 direct.push(this.permutations.pop()!);
+                toAlloc--;
             }
         }
 

@@ -295,6 +295,49 @@ export interface IMatrixWriter<T> {
     setCell(row: number, col: number, value: T): void;
 }
 
+export interface MatrixIteratorSpec {
+    /**
+     * Iterates over empty cells.
+     */
+    includeEmpty?: boolean;
+    /**
+     * Row start position of iteration.
+     */
+    rowStart?: number;
+    /**
+     * Col start position of iteration.
+     */
+    colStart?: number;
+    /**
+     * Number of rows to iterate over.
+     */
+    rowCount?: number;
+    /**
+     * Number of columns to iterate over.
+     */
+    colCount?: number
+}
+
+export interface IMatrixIterator<T> {
+    /**
+     * Iterate over cells in the matrix.
+     * @param callback
+
+     * @param spec Iteration spec to constrain behaviour. When a spec
+     * is not provided the default behaviour should be:
+     *
+     * {
+     *   includeEmpty: false,
+     *   rowStart: 0,
+     *   colStart: 0,
+     *   rowCount: matrix.rowCount,
+     *   colCount: matrix.colCount,
+     * }
+     *
+     */
+    forEachCell(callback: (value: T, row: number, column: number) => void, spec?: MatrixIteratorSpec): void;
+}
+
 /** Provides more efficient access to 2D data for matrix-aware consumers. */
 export interface IMatrixProducer<T> {
     /**
@@ -304,7 +347,7 @@ export interface IMatrixProducer<T> {
      * @param consumer - The consumer to be notified of matrix changes.
      */
     openMatrix(consumer: IMatrixConsumer<T>): IMatrixReader<T>;
-    
+
     /**
      * Unsubscribe the consumer from this matrix's change notifications.
      * 
