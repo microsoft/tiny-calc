@@ -80,7 +80,7 @@ export class AdjustTreeBase<T> {
         return { segmentStart, index, offset, leaf: node }
     }
 
-    getItem(position: number): { offset: number, segment: T } {
+    getItem(position: number): { length: number, offset: number, segment: T } {
         let node = this.root;
         let offset = position;
         let index = 0;
@@ -89,7 +89,7 @@ export class AdjustTreeBase<T> {
             node = node.segments[index];
         }
         ({ index, offset } = find(node, offset));
-        return { offset, segment: node.segments[index] };
+        return { length: node.lengths[index], offset, segment: node.segments[index] };
     }
 
     insertRange(position: number, length: number, segment: T): void {

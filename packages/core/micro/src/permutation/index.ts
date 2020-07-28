@@ -1,5 +1,4 @@
 import { AdjustTree, createTree, SegmentRange, TreeConfiguration, loadTree, forEachInSegmentRange } from "../adjust-tree/index";
-import { LeafFocus } from "../adjust-tree/types";
 
 const enum PermutationKind {
     Empty,
@@ -305,7 +304,9 @@ export class PermutationSequence {
     permutationTree: AdjustTree<PermutationSegment>;
     next: number;
     recycler: Recycler;
-    focus: LeafFocus<PermutationSegment> | undefined;
+    cachedSegment: PermutationSegment | undefined;
+    segmentStart: number | undefined;
+    segmentEnd: number | undefined;
 
     constructor(snapshot?: PermutationSequenceSnapshot) {
         if (snapshot) {
@@ -344,6 +345,7 @@ export class PermutationSequence {
                 const fresh = this.freshPermutation();
                 const len = leaf.lengths[index];
                 leaf.segments[index] = singleton(offset, len, fresh);
+                this.cachedSegment = undefined;
                 return fresh;
 
             case PermutationKind.Direct:
@@ -362,7 +364,19 @@ export class PermutationSequence {
         if (position < 0 || position >= this.permutationTree.getLength()) {
             return undefined;
         }
-        const { offset, segment } = this.permutationTree.getItem(position);
+        let segment: PermutationSegment | undefined;
+        let offset: number;
+        if (this.cachedSegment && position >= this.segmentStart! && position < this.segmentEnd!) {
+            segment = this.cachedSegment;
+            offset = position - this.segmentStart!;
+        }
+        else {
+            let length: number;
+            ({ length, offset, segment } = this.permutationTree.getItem(position));
+            this.cachedSegment = segment;
+            this.segmentStart = position - offset;
+            this.segmentEnd = this.segmentStart + length
+        }
         switch (segment.kind) {
             case PermutationKind.Empty:
                 return UNALLOCATED;
@@ -377,6 +391,7 @@ export class PermutationSequence {
 
     insertRange(position: number, length: number) {
         this.permutationTree.insertRange(position, length, empty);
+        this.cachedSegment = undefined;
     }
 
     insertFilledRange(position: number, length: number) {
@@ -394,6 +409,7 @@ export class PermutationSequence {
             this.permutationTree.insertRange(pos, remaining, { kind: PermutationKind.RunLength, content: [remaining, this.next] });
             this.next += remaining;
         }
+        this.cachedSegment = undefined;
     }
 
     map<T>(cb: (pos: number, perm: number) => T): T[] {
@@ -484,6 +500,7 @@ export class PermutationSequence {
     }
 
     deleteRange(position: number, length: number) {
+        this.cachedSegment = undefined;
         return this.permutationTree.deleteRange(position, length);
     }
 
