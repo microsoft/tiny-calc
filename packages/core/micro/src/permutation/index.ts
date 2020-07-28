@@ -1,4 +1,5 @@
 import { AdjustTree, createTree, SegmentRange, TreeConfiguration, loadTree, forEachInSegmentRange } from "../adjust-tree/index";
+import { LeafNode, LeafFocus } from "../adjust-tree/types";
 
 const enum PermutationKind {
     Empty,
@@ -304,6 +305,7 @@ export class PermutationSequence {
     permutationTree: AdjustTree<PermutationSegment>;
     next: number;
     recycler: Recycler;
+    focus: LeafFocus<PermutationSegment> | undefined;
     cachedSegment: PermutationSegment | undefined;
     segmentStart: number | undefined;
     segmentEnd: number | undefined;
@@ -337,15 +339,29 @@ export class PermutationSequence {
         if (position < 0 || position >= this.permutationTree.getLength()) {
             return undefined;
         }
-        const focus = this.permutationTree.zoom(position);
-        const { offset, index, leaf } = focus
-        const segment = leaf.segments[index];
+        
+        let segment: PermutationSegment | undefined;
+        let offset: number;
+        let leaf: LeafNode<PermutationSegment>;
+        let index: number;
+        
+        if (this.cachedSegment && position >= this.segmentStart! && position < this.segmentEnd!) {
+            segment = this.cachedSegment;
+            offset = position - this.segmentStart!;
+            ({ index, leaf } = this.focus!);
+        }
+        else {
+            ({ index, offset, leaf } = this.focus = this.permutationTree.zoom(position));
+            this.cachedSegment = segment = leaf.segments[index];
+            this.segmentStart = position - offset;
+            this.segmentEnd = this.segmentStart + leaf.lengths[index];
+        }
+        
         switch (segment.kind) {
             case PermutationKind.Empty:
                 const fresh = this.freshPermutation();
                 const len = leaf.lengths[index];
-                leaf.segments[index] = singleton(offset, len, fresh);
-                this.cachedSegment = undefined;
+                leaf.segments[index] = this.cachedSegment = singleton(offset, len, fresh);
                 return fresh;
 
             case PermutationKind.Direct:
@@ -364,6 +380,7 @@ export class PermutationSequence {
         if (position < 0 || position >= this.permutationTree.getLength()) {
             return undefined;
         }
+        
         let segment: PermutationSegment | undefined;
         let offset: number;
         if (this.cachedSegment && position >= this.segmentStart! && position < this.segmentEnd!) {
@@ -371,12 +388,14 @@ export class PermutationSequence {
             offset = position - this.segmentStart!;
         }
         else {
-            let length: number;
-            ({ length, offset, segment } = this.permutationTree.getItem(position));
-            this.cachedSegment = segment;
+            let index: number;
+            let leaf: LeafNode<PermutationSegment>;
+            ({ index, offset, leaf } = this.focus = this.permutationTree.zoom(position));
+            this.cachedSegment = segment = leaf.segments[index];
             this.segmentStart = position - offset;
-            this.segmentEnd = this.segmentStart + length
+            this.segmentEnd = this.segmentStart + leaf.lengths[index];
         }
+        
         switch (segment.kind) {
             case PermutationKind.Empty:
                 return UNALLOCATED;

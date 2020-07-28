@@ -14,9 +14,8 @@ export interface InteriorNode<T> extends RopeBase<AdjustNode<T>> {
 }
 
 export interface LeafFocus<T> {
-    segmentStart: number;
-    index: number;
     offset: number;
+    index: number;
     leaf: LeafNode<T>;
 }
 
@@ -43,7 +42,7 @@ export interface TreeConfiguration<T> {
 export interface AdjustTree<T> {
     readonly getLength: () => number;
     readonly zoom: (position: number) => LeafFocus<T>;
-    readonly getItem: (position: number) => { length: number, offset: number, segment: T };
+    readonly getItem: (position: number) => { offset: number, segment: T };
     readonly insertRange: (position: number, length: number, segment: T) => void;
     readonly deleteRange: (position: number, length: number) => SegmentRange<T>;
     readonly snapshot: <U>(snapshotSegment: (segment: T) => U) => (number | U)[]
