@@ -18,6 +18,13 @@
       "safeForSimultaneousRushProcesses": false,
       "enableParallelism": true,
     },
+    {
+      "commandKind": "bulk",
+      "name": "lint",
+      "summary": "Execute lint script for all packages",
+      "safeForSimultaneousRushProcesses": false,
+      "enableParallelism": true,
+    },
     // {
     //   /**
     //    * (Required) Determines the type of custom command.

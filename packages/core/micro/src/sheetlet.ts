@@ -43,7 +43,7 @@ import {
     Value,
 } from "./types";
 
-import * as assert from "assert";
+import { strict as assert } from "assert";
 
 function assertNever(_: never) {
     return assert.fail(`

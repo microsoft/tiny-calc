@@ -1,7 +1,7 @@
 // For format details, see https://aka.ms/vscode-remote/devcontainer.json or this file's README at:
 // https://github.com/microsoft/vscode-dev-containers/tree/v0.134.0/containers/docker-from-docker
 {
-	"name": "Docker from Docker",
+	"name": "Tiny-Calc",
 	"dockerFile": "Dockerfile",
 	"mounts": [ "source=/var/run/docker.sock,target=/var/run/docker-host.sock,type=bind" ],
 
@@ -17,7 +17,14 @@
 
 	// Add the IDs of extensions you want installed when the container is created.
 	"extensions": [
-		"ms-azuretools.vscode-docker"
+		"dbaeumer.vscode-eslint",
+		"drewbourne.vscode-remark-lint",
+		"eamodio.gitlens",
+		"esbenp.prettier-vscode",
+		"ms-azuretools.vscode-docker",
+		"ms-vscode-remote.remote-containers",
+		"ms-vsliveshare.vsliveshare",
+		"streetsidesoftware.code-spell-checker",
 	]
 	
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.

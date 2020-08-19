@@ -12,6 +12,7 @@
     "build": "tsc",
     "clean": "rimraf ./dist *.build.log",
     "dev": "npm run build -- --watch",
+    "lint": "eslint --ext=ts --format visualstudio src",
     "test": "ts-node src/index.ts"
   },
   "dependencies": {
@@ -19,10 +20,11 @@
     "node-fetch": "^2.6.0"
   },
   "devDependencies": {
-    "@tiny-calc/tool-config": "0.0.0-alpha.5",
-    "@types/node": "^10.0.0",
+    "@tiny-calc/eslint-config": "0.0.0-alpha.5",
+    "@tiny-calc/ts-config": "0.0.0-alpha.5",
+    "@types/node": "^12.12.54",
     "rimraf": "^2.6.3",
     "ts-node": "^8.1.0",
-    "typescript": "^3.8.2"
+    "typescript": "^3.9.7"
   }
 }
