@@ -1,5 +1,3 @@
-import { Handle } from "./handletable";
-
 export const enum TreeNode {
     none = -429496729,      // Largest negative Int32 that satisfies 'TreeNodeIndex.none / ShapeFieldOffset.fieldCount'.
     root = 0,
