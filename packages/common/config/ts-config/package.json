@@ -1,16 +1,17 @@
 {
-  "name": "@tiny-calc/tool-config",
+  "name": "@tiny-calc/ts-config",
   "version": "0.0.0-alpha.5",
-  "description": "Common config for build tools",
+  "description": "Common TypeScript config",
   "sideEffects": "false",
   "repository": {
     "type": "git",
-    "url": "https://github.com/microsoft/tiny-calc.git"
+    "url" : "https://github.com/microsoft/plasma.git"
   },
   "author": "Microsoft",
   "license": "MIT",
   "scripts": {
     "build": "echo No build steps necessary.",
+    "lint": "echo No lint steps necessary.",
     "test": "echo No test steps necessary."
   }
 }

@@ -15,7 +15,7 @@ import {
     TypeName
 } from "../src/index";
 import { createObjFromMap, createReadMap, createRefMap } from "./util/objectTypes";
-import * as assert from "assert";
+import { strict as assert } from "assert";
 import "mocha";
 
 const astSink: ExpAlgebra<object> = {

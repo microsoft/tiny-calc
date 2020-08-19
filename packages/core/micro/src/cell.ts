@@ -17,7 +17,7 @@ import {
     ValueCell
 } from "./types";
 
-import * as assert from "assert";
+import { strict as assert } from "assert";
 
 function valueCell(content: Primitive): ValueCell {
     return { state: CalcState.Clean, content };

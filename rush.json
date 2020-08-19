@@ -11,11 +11,23 @@
     "strictPeerDependencies": true
   },
   "ensureConsistentVersions": true,
-  "projectFolderMaxDepth": 3,
+  "projectFolderMaxDepth": 4,
   "repository": {
     "url": "https://github.com/microsoft/tiny-calc.git"
   },
   "projects": [
+    {
+      "packageName": "@tiny-calc/eslint-config",
+      "projectFolder": "packages/common/config/eslint-config",
+      "reviewCategory": "production",
+      "versionPolicyName": "public"
+    },
+    {
+      "packageName": "@tiny-calc/ts-config",
+      "projectFolder": "packages/common/config/ts-config",
+      "reviewCategory": "production",
+      "versionPolicyName": "public"
+    },
     {
       "packageName": "@tiny-calc/micro",
       "projectFolder": "packages/core/micro",
@@ -25,12 +37,6 @@
     {
       "packageName": "@tiny-calc/nano",
       "projectFolder": "packages/core/nano",
-      "reviewCategory": "production",
-      "versionPolicyName": "public"
-    },
-    {
-      "packageName": "@tiny-calc/tool-config",
-      "projectFolder": "packages/common/tool-config",
       "reviewCategory": "production",
       "versionPolicyName": "public"
     },
