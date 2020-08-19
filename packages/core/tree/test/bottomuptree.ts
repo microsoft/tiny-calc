@@ -5,7 +5,11 @@ export abstract class BottomUpTree<T> extends Tree<T> {
     private readonly dirty: boolean[] = [true]
 
     protected isDirty(node: TreeNode) {
-        return this.dirty[node];
+        return this.dirty[node] !== false;
+    }
+
+    protected clearDirty(node: TreeNode) {
+        this.dirty[node] = false;
     }
 
     protected invalidate(node: TreeNode) {

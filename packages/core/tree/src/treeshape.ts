@@ -50,7 +50,8 @@ export class TreeShape implements ITreeShapeProducer, ITreeShapeReader, ITreeSha
     }
 
     deleteNode(node: TreeNode) {
-        this.handles.free(node / ShapeFieldOffset.fieldCount);
+        this.removeNode(node);
+        this.handles.free(+node);
     }
 
     // #endregion ITreeShapeProducer
@@ -80,10 +81,10 @@ export class TreeShape implements ITreeShapeProducer, ITreeShapeReader, ITreeSha
     }
 
     lastChildOf(parent: TreeNode): TreeNodeLocation {
-        const prev = this.getPrevSibling(this.getLastChild(parent));
-        return prev === TreeNode.none
-            ? this.getFirstChild(parent)
-            : +prev;
+        const oldLast = this.getLastChild(parent);
+        return oldLast === TreeNode.none
+            ? this.firstChildOf(parent)
+            : +oldLast;
     }
 
     parentOfLocation(location: TreeNodeLocation): TreeNode {

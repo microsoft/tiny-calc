@@ -14,6 +14,7 @@ function isBinOp(expr: Expr): expr is BinOp {
 export class EvalTree extends BottomUpTree<number> implements ITreeConsumer {
     private readonly reader: ITreeReader<Expr>;
     private readonly results: number[] = [];
+    private evalCounter = 0;
 
     constructor (exprTree: Tree<Expr>) {
         super(/* shape: */ exprTree);
@@ -32,9 +33,14 @@ export class EvalTree extends BottomUpTree<number> implements ITreeConsumer {
     getNode(node: TreeNode): number {
         if (this.isDirty(node)) {
             const expr = this.reader.getNode(node);
-            return this.results[node] = isBinOp(expr)
+            const result = this.results[node] = isBinOp(expr)
                 ? this.applyOp(node, expr)
                 : expr;
+            
+            this.evalCounter++;
+            this.clearDirty(node);
+            
+            return result;
         } else {
             return this.results[node];
         }
@@ -42,7 +48,7 @@ export class EvalTree extends BottomUpTree<number> implements ITreeConsumer {
 
     private applyOp(node: TreeNode, op: BinOp) {
         node = this.getFirstChild(node);
-        let accumulator = this.getNode(this.getFirstChild(node));
+        let accumulator = this.getNode(node);
         
         while (true) {
             node = this.getNextSibling(node);
@@ -55,4 +61,7 @@ export class EvalTree extends BottomUpTree<number> implements ITreeConsumer {
 
         return accumulator;
     }
+
+    public get evalCount() { return this.evalCounter; }
+    public resetEvalCount() { this.evalCounter = 0; }
 }

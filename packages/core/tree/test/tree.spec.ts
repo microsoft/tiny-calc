@@ -34,6 +34,12 @@ describe("TreeShape", () => {
             assert.equal(checkShape(tree, TreeNode.root), 2);    
         });
 
+        it("insert last child", () => {
+            const node = tree.createNode();
+            tree.moveNode(node, tree.lastChildOf(TreeNode.root));
+            assert.equal(checkShape(tree, TreeNode.root), 2);
+        });
+
         it("insert before first child", () => {
             const right = tree.createNode();
             tree.moveNode(right, tree.firstChildOf(TreeNode.root));
