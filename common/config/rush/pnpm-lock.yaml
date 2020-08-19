@@ -3,6 +3,7 @@ dependencies:
   '@rush-temp/micro': 'file:projects/micro.tgz'
   '@rush-temp/nano': 'file:projects/nano.tgz'
   '@rush-temp/tool-config': 'file:projects/tool-config.tgz'
+  '@rush-temp/tree': 'file:projects/tree.tgz'
   '@types/benchmark': 1.0.31
   '@types/mocha': 5.2.7
   '@types/node': 10.17.19
@@ -765,7 +766,7 @@ packages:
     dev: false
     name: '@rush-temp/example'
     resolution:
-      integrity: sha512-CvxpzjSBvXkh7igKrU7A1Fru3lGWCqsRRFTMxrw77vMTE5r++5mPuxoUkwRGTJelVkwyMHskKEflj9n8wkRXEQ==
+      integrity: sha512-U+d39BjAPQKkGnPvhzeqQKO9/VN9/btLAM9v4ax0RIuxf/NzqRZllrm5L2XZRyKSt8Q/RWZ3DJkd/WiNf1pLOg==
       tarball: 'file:projects/example.tgz'
     version: 0.0.0
   'file:projects/micro.tgz':
@@ -783,7 +784,7 @@ packages:
     dev: false
     name: '@rush-temp/micro'
     resolution:
-      integrity: sha512-dudxN3X7oyWM5V+M8C3Ul1we98nKFJi4BfSn4g5NK1U5ypVIRIgc43/tULp2TdCMf6Y9HW0NKU+uMSHT6ufFpA==
+      integrity: sha512-fsXC4bgA+txiVYmAmU7WC6B+ctXUxR17fBBT+x8mn8ObXhD/pErKuxTzJr/X9nfM9IkWfSvd/YVqa5PwfNu5VQ==
       tarball: 'file:projects/micro.tgz'
     version: 0.0.0
   'file:projects/nano.tgz':
@@ -799,7 +800,7 @@ packages:
     dev: false
     name: '@rush-temp/nano'
     resolution:
-      integrity: sha512-HeUITxPWNhjWrJ6tECzAUEDjPxiSmlvAnS8NBr2ozNvX959GBm0gHqXtUApxNHuo0jUxvoce0JXts3yh5WmH/Q==
+      integrity: sha512-KIDCsZod20h76f0a8m9jE301CfqXWkqaWhqqUOLPHYbKYBRcTw6AEPSp+sPB5385LbGBgbPVr+D/xD+U3In9Dw==
       tarball: 'file:projects/nano.tgz'
     version: 0.0.0
   'file:projects/tool-config.tgz':
@@ -809,12 +810,29 @@ packages:
       integrity: sha512-f+SjUQvt9/V60DUjgYFCWiuQQ6ZjG/2afHSHPapdp7vr0xe3lenz2W5VaSdA/6W/4v/BGhhIp2IP39wYd0jC/g==
       tarball: 'file:projects/tool-config.tgz'
     version: 0.0.0
+  'file:projects/tree.tgz':
+    dependencies:
+      '@types/mocha': 5.2.7
+      '@types/node': 10.17.19
+      best-random: 1.0.3
+      hotloop: 1.0.0
+      mocha: 6.2.3
+      rimraf: 2.7.1
+      ts-node: 8.8.2_typescript@3.8.3
+      typescript: 3.8.3
+    dev: false
+    name: '@rush-temp/tree'
+    resolution:
+      integrity: sha512-I2Doc/y+mJ/C2h1gEG/7SMHafpAsXJhsn+HXJX6NAjUwztB28I3RQeoR/MwewqP9PwFp5tpAxxQ7arHw/UkpLQ==
+      tarball: 'file:projects/tree.tgz'
+    version: 0.0.0
 registry: ''
 specifiers:
   '@rush-temp/example': 'file:./projects/example.tgz'
   '@rush-temp/micro': 'file:./projects/micro.tgz'
   '@rush-temp/nano': 'file:./projects/nano.tgz'
   '@rush-temp/tool-config': 'file:./projects/tool-config.tgz'
+  '@rush-temp/tree': 'file:./projects/tree.tgz'
   '@types/benchmark': ^1.0.31
   '@types/mocha': ^5.2.6
   '@types/node': ^10.0.0

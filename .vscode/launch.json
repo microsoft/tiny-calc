@@ -66,5 +66,21 @@
             "env": { "TS_NODE_PROJECT": "tsconfig.json" },
             "console": "integratedTerminal"
         },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "Tree Tests",
+            "cwd": "${workspaceFolder}/packages/core/tree",
+            "program": "${workspaceFolder}/packages/core/tree/node_modules/mocha/bin/_mocha",
+            "args": [
+                "-r",
+                "ts-node/register",
+                "--no-timeouts",
+                "test/**/*.spec.ts"
+            ],
+            "env": { "TS_NODE_PROJECT": "tsconfig.json" },
+            "console": "integratedTerminal",
+            "skipFiles": ["<node_internals>/**/*.js"]
+        },
     ]
 }

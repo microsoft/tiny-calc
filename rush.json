@@ -29,6 +29,12 @@
       "versionPolicyName": "public"
     },
     {
+      "packageName": "@tiny-calc/tree",
+      "projectFolder": "packages/core/tree",
+      "reviewCategory": "production",
+      "versionPolicyName": "public"
+    },
+    {
       "packageName": "@tiny-calc/tool-config",
       "projectFolder": "packages/common/tool-config",
       "reviewCategory": "production",
