@@ -17,6 +17,13 @@ module.exports = {
                 'error',
                 { selector: 'accessor', modifiers: ['private'], format: ['camelCase'], "leadingUnderscore": "allow" },
             ],
+
+            // RATIONAL: Requiring explicit typing for module exports helps prevent unintentionally leaking
+            //           implementation details, but still allow the convenience of type inference for internal
+            //           declarations.
+            '@typescript-eslint/explicit-module-boundary-types': 'error',
+            '@typescript-eslint/explicit-function-return-type': 'off',
+            '@typescript-eslint/typedef': 'off',
         }
     }]
 };
