@@ -22,8 +22,8 @@
 		"eamodio.gitlens",
 		"esbenp.prettier-vscode",
 		"ms-azuretools.vscode-docker",
-		"ms-vscode-remote.remote-containers",
 		"ms-vsliveshare.vsliveshare",
+		// "ms-vscode-remote.remote-containers",	// Runs locally only, disabled in dev container
 		"streetsidesoftware.code-spell-checker",
 	]
 	
