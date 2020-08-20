@@ -1,5 +1,5 @@
 {
-  "name": "@tiny-calc/nano",
+  "name": "@tiny-calc/tree",
   "version": "0.0.0-alpha.5",
   "main": "dist/index.js",
   "sideEffects": "false",
@@ -10,21 +10,26 @@
   "author": "Microsoft",
   "license": "MIT",
   "scripts": {
-    "bench": "ts-node bench/index.ts",
+    "bench": "cd bench && ts-node index.ts",
     "build": "tsc",
     "clean": "rimraf ./dist *.build.log",
     "dev": "npm run build -- --watch",
     "lint": "eslint --ext=ts --format visualstudio src",
-    "test": "mocha -r ts-node/register test/**/*.spec.ts"
+    "prof": "tsc --project tsconfig.prof.json && node --prof temp/bench/profile.js && node --prof-process isolate-*-v8.log > profile.log && rm isolate-*-v8.log",
+    "test": "mocha -r ts-node/register test/**/*.spec.ts",
+    "adjust-random": "ts-node test/random-adjust-tree.ts"
+  },
+  "dependencies": {
+    "@tiny-calc/nano": "0.0.0-alpha.5"
   },
   "devDependencies": {
     "@tiny-calc/eslint-config": "0.0.0-alpha.5",
     "@tiny-calc/ts-config": "0.0.0-alpha.5",
-    "@types/benchmark": "^1.0.31",
     "@types/mocha": "^5.2.6",
     "@types/node": "^12.12.54",
-    "benchmark": "^2.1.4",
+    "best-random": "^1.0.3",
     "eslint": "^7.7.0",
+    "hotloop": "^1.0.0",
     "mocha": "^6.1.4",
     "rimraf": "^2.6.3",
     "ts-node": "^8.1.0",

@@ -35,6 +35,12 @@
       "versionPolicyName": "public"
     },
     {
+      "packageName": "@tiny-calc/tree",
+      "projectFolder": "packages/core/tree",
+      "reviewCategory": "production",
+      "versionPolicyName": "public"
+    },
+    {
       "packageName": "@tiny-calc/nano",
       "projectFolder": "packages/core/nano",
       "reviewCategory": "production",
