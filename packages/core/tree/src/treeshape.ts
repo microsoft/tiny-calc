@@ -177,7 +177,7 @@ export class TreeShape implements ITreeShapeProducer, ITreeShapeReader, ITreeSha
         }
 
         forEachConsumer(this.consumers, (consumer) => {
-            consumer.nodeMoved(node, oldLocation);
+            consumer.nodeMoved(node, oldLocation, /* producer: */ this);
         });
     }
 
@@ -190,7 +190,7 @@ export class TreeShape implements ITreeShapeProducer, ITreeShapeReader, ITreeSha
         this.setPrevSiblingIndex(index, TreeNodeIndex.none);
 
         forEachConsumer(this.consumers, (consumer) => {
-            consumer.nodeMoved(node, oldLocation);
+            consumer.nodeMoved(node, oldLocation, /* producer: */ this);
         });
     }
     

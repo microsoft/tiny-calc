@@ -41,23 +41,27 @@ export abstract class Tree<T> implements ITreeShapeConsumer, ITreeProducer<T>, I
 
     // #endregion ITreeProducer
 
-    // #region ITreeShapeConsumer
+    // #region ITreeConsumer
     
     public nodeMoved(node: TreeNode, oldLocation: TreeNodeLocation) {
         this.invalidateNodeLocation(node, oldLocation);
     }
 
-    // #endregion ITreeShapeConsumer
+    public nodeChanged(node: TreeNode): void {
+        this.invalidateNode(node);
+    }
+
+    // #endregion ITreeConsumer
 
     protected invalidateNode(node: TreeNode): void {
         forEachConsumer(this.consumers, (consumer) => {
-            consumer.nodeChanged(node);
+            consumer.nodeChanged(node, /* producer: */ this);
         });
     }
 
     protected invalidateNodeLocation(node: TreeNode, oldLocation: TreeNodeLocation): void {
         forEachConsumer(this.consumers, (consumer) => {
-            consumer.nodeMoved(node, oldLocation);
+            consumer.nodeMoved(node, oldLocation, /* producer: */ this);
         });
     }
 }

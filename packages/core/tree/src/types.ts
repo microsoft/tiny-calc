@@ -6,7 +6,7 @@ export const enum TreeNode {
 export const enum TreeNodeLocation {}
 
 export interface ITreeShapeConsumer {
-    nodeMoved(node: TreeNode, oldLocation: TreeNodeLocation): void;
+    nodeMoved(node: TreeNode, oldLocation: TreeNodeLocation, producer: ITreeShapeProducer): void;
 }
 
 export interface ITreeShapeProducer {
@@ -54,7 +54,7 @@ export interface ITreeShapeWriter {
 }
 
 export interface ITreeConsumer extends ITreeShapeConsumer {
-    nodeChanged(node: TreeNode): void;
+    nodeChanged(node: TreeNode, producer: ITreeProducer<unknown>): void;
 }
 
 export interface ITreeReader<T> extends ITreeShapeReader {
@@ -65,7 +65,7 @@ export interface ITreeWriter<T> {
     setNode(node: TreeNode, value: T): void;
 }
 
-export interface ITreeProducer<T> {
+export interface ITreeProducer<T> extends ITreeShapeProducer {
     /**
      * Acquire a reader for this tree's shape and implicitly subscribe the consumer
      * to shape change notifications.
