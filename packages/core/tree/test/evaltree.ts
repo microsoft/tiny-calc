@@ -10,54 +10,34 @@ function isBinOp(expr: Expr): expr is BinOp {
     return typeof(expr) !== "number";
 }
 
-export class EvalTree extends BottomUpTree<number> implements ITreeConsumer {
-    private readonly reader: ITreeReader<Expr>;
-    private readonly results: number[] = [];
+export class EvalTree extends BottomUpTree<Expr, number> implements ITreeConsumer {
     private evalCounter = 0;
 
     constructor (exprTree: ITreeProducer<Expr>) {
-        super();
-
-        this.reader = exprTree.openTree(this);
+        super(exprTree);
     }
 
-    protected get shape() { return this.reader; }
-
-    // #region ITreeConsumer
-
-    nodeChanged(node: TreeNode): void {
-        this.invalidate(node);
+    evalNode(node: TreeNode, input: ITreeReader<Expr>, descendants: ITreeReader<number>): number {
+        this.evalCounter++;
+        
+        const expr = input.getNode(node);
+        
+        return isBinOp(expr)
+            ? this.applyOp(node, expr, descendants)
+            : expr;
     }
 
-    // #endregion ITreeConsumer
-
-    getNode(node: TreeNode): number {
-        if (this.isDirty(node)) {
-            const expr = this.reader.getNode(node);
-            const result = this.results[node] = isBinOp(expr)
-                ? this.applyOp(node, expr)
-                : expr;
-            
-            this.evalCounter++;
-            this.clearDirty(node);
-            
-            return result;
-        } else {
-            return this.results[node];
-        }
-    }
-
-    private applyOp(node: TreeNode, op: BinOp) {
-        node = this.getFirstChild(node);
-        let accumulator = this.getNode(node);
+    private applyOp(node: TreeNode, op: BinOp, descendants: ITreeReader<number>) {
+        node = descendants.getFirstChild(node);
+        let accumulator = descendants.getNode(node);
         
         while (true) {
-            node = this.getNextSibling(node);
+            node = descendants.getNextSibling(node);
             if (node === TreeNode.none) {
                 break;
             }
 
-            accumulator = op(accumulator, this.getNode(node));
+            accumulator = op(accumulator, descendants.getNode(node));
         }
 
         return accumulator;
