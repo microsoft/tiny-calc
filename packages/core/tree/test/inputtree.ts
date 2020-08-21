@@ -1,8 +1,15 @@
 import { Tree } from "../src/tree";
-import { TreeNode, ITreeWriter } from "../src/types";
+import { TreeNode, ITreeWriter, ITreeShapeProducer, ITreeShapeReader } from "../src/types";
 
 export class InputTree<T> extends Tree<T> implements ITreeWriter<T> {
     private readonly values: T[] = [];
+    protected readonly shape: ITreeShapeReader;
+
+    constructor (shape: ITreeShapeProducer) {
+        super();
+        
+        this.shape = shape.openTree(/* consumer: */ this);
+    }
     
     // #region ITreeReader
 

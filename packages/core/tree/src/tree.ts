@@ -1,13 +1,10 @@
-import { ITreeShapeConsumer, TreeNode, TreeNodeLocation, ITreeShapeProducer, ITreeProducer, ITreeConsumer, ITreeReader, ITreeShapeReader } from "./types";
+import { TreeNode, TreeNodeLocation, ITreeProducer, ITreeConsumer, ITreeReader, ITreeShapeReader } from "./types";
 import { ConsumerSet, addConsumer, removeConsumer, forEachConsumer } from "./consumerset";
 
-export abstract class Tree<T> implements ITreeShapeConsumer, ITreeProducer<T>, ITreeReader<T> {
+export abstract class Tree<T> implements ITreeProducer<T>, ITreeReader<T>, ITreeConsumer {
     private consumers?: ConsumerSet<ITreeConsumer>;
-    protected shape: ITreeShapeReader;
 
-    constructor (shape: ITreeShapeProducer) { 
-        this.shape = shape.openTree(this);
-    }
+    protected abstract get shape(): ITreeShapeReader;
 
     // #region ITreeReader<T>
 

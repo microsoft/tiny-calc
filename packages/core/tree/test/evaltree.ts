@@ -1,5 +1,4 @@
-import { Tree } from "../src/tree";
-import { TreeNode, ITreeConsumer, ITreeReader } from "../src/types";
+import { TreeNode, ITreeConsumer, ITreeReader, ITreeProducer } from "../src/types";
 import { BottomUpTree } from "./bottomuptree";
 
 export type BinOp = (left: number, right: number) => number;
@@ -16,11 +15,13 @@ export class EvalTree extends BottomUpTree<number> implements ITreeConsumer {
     private readonly results: number[] = [];
     private evalCounter = 0;
 
-    constructor (exprTree: Tree<Expr>) {
-        super(/* shape: */ exprTree);
+    constructor (exprTree: ITreeProducer<Expr>) {
+        super();
 
         this.reader = exprTree.openTree(this);
     }
+
+    protected get shape() { return this.reader; }
 
     // #region ITreeConsumer
 
