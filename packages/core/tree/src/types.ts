@@ -65,7 +65,7 @@ export interface ITreeWriter<T> {
     setNode(node: TreeNode, value: T): void;
 }
 
-export interface ITreeProducer<T> extends ITreeShapeProducer {
+export interface ITreeProducer<T = unknown> extends ITreeShapeProducer {
     /**
      * Acquire a reader for this tree's shape and implicitly subscribe the consumer
      * to shape change notifications.
