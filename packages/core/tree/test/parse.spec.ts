@@ -100,58 +100,32 @@ export const parse = (expr: string) => {
     return tokenTree;
 };
 
-export class EvalTree extends BottomUpTree<ExprData> implements ITreeConsumer {
-    private readonly reader: ITreeReader<ExprData>;
-    private readonly results: ExprData[] = [];
-
+export class EvalTree extends BottomUpTree<ExprData, ExprData> implements ITreeConsumer {
     constructor (exprTree: ITreeProducer<ExprData>) {
-        super();
-
-        this.reader = exprTree.openTree(this);
+        super(exprTree);
     }
 
-    protected get shape() { return this.reader; }
+    private static readonly unaryOpTable = {
+        [SyntaxKind.PlusToken]: (child: any) => +child,
+        [SyntaxKind.MinusToken]: (child: any) => -child,
+    };
 
-    // #region ITreeConsumer
-
-    nodeChanged(node: TreeNode): void {
-        this.invalidate(node);
-    }
-
-    // #endregion ITreeConsumer
-
-    getNode(node: TreeNode): ExprData {
-        if (this.isDirty(node)) {
-            const result = this.results[node] = this.evalNode(node);
-            this.clearDirty(node);            
-            return result;
-        } else {
-            return this.results[node];
-        }
-    }
-
-    private static readonly binOpTable: ((left: any, right: any) => any)[] = ((o) => {
-        const keyToInt = new Map<string, number>(
-            Object.keys(o)
-                .map((str) => [str, parseInt(str)])
-        );
-        const max = Math.max(...keyToInt.values());
-        const jumpTable = new Array(max).fill(undefined);
-        
-        for (const [str, i32] of keyToInt.entries()) {
-            jumpTable[i32] = (o as any)[str];
-        }
-
-        return jumpTable;
-    })({
+    private static readonly binOpTable = {
         [SyntaxKind.PlusToken]: (left: any, right: any) => left + right,
         [SyntaxKind.MinusToken]: (left: any, right: any) => left - right,
         [SyntaxKind.AsteriskToken]: (left: any, right: any) => left * right,
         [SyntaxKind.SlashToken]: (left: any, right: any) => left / right,
-    });
+        [SyntaxKind.CaretToken]: (left: any, right: any) => left ** right,
+        [SyntaxKind.EqualsToken]: (left: any, right: any) => left === right,
+        [SyntaxKind.LessThanToken]: (left: any, right: any) => left < right,
+        [SyntaxKind.GreaterThanToken]: (left: any, right: any) => left > right,
+        [SyntaxKind.LessThanEqualsToken]: (left: any, right: any) => left <= right,
+        [SyntaxKind.GreaterThanEqualsToken]: (left: any, right: any) => left >= right,
+        [SyntaxKind.NotEqualsToken]: (left: any, right: any) => left !== right,    
+    };
 
-    private evalNode(node: TreeNode): ExprData {
-        const expr = this.reader.getNode(node);
+    protected evalNode(node: TreeNode, input: ITreeReader<ExprData>, descendants: ITreeReader<ExprData>): ExprData {
+        const expr = input.getNode(node);
         if (expr === undefined) {
             return { kind: "lit", value: "" };
         }
@@ -160,12 +134,24 @@ export class EvalTree extends BottomUpTree<ExprData> implements ITreeConsumer {
             case "lit":
                 return expr;
 
-            case "binop": {
-                const leftChild = this.getFirstChild(node);
-                const leftExpr = this.getNode(leftChild);
+            case "unaryop": {
+                const child = descendants.getFirstChild(node);
+                const childExpr = descendants.getNode(child);
 
-                const rightChild = this.getNextSibling(leftChild);
-                const rightExpr = this.getNode(rightChild);
+                if (childExpr.kind === "lit") {
+                    const opFn = EvalTree.unaryOpTable[expr.op];
+                    return { kind: "lit", value: opFn(childExpr.value) }
+                } else {
+                    return expr;
+                }
+            }
+
+            case "binop": {
+                const leftChild = descendants.getFirstChild(node);
+                const leftExpr = descendants.getNode(leftChild);
+
+                const rightChild = descendants.getNextSibling(leftChild);
+                const rightExpr = descendants.getNode(rightChild);
 
                 if (leftExpr.kind === "lit" && rightExpr.kind === "lit") {
                     const opFn = EvalTree.binOpTable[expr.op];
@@ -176,14 +162,37 @@ export class EvalTree extends BottomUpTree<ExprData> implements ITreeConsumer {
             }
 
             default:
-                assert.fail();
+                assert.fail(`Unrecognized kind: ${JSON.stringify(expr)}`);
         }
     }
 }
 
-
-it("works", () => {
-    const tokenTree = parse("1 + 1");
-    const e = new EvalTree(tokenTree);
-    console.log(e.getNode(e.getFirstChild(TreeNode.root)));
+describe("Parse/EvalTree", () => {
+    for (const expr of [
+        "0",
+        "-1",
+        "+1",
+        "1 + 2",
+        "1 - 2",
+        "1 * 2",
+        "1 / 2",
+        "1 < 2",
+        "1 <= 2",
+        "1 > 2",
+        "1 >= 2",
+        "(1 + 2) * 3",
+    ]) {
+        const expected = eval(expr);
+        it(`${expr} -> ${expected}`, () => {
+            const tokenTree = parse(expr);
+            const evalTree = new EvalTree(tokenTree);
+            const result = evalTree.getNode(evalTree.getFirstChild(TreeNode.root));
+            
+            if (result.kind !== "lit") {
+                assert.fail(`Expected literal expression, but got '${result}'`);
+            } else {
+                assert.equal(result.value, expected);
+            }
+        });
+    }    
 });
