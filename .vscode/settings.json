@@ -11,4 +11,9 @@
     // ESLint: Mono repo support
     "eslint.nodePath": "packages/common/config/eslint-config/node_modules/",    // Work around https://github.com/microsoft/vscode-eslint/issues/1012
     "eslint.workingDirectories": [{ "mode": "auto" }],                          // Find '.eslintrc.js' in local package folder.
+
+    // Spell check dictionary
+    "cSpell.words": [
+        "endregion"                 // #endregion comments
+    ],
 }
