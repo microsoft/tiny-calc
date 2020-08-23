@@ -1,5 +1,6 @@
 {
-  "name": "@tiny-calc/micro",
+  "name": "@tiny-calc/types",
+  "description": "TypeScript definitions for Tiny-Calc data types",
   "version": "0.0.0-alpha.5",
   "main": "dist/index.js",
   "sideEffects": "false",
@@ -18,10 +19,6 @@
     "prof": "tsc --project tsconfig.prof.json && node --prof temp/bench/profile.js && node --prof-process isolate-*-v8.log > profile.log && rm isolate-*-v8.log",
     "test": "mocha -r ts-node/register test/**/*.spec.ts",
     "adjust-random": "ts-node test/random-adjust-tree.ts"
-  },
-  "dependencies": {
-    "@tiny-calc/nano": "0.0.0-alpha.5",
-    "@tiny-calc/types": "0.0.0-alpha.5"
   },
   "devDependencies": {
     "@tiny-calc/eslint-config": "0.0.0-alpha.5",

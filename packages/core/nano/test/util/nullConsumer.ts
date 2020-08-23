@@ -1,4 +1,5 @@
-import { IConsumer, IVectorConsumer, IMatrixConsumer } from "../../src/types";
+import { IConsumer } from "@tiny-calc/types";
+import { IVectorConsumer, IMatrixConsumer } from "../../src/types";
 
 class NullConsumer<T> implements IConsumer<T>, IVectorConsumer<T>, IMatrixConsumer<T> {
     public rowsChanged(): void { }

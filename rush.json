@@ -47,6 +47,12 @@
       "versionPolicyName": "public"
     },
     {
+      "packageName": "@tiny-calc/types",
+      "projectFolder": "packages/types/types",
+      "reviewCategory": "production",
+      "versionPolicyName": "public"
+    },
+    {
       "packageName": "@tiny-calc-test/example",
       "projectFolder": "packages/test/example",
       "shouldPublish": false,

@@ -1,4 +1,5 @@
-import { IConsumer, IVectorConsumer, IMatrixConsumer, IProducer, IVectorProducer, IMatrixProducer } from "../../src/types";
+import { IConsumer, IProducer } from "@tiny-calc/types";
+import { IVectorConsumer, IMatrixConsumer, IVectorProducer, IMatrixProducer } from "../../src/types";
 import { strict as assert } from "assert";
 
 export class LoggingConsumer<T> implements IConsumer<T>, IVectorConsumer<T>, IMatrixConsumer<T> {

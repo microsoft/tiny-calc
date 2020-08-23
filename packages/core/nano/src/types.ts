@@ -171,62 +171,6 @@ export interface Resolver<C, Ref, Delay> {
     resolve: <F>(context: C, ref: Ref, failure: F) => CalcValue<C> | F | Delay
 }
 
-/**
- * The interface for an object that can bind to an IProducer.
- *
- * Any object that implements IConsumer is expected to provide a
- * callback whenever the component it is bound to changes in value and a reference
- * to the data that the consumer is bound to.
- */
-export interface IConsumer<T> {
-    /**
-     * Invoked whenever the data this object is bound to is changed.
-     */
-    valueChanged<U extends T, K extends keyof U>(property: K, producer: IProducer<U>): void;
-}
-
-export interface IReader<T> {
-    /**
-     * Return the value associated with `property`.
-     * @param property - The property of the Producer to read.
-     */
-    get<K extends keyof T>(property: K): T[K] | Pending<T[K]>;
-
-    /**
-     * A reference to the underlying producer that provides values for this reader.
-     */
-    readonly producer: IProducer<T>;
-}
-
-export interface IWriter<T> {
-    set<K extends keyof T>(property: K, value: T[K]): void;
-    delete<K extends keyof T>(property: K): void;
-}
-
-/**
- * The interface for an object whose data can be bound to. We use this contract for
- * components that want to expose their data and its changes to other components.
- *
- * Any component that implements IProducer is expected to provide some registration
- * functionality and to notify consumers whenever the data they are bound to changes.
- */
-export interface IProducer<T> {
-    /**
-     * Acquire a reader for this producer's values and implicitly subscribe the consumer
-     * to value change notifications.
-     * 
-     * @param consumer - The consumer to be notified of value changes.
-     */
-    open(consumer: IConsumer<T>): IReader<T>;
-
-    /**
-     * Unsubscribe the consumer from this producer's change notifications.
-     * 
-     * @param consumer - The consumer to unregister from the producer.
-     */
-    close(consumer: IConsumer<T>): void;
-}
-
 export interface IVectorConsumer<T> {
     /** Notification that a range of items have been inserted, removed, and/or replaced in the given vector. */
     itemsChanged(start: number, removedCount: number, insertedCount: number, producer: IVectorProducer<T>): void;

@@ -1,4 +1,4 @@
-import { IProducer, IReader, IConsumer } from "@tiny-calc/nano";
+import { IProducer, IReader, IConsumer } from "@tiny-calc/types";
 import { ConsumerSet, addConsumer, removeConsumer, forEachConsumer } from "../consumerset";
 
 export abstract class Producer<TMap> implements IProducer<TMap>, IReader<TMap> {

@@ -17,6 +17,9 @@
     "lint": "eslint --ext=ts --format visualstudio src",
     "test": "mocha -r ts-node/register test/**/*.spec.ts"
   },
+  "dependencies": {
+    "@tiny-calc/types": "0.0.0-alpha.5"
+  },
   "devDependencies": {
     "@tiny-calc/eslint-config": "0.0.0-alpha.5",
     "@tiny-calc/ts-config": "0.0.0-alpha.5",
