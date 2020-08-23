@@ -12,6 +12,7 @@ dependencies:
   benchmark: 2.1.4
   best-random: 1.0.3
   eslint: 7.7.0
+  eslint-plugin-header: 3.0.0_eslint@7.7.0
   hotloop: 1.1.0
   mocha: 6.2.3
   node-fetch: 2.6.0
@@ -505,6 +506,14 @@ packages:
       node: '>=0.8.0'
     resolution:
       integrity: sha1-G2HAViGQqN/2rjuyzwIAyhMLhtQ=
+  /eslint-plugin-header/3.0.0_eslint@7.7.0:
+    dependencies:
+      eslint: 7.7.0
+    dev: false
+    peerDependencies:
+      eslint: '>=0.18.0'
+    resolution:
+      integrity: sha512-OIu2ciVW8jK4Ove4JHm1I7X0C98PZuLCyCsoUhAm2HpyGS+zr34qLM6iV06unnDvssvvEh5BkOfaLRF+N7cGoQ==
   /eslint-plugin-promise/4.2.1:
     dev: false
     engines:
@@ -1733,6 +1742,7 @@ packages:
       '@types/node': 12.12.54
       best-random: 1.0.3
       eslint: 7.7.0
+      eslint-plugin-header: 3.0.0_eslint@7.7.0
       hotloop: 1.1.0
       mocha: 6.2.3
       rimraf: 2.7.1
@@ -1741,7 +1751,7 @@ packages:
     dev: false
     name: '@rush-temp/tree'
     resolution:
-      integrity: sha512-ozK0bVViKeQONEgPX+iF3f8Vy+7bR08PJc2nT51oFknzRhZ3GttpYRX4ha9AfMmV4U94WMlc5jMNmWVq7Ks8pw==
+      integrity: sha512-EJe23xEU+9oL3MBHWfaN6tdXOgR9iKadzVTl0AIywc9I0K3e9rmZRKpl23mMQX3i50Dn8Vc6YNmagBsZA3nLPw==
       tarball: 'file:projects/tree.tgz'
     version: 0.0.0
   'file:projects/ts-config.tgz':
@@ -1766,6 +1776,7 @@ specifiers:
   benchmark: ^2.1.4
   best-random: ^1.0.3
   eslint: ^7.7.0
+  eslint-plugin-header: ^3.0.0
   hotloop: ^1.0.0
   mocha: ^6.1.4
   node-fetch: ^2.6.0
