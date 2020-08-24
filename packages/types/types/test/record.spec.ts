@@ -27,9 +27,6 @@ describe("Record", () => {
         it("ES6 map must satisfy IWriter", () => {
             writer.set("0", 0);
             assert.equal(map.get("0"), 0);
-    
-            writer.delete("0");
-            assert.equal(map.has("0"), false);
         });
 
         it("Must support key constraints", () => {
@@ -51,10 +48,7 @@ describe("Record", () => {
                 "1": number | undefined,
             }> = map;
 
-            writer.delete("0");
             writer.set("0", 0);
-
-            writer.delete("1");
             writer.set("1", 1);
         });
     });

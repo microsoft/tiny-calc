@@ -14,7 +14,7 @@ export interface IProducer<T> {
     open(consumer: IConsumer<T>): IReader<T>;
 
     /**
-     * Unsubscribe the consumer from this producer's change notifications.
+     * Unsubscribe the given 'consumer' from this producer's change notifications.
      * 
      * @param consumer - The consumer to unregister from the producer.
      */
@@ -36,7 +36,6 @@ export interface IReader<T> {
 /** Capability to set values of a key/value collection. */
 export interface IWriter<T> {
     set<K extends keyof T>(property: K, value: T[K]): void;
-    delete<K extends keyof T>(property: K): void;
 }
 
 /** A consumer of change notifications for a key/value collection, such as a Record or Map. */
