@@ -1,4 +1,9 @@
-import { IVectorWriter } from "@tiny-calc/nano";
+/*!
+ * Copyright (c) Microsoft Corporation. All rights reserved.
+ * Licensed under the MIT License.
+ */
+
+import { IVectorWriter } from "@tiny-calc/types";
 import { VectorProducer } from "./producer";
 
 function toArray<T>(iterable?: Iterable<T>): T[] {
@@ -10,7 +15,7 @@ function toArray<T>(iterable?: Iterable<T>): T[] {
 }
 
 export class DenseVector<T> extends VectorProducer<T> implements IVectorWriter<T> {
-    constructor (private items: Array<T> = []) { super(); }
+    public constructor (private items: T[] = []) { super(); }
 
     public get length(): number {
         return this.items.length;
@@ -20,12 +25,12 @@ export class DenseVector<T> extends VectorProducer<T> implements IVectorWriter<T
         return this.items[index];
     }
 
-    public setItem(index: number, value: T) {
+    public setItem(index: number, value: T): void {
         this.items[index] = value;
         this.invalidateItems(index, /* removedCount: */ 1, /* insertedCount: */ 1);
     }
 
-    public splice(start: number, deleteCount: number, insertCount: number, values?: Iterable<T>) {
+    public splice(start: number, deleteCount: number, insertCount: number, values?: Iterable<T>): void {
         const inserted = toArray(values);
         inserted.length = insertCount;
 

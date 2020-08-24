@@ -171,44 +171,6 @@ export interface Resolver<C, Ref, Delay> {
     resolve: <F>(context: C, ref: Ref, failure: F) => CalcValue<C> | F | Delay
 }
 
-export interface IVectorConsumer<T> {
-    /** Notification that a range of items have been inserted, removed, and/or replaced in the given vector. */
-    itemsChanged(start: number, removedCount: number, insertedCount: number, producer: IVectorProducer<T>): void;
-}
-
-export interface IVectorReader<T> {
-    readonly length: number;
-    getItem(index: number): T;
-
-    /**
-     * A reference to the underlying vector producer that provides values for this reader.
-     */
-    readonly vectorProducer: IVectorProducer<T>;
-}
-
-export interface IVectorWriter<T> {
-    splice(start: number, deleteCount: number, insertCount: number): void;
-    setItem(index: number, item: T): void;
-}
-
-/** Provides more efficient access to 1D data for vector-aware consumers. */
-export interface IVectorProducer<T> {
-    /**
-     * Acquire a reader for this vector's values and implicitly subscribe the consumer
-     * to value change notifications.
-     * 
-     * @param consumer - The consumer to be notified of vector changes.
-     */
-    openVector(consumer: IVectorConsumer<T>): IVectorReader<T>;
-
-    /**
-     * Unsubscribe the consumer from this vector's change notifications.
-     * 
-     * @param consumer - The consumer to unregister from the vector.
-     */
-    closeVector(consumer: IVectorConsumer<T>): void;
-}
-
 export interface IMatrixConsumer<T> {
     /** Notification that rows have been inserted, removed, and/or replaced in the given matrix. */
     rowsChanged(rowStart: number, removedCount: number, insertedCount: number, producer: IMatrixProducer<T>): void;

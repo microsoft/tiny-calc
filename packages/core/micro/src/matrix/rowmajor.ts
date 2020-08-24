@@ -1,11 +1,17 @@
+/*!
+ * Copyright (c) Microsoft Corporation. All rights reserved.
+ * Licensed under the MIT License.
+ */
+
 import { DenseMatrix } from "./dense";
-import { IVectorConsumer, IVectorProducer, IMatrixWriter, IVectorReader } from "@tiny-calc/nano";
+import { IVectorConsumer, IVectorProducer, IVectorReader } from "@tiny-calc/types";
+import { IMatrixWriter } from "@tiny-calc/nano";
 
 export class RowMajorMatrix<T, TRow = unknown, TCol = unknown> extends DenseMatrix<T> implements IMatrixWriter<T>, IVectorConsumer<TRow | TCol> {
     private readonly rowReader: IVectorReader<TRow>;
     private readonly colReader: IVectorReader<TCol>;
 
-    constructor(rows: IVectorProducer<TRow>, cols: IVectorProducer<TCol>) {
+    public constructor(rows: IVectorProducer<TRow>, cols: IVectorProducer<TCol>) {
         super();
 
         this.rowReader = rows.openVector(this);
@@ -27,7 +33,7 @@ export class RowMajorMatrix<T, TRow = unknown, TCol = unknown> extends DenseMatr
 
     //#region IMatrixWriter
 
-    public setCell(row: number, col: number, value: T) {
+    public setCell(row: number, col: number, value: T): void {
         this.setCellCore(/* major: */ row, /* minor: */ col, value);
         this.invalidateCells(row, col, /* rowCount: */ 1, /* colCount: */ 1);
     }
@@ -36,7 +42,7 @@ export class RowMajorMatrix<T, TRow = unknown, TCol = unknown> extends DenseMatr
 
     //#region IVectorConsumer
 
-    itemsChanged(start: number, removedCount: number, insertedCount: number, producer: IVectorProducer<TRow | TCol>): void {
+    public itemsChanged(start: number, removedCount: number, insertedCount: number, producer: IVectorProducer<TRow | TCol>): void {
         if (producer === this.rowReader.vectorProducer) {
             this.spliceMajor(start, removedCount, insertedCount);
             this.invalidateRows(start, removedCount, insertedCount);
@@ -50,8 +56,8 @@ export class RowMajorMatrix<T, TRow = unknown, TCol = unknown> extends DenseMatr
 
     //#region DenseMatrix
 
-    protected get majorCount() { return this.rowCount; }
-    protected get stride() { return this.colCount; }
+    protected get majorCount(): number { return this.rowCount; }
+    protected get stride(): number { return this.colCount; }
 
     //#endregion DenseMatrix
 }
