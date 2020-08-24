@@ -1,7 +1,12 @@
-import "mocha";
+/*!
+ * Copyright (c) Microsoft Corporation. All rights reserved.
+ * Licensed under the MIT License.
+ */
+
+ import "mocha";
 import { strict as assert } from "assert";
 import { Random } from "best-random";
-import { IVectorConsumer, IVectorReader, IVectorProducer, IVectorWriter } from "@tiny-calc/nano";
+import { IVectorConsumer, IVectorReader, IVectorProducer, IVectorWriter } from "@tiny-calc/types";
 import { DenseVector } from "../src";
 
 export class TestVector<T> implements IVectorConsumer<T> {
@@ -9,7 +14,7 @@ export class TestVector<T> implements IVectorConsumer<T> {
     private readonly consumed: T[] = [];
     private readonly expected: T[] = [];
 
-    constructor(producer: IVectorProducer<T>, private readonly writer: IVectorWriter<T>) {
+    public constructor(producer: IVectorProducer<T>, private readonly writer: IVectorWriter<T>) {
         this.actual = producer.openVector(this);
 
         for (let i = 0; i < this.actual.length; i++) {
@@ -19,7 +24,7 @@ export class TestVector<T> implements IVectorConsumer<T> {
         this.consumed = this.expected.slice(0);
     }
 
-    splice(start: number, deletedCount: number, ...items: T[]): void {
+    public splice(start: number, deletedCount: number, ...items: T[]): void {
         this.expected.splice(start, deletedCount, ...items);
         this.writer.splice(start, deletedCount, items.length);
         for (const value of items) {
@@ -28,13 +33,13 @@ export class TestVector<T> implements IVectorConsumer<T> {
         this.check();
     }
 
-    setItem(index: number, value: T): void {
+    public setItem(index: number, value: T): void {
         this.expected[index] = value;
         this.writer.setItem(index, value);
         this.check();
     }
 
-    itemsChanged(start: number, removedCount: number, insertedCount: number, producer: IVectorProducer<T>): void {
+    public itemsChanged(start: number, removedCount: number, insertedCount: number, producer: IVectorProducer<T>): void {
         const inserted = [];
         
         for (let i = start; insertedCount > 0; i++, insertedCount--) {
@@ -44,7 +49,7 @@ export class TestVector<T> implements IVectorConsumer<T> {
         this.consumed.splice(start, removedCount, ...inserted);
     }
 
-    check() {
+    public check(): void {
         assert.equal(this.actual.length, this.expected.length);
         assert.equal(this.consumed.length, this.expected.length);
 
@@ -54,7 +59,7 @@ export class TestVector<T> implements IVectorConsumer<T> {
         }
     }
 
-    expect(expected: T[]) {
+    public expect(expected: T[]): void {
         this.check();
 
         assert.equal(this.actual.length, expected.length);
@@ -63,15 +68,16 @@ export class TestVector<T> implements IVectorConsumer<T> {
         }
     }
 
-    public get length() { return this.actual.length; }
+    public get length(): number { return this.actual.length; }
 
-    public toString() {
+    public toString(): string {
         this.check();
         return JSON.stringify(this.expected);
     }
 }
 
 describe("Vector", () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let v: TestVector<any>;
 
     beforeEach(() => {
@@ -105,6 +111,7 @@ describe("Vector", () => {
         const float64 = new Random(42).float64;
 
         // Returns a pseudorandom 32b integer in the range [0 .. max].
+        // eslint-disable-next-line no-bitwise
         const int32 = (max = 0x7FFFFFFF) => (float64() * (max + 1)) | 0;
 
         // Returns an array with 'n' random values, each in the range [0 .. 99].

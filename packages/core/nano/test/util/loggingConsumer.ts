@@ -1,12 +1,35 @@
-import { IConsumer, IProducer } from "@tiny-calc/types";
-import { IVectorConsumer, IMatrixConsumer, IVectorProducer, IMatrixProducer } from "../../src/types";
+/*!
+ * Copyright (c) Microsoft Corporation. All rights reserved.
+ * Licensed under the MIT License.
+ */
+
+import { 
+    IConsumer,
+    IProducer,
+    IVectorConsumer,
+    IMatrixConsumer,
+    IVectorProducer,
+    IMatrixProducer
+} from "@tiny-calc/types";
+
 import { strict as assert } from "assert";
 
-export class LoggingConsumer<T> implements IConsumer<T>, IVectorConsumer<T>, IMatrixConsumer<T> {
-    public readonly log: any[] = [];
+export type AnyProducer = IProducer<unknown> | IVectorProducer<unknown> | IMatrixProducer<unknown>
 
-    public static setProducerId(producer: any, value: string) { producer.id = value; }
-    private getProducerId(producer: any) { return producer.id || "Error: Missing call to LoggingConsumer.setProducerId(..)"; }
+const idSym = Symbol("AnyProducer.id");
+
+export class LoggingConsumer<T> implements IConsumer<T>, IVectorConsumer<T>, IMatrixConsumer<T> {
+    public readonly log: unknown[] = [];
+
+    public static setProducerId(producer: AnyProducer, value: string): void {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (producer as any)[idSym] = value;
+    }
+    
+    private getProducerId(producer: AnyProducer): string {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        return (producer as any)[idSym] ?? "Error: Missing call to LoggingConsumer.setProducerId(..)";
+    }
 
     // #region IConsumer<T>
     public valueChanged<U extends T, K extends keyof U>(property: K, producer: IProducer<U>): void {
@@ -34,9 +57,9 @@ export class LoggingConsumer<T> implements IConsumer<T>, IVectorConsumer<T>, IMa
     }
     // #endregion IMatrixConsumer<T>
 
-    public toString() { return JSON.stringify(this.log, undefined, 2); }
+    public toString(): string { return JSON.stringify(this.log, undefined, 2); }
 
-    public expect(expected: {}[]) {
+    public expect(expected: {}[]): void {
         assert.deepEqual(this.log, expected);
     }
 }

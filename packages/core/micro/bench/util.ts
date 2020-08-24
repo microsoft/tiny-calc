@@ -1,5 +1,10 @@
-import { IMatrixConsumer } from "@tiny-calc/nano";
-const process = require("process");
+/*!
+ * Copyright (c) Microsoft Corporation. All rights reserved.
+ * Licensed under the MIT License.
+ */
+
+import { IMatrixConsumer } from "@tiny-calc/types";
+import process from "process";
 
 export const nullConsumer: IMatrixConsumer<unknown> = {
     rowsChanged() { },
@@ -13,7 +18,8 @@ let cached: any;
 /**
  * Paranoid defense against dead code elimination.
  */
-export function consume(value: any) {
+// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types, @typescript-eslint/no-explicit-any
+export function consume(value: any): void {
     count++;
     if (count === 0) {
         cached = value;

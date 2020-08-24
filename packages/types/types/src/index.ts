@@ -5,3 +5,4 @@
 
 export { IConsumer, IProducer, IReader, IWriter } from './record';
 export { IVectorConsumer, IVectorProducer, IVectorReader, IVectorWriter } from './vector';
+export { IMatrixConsumer, IMatrixProducer, IMatrixReader, IMatrixWriter } from './matrix';

@@ -1,7 +1,14 @@
+/*!
+ * Copyright (c) Microsoft Corporation. All rights reserved.
+ * Licensed under the MIT License.
+ */
+
+/* eslint-disable no-bitwise */
+
 import {
     IMatrixProducer,
     IMatrixReader,
-} from "@tiny-calc/nano";
+} from "@tiny-calc/types";
 
 import { IGrid } from "./types";
 
@@ -37,7 +44,7 @@ export function getCell<T>(r: number, c: number, grid: SparseGrid<T>): T | undef
     return undefined;
 }
 
-export function setCell<T>(r: number, c: number, grid: SparseGrid<T>, value: T) {
+export function setCell<T>(r: number, c: number, grid: SparseGrid<T>, value: T): void {
     if (r < 0 || c < 0 || r >= CONSTS.SIZEH || c >= CONSTS.SIZEW) {
         return;
     }
@@ -86,12 +93,13 @@ export function getOrSetCell<T>(r: number, c: number, grid: SparseGrid<T>, value
     }
     const idx = ((c & CONSTS.MW) << CONSTS.LOGH) | (r & CONSTS.MH);
     if (t4[idx] === undefined) {
+        // eslint-disable-next-line no-return-assign
         return t4[idx] = value();
     }
     return t4[idx];
 }
 
-export function clearCell<T>(r: number, c: number, grid: SparseGrid<T>) {
+export function clearCell<T>(r: number, c: number, grid: SparseGrid<T>): void {
     if (r < 0 || c < 0 || r >= CONSTS.SIZEH || c >= CONSTS.SIZEW) {
         return;
     }
@@ -150,6 +158,14 @@ export function forEachCell<T>(grid: SparseGrid<T>, cb: (r: number, c: number, v
     }
 }
 
+function colIdx(col: number, level: 0 | 1 | 2 | 3): number {
+    return ((col >> (level * CONSTS.LOGW)) & CONSTS.MW) << CONSTS.LOGH;
+}
+
+function colIdxUnshifted(col: number, level: 0 | 1 | 2 | 3): number {
+    return ((col >> (level * CONSTS.LOGW)) & CONSTS.MW);
+}
+
 export function forEachCellInColumn<T>(grid: SparseGrid<T>, column: number, cb: (r: number, c: number, value: T) => void): void {
     const colIdx1 = colIdx(column, 3);
     const colIdx2 = colIdx(column, 2);
@@ -172,20 +188,12 @@ export function forEachCellInColumn<T>(grid: SparseGrid<T>, column: number, cb: 
                         (r2 & CONSTS.MH) << (2 * CONSTS.LOGH) |
                         (r3 & CONSTS.MH) << CONSTS.LOGH |
                         r4 & CONSTS.MH,
-                        column, cell as any
+                        column, cell as any     // eslint-disable-line @typescript-eslint/no-explicit-any
                     );
                 }
             }
         }
     }
-}
-
-function colIdx(col: number, level: 0 | 1 | 2 | 3): number {
-    return ((col >> (level * CONSTS.LOGW)) & CONSTS.MW) << CONSTS.LOGH;
-}
-
-function colIdxUnshifted(col: number, level: 0 | 1 | 2 | 3): number {
-    return ((col >> (level * CONSTS.LOGW)) & CONSTS.MW);
 }
 
 export function forEachCellInColumns<T>(grid: SparseGrid<T>, columnStart: number, colCount: number, cb: (r: number, c: number, value: T) => void): void {

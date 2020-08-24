@@ -4,8 +4,7 @@
  */
 
 import { DenseMatrix } from "./dense";
-import { IVectorConsumer, IVectorProducer, IVectorReader } from "@tiny-calc/types";
-import { IMatrixWriter } from "@tiny-calc/nano";
+import { IMatrixWriter, IVectorConsumer, IVectorProducer, IVectorReader } from "@tiny-calc/types";
 
 export class RowMajorMatrix<T, TRow = unknown, TCol = unknown> extends DenseMatrix<T> implements IMatrixWriter<T>, IVectorConsumer<TRow | TCol> {
     private readonly rowReader: IVectorReader<TRow>;

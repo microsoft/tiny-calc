@@ -1,6 +1,12 @@
-import { CalcValue, Primitive, IMatrixConsumer, IMatrixReader } from "@tiny-calc/nano";
+/*!
+ * Copyright (c) Microsoft Corporation. All rights reserved.
+ * Licensed under the MIT License.
+ */
+
+ import "mocha";
 import { strict as assert } from "assert";
-import "mocha";
+import { IMatrixConsumer, IMatrixReader } from "@tiny-calc/types";
+import { CalcValue, Primitive } from "@tiny-calc/nano";
 import { createGrid, matrixProducer } from "../src/matrix";
 import { createSheetletProducer, Sheetlet } from "../src/sheetlet";
 import { makeBenchmark } from "./sheets";
@@ -21,6 +27,7 @@ describe("Sheetlet", () => {
         });
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     function evalFormulaTest(sheet: Sheetlet, expression: string, expected: CalcValue<any>) {
         it(`'${expression}' -> ${JSON.stringify(expected)}`, () => {
             assert.deepEqual(sheet.evaluateFormula(expression), expected);
@@ -28,9 +35,9 @@ describe("Sheetlet", () => {
     }
 
     function extract(sheet: IMatrixReader<Value>, rowCount: number, colCount: number) {
-        let matrix = [];
+        const matrix = [];
         for (let r = 0; r < rowCount; r++) {
-            let row: (Primitive | undefined)[] = [];
+            const row: (Primitive | undefined)[] = [];
             matrix.push(row);
             for (let c = 0; c < colCount; c++) {
                 row.push(sheet.getCell(r, c));

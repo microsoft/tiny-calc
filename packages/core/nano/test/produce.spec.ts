@@ -1,3 +1,10 @@
+/*!
+ * Copyright (c) Microsoft Corporation. All rights reserved.
+ * Licensed under the MIT License.
+ */
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 import "mocha";
 import { strict as assert } from "assert";
 
@@ -44,7 +51,7 @@ describe("produce()", () => {
             assert.equal(v.length, 1);
             assert.equal(v.getItem(0), 0);
             assert.equal(v.getItem(1), undefined);
-            v.vectorProducer.closeVector(nullConsumer);
+            v.vectorProducer?.closeVector(nullConsumer);
         });
 
         it("handles cycles", () => {

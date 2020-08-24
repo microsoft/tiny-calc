@@ -13,10 +13,13 @@ import {
     Pending,
     Primitive,
     Resolver,
+} from "@tiny-calc/nano";
+
+import {
     IMatrixConsumer,
     IMatrixProducer,
     IMatrixReader
-} from "@tiny-calc/nano";
+} from "@tiny-calc/types";
 
 import { initBinder } from "./binder";
 import { isFormulaCell, makeCell } from "./cell";

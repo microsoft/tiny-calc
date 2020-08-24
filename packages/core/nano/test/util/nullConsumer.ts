@@ -1,5 +1,9 @@
-import { IConsumer } from "@tiny-calc/types";
-import { IVectorConsumer, IMatrixConsumer } from "../../src/types";
+/*!
+ * Copyright (c) Microsoft Corporation. All rights reserved.
+ * Licensed under the MIT License.
+ */
+
+import { IConsumer, IVectorConsumer, IMatrixConsumer } from "@tiny-calc/types";
 
 class NullConsumer<T> implements IConsumer<T>, IVectorConsumer<T>, IMatrixConsumer<T> {
     public rowsChanged(): void { }

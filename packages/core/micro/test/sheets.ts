@@ -1,7 +1,13 @@
+/*!
+ * Copyright (c) Microsoft Corporation. All rights reserved.
+ * Licensed under the MIT License.
+ */
+
 import { createSheetletProducer, Sheetlet } from "../src/sheetlet";
 import { createGrid, matrixProducer } from "../src/matrix";
 import { consume } from "../bench/util";
-import { Primitive, IMatrixReader } from "@tiny-calc/nano";
+import { Primitive } from "@tiny-calc/nano";
+import { IMatrixReader } from "@tiny-calc/types";
 import { Value } from "../src/types";
 
 /** Convert a 0-based column index into an Excel-like column name (e.g., 0 -> 'A') */

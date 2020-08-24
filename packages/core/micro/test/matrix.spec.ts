@@ -1,38 +1,44 @@
+/*!
+ * Copyright (c) Microsoft Corporation. All rights reserved.
+ * Licensed under the MIT License.
+ */
+
 import "mocha";
 import { strict as assert } from "assert";
 import { Random } from "best-random";
-import { IMatrixConsumer, IMatrixReader, IMatrixProducer, IVectorWriter, IMatrixWriter } from "@tiny-calc/nano";
+import { IMatrixConsumer, IMatrixReader, IMatrixProducer, IVectorWriter, IMatrixWriter } from "@tiny-calc/types";
 import { DenseVector, RowMajorMatrix } from "../src";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export class ExpectedMatrix<T = any> {
     private _rowCount = 0;
     private _colCount = 0;
     private readonly cells: T[] = [];
 
-    public get rowCount() { this.vetCount(); return this._rowCount; }
-    public get colCount() { this.vetCount(); return this._colCount; }
+    public get rowCount(): number { this.vetCount(); return this._rowCount; }
+    public get colCount(): number { this.vetCount(); return this._colCount; }
 
-    getCell(row: number, col: number): T {
+    public getCell(row: number, col: number): T {
         return this.cells[this.getRowIndex(row) + col];
     }
 
-    setCell(row: number, col: number, value: T) {
+    public setCell(row: number, col: number, value: T): void {
         this.cells[this.getRowIndex(row) + col] = value;
     }
 
-    public insertRows(row: number, rowCount: number) {
+    public insertRows(row: number, rowCount: number): void {
         this.cells.splice(this.getRowIndex(row), 0, ...new Array(rowCount * this._colCount));
         this._rowCount += rowCount;
         this.vetCount();
     }
 
-    public removeRows(row: number, rowCount: number) {
+    public removeRows(row: number, rowCount: number): void {
         this.cells.splice(this.getRowIndex(row), rowCount * this._colCount);
         this._rowCount -= rowCount;
         this.vetCount();
     }
 
-    public insertCols(col: number, colCount: number) {
+    public insertCols(col: number, colCount: number): void {
         const stride = this._colCount + colCount;
         const max = this._rowCount * stride;
 
@@ -45,7 +51,7 @@ export class ExpectedMatrix<T = any> {
         this.vetCount();
     }
 
-    public removeCols(col: number, colCount: number) {
+    public removeCols(col: number, colCount: number): void {
         const stride = this._colCount - colCount;
 
         for (let c = col; c < this.cells.length; c += stride) {
@@ -80,13 +86,14 @@ export class ExpectedMatrix<T = any> {
     }
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export class TestMatrix<T = any, TRow = never, TCol = never> implements IMatrixConsumer<T> {
     private readonly expected = new ExpectedMatrix();
     private readonly consumed = new ExpectedMatrix();
     private readonly reader: IMatrixReader<T>;
     public readonly log: string[] = [];
 
-    constructor (
+    public constructor (
         producer: IMatrixProducer<T>,
         private readonly rowWriter: IVectorWriter<TRow>,
         private readonly colWriter: IVectorWriter<TCol>,
@@ -95,12 +102,12 @@ export class TestMatrix<T = any, TRow = never, TCol = never> implements IMatrixC
         this.reader = producer.openMatrix(this);
     }
 
-    public get rowCount() { this.vetCounts(); return this.reader.rowCount; }
-    public get colCount() { this.vetCounts(); return this.reader.colCount; }
+    public get rowCount(): number { this.vetCounts(); return this.reader.rowCount; }
+    public get colCount(): number { this.vetCounts(); return this.reader.colCount; }
 
     // #region IMatrixConsumer
 
-    rowsChanged(rowStart: number, removedCount: number, insertedCount: number): void {
+    public rowsChanged(rowStart: number, removedCount: number, insertedCount: number): void {
         const rowEnd = rowStart + removedCount;
         
         assert(0 <= rowStart && rowStart <= rowEnd && rowEnd <= this.consumed.rowCount);
@@ -111,7 +118,7 @@ export class TestMatrix<T = any, TRow = never, TCol = never> implements IMatrixC
         this.check();
     }
 
-    colsChanged(colStart: number, removedCount: number, insertedCount: number): void {
+    public colsChanged(colStart: number, removedCount: number, insertedCount: number): void {
         const colEnd = colStart + removedCount;
         assert(0 <= colStart && colStart <= colEnd && colEnd <= this.consumed.colCount);
 
@@ -121,7 +128,7 @@ export class TestMatrix<T = any, TRow = never, TCol = never> implements IMatrixC
         this.check();
     }
 
-    cellsChanged(rowStart: number, colStart: number, rowCount: number, colCount: number): void {
+    public cellsChanged(rowStart: number, colStart: number, rowCount: number, colCount: number): void {
         this.vetCounts();
 
         const rowEnd = rowStart + rowCount;
@@ -141,7 +148,7 @@ export class TestMatrix<T = any, TRow = never, TCol = never> implements IMatrixC
 
     // #endregion IMatrixConsumer
 
-    getCell(row: number, col: number): T {
+    public getCell(row: number, col: number): T {
         assert(0 <= row && row < this.rowCount
             && 0 <= col && col < this.colCount);
 
@@ -154,9 +161,7 @@ export class TestMatrix<T = any, TRow = never, TCol = never> implements IMatrixC
         return actual;
     }
 
-    public get matrixProducer() { return this; }
-
-    setCell(row: number, col: number, value: T) {
+    public setCell(row: number, col: number, value: T): void {
         this.log.push(`matrix.setCell(/* row: */ ${row}, /* col: */ ${col}, ${JSON.stringify(value)});    // rowCount: ${this.rowCount} colCount: ${this.colCount}`);
 
         this.setCellCore(row, col, value);
@@ -173,7 +178,7 @@ export class TestMatrix<T = any, TRow = never, TCol = never> implements IMatrixC
             `Writer.setCell(${row},${col}) must update matrix value.`);
     }
 
-    setCells(rowStart: number, colStart: number, colCount: number, values: T[]) {
+    public setCells(rowStart: number, colStart: number, colCount: number, values: T[]): void {
         this.log.push(`matrix.setCells(/* rowStart: */ ${rowStart}, /* colStart: */ ${colStart}, /* colCount: */ ${colCount}, ${JSON.stringify(values)});    // rowCount: ${this.rowCount} colCount: ${this.colCount} length: ${values.length}`);
 
         const rowCount = Math.ceil(values.length / colCount);
@@ -197,7 +202,7 @@ export class TestMatrix<T = any, TRow = never, TCol = never> implements IMatrixC
         }
     }
 
-    public insertRows(rowStart: number, rowCount: number) {
+    public insertRows(rowStart: number, rowCount: number): void {
         this.log.push(`matrix.insertRows(${rowStart},${rowCount});    // rowCount: ${this.rowCount} -> ${this.rowCount + rowCount}, colCount: ${this.colCount}`);
 
         this.expected.insertRows(rowStart, rowCount);
@@ -206,7 +211,7 @@ export class TestMatrix<T = any, TRow = never, TCol = never> implements IMatrixC
         this.check();
     }
 
-    public removeRows(rowStart: number, rowCount: number) {
+    public removeRows(rowStart: number, rowCount: number): void {
         this.log.push(`matrix.removeRows(${rowStart},${rowCount});    // rowCount: ${this.rowCount} -> ${this.rowCount - rowCount}, colCount: ${this.colCount}`);
 
         this.expected.removeRows(rowStart, rowCount);
@@ -215,7 +220,7 @@ export class TestMatrix<T = any, TRow = never, TCol = never> implements IMatrixC
         this.check();
     }
 
-    public insertCols(colStart: number, colCount: number) {
+    public insertCols(colStart: number, colCount: number): void {
         this.log.push(`matrix.insertCols(${colStart},${colCount});    // colCount: ${this.colCount} -> ${this.colCount + colCount}, colCount: ${this.colCount}`);
 
         this.expected.insertCols(colStart, colCount);
@@ -224,7 +229,7 @@ export class TestMatrix<T = any, TRow = never, TCol = never> implements IMatrixC
         this.check();
     }
 
-    public removeCols(colStart: number, colCount: number) {
+    public removeCols(colStart: number, colCount: number): void {
         this.log.push(`matrix.removeCols(${colStart},${colCount});    // colCount: ${this.colCount} -> ${this.colCount - colCount}, colCount: ${this.colCount}`);
 
         this.expected.removeCols(colStart, colCount);
@@ -253,23 +258,23 @@ export class TestMatrix<T = any, TRow = never, TCol = never> implements IMatrixC
         assert.equal(this.consumed.colCount, this.expected.colCount);
     }
 
-    public check() {
+    public check(): ReadonlyArray<ReadonlyArray<T>> {
         this.vetCounts();
         return this.extract();
     }
 
-    public expectSize(rowCount: number, colCount: number) {
+    public expectSize(rowCount: number, colCount: number): void {
         this.check();
         
         assert.equal(this.rowCount, rowCount);
         assert.equal(this.colCount, colCount);
     }
 
-    public expect(expected: T[][]) {
+    public expect(expected: T[][]): void {
         assert.deepEqual(this.extract(), this.check());
     }
 
-    public toString() {
+    public toString(): string {
         return JSON.stringify(this.extract());
     }
 }
@@ -536,6 +541,7 @@ describe("Matrix", () => {
             const float64 = new Random(seed).float64;
 
             // Returns a pseudorandom 32b integer in the range [0 .. max].
+            // eslint-disable-next-line no-bitwise
             const int32 = (max = 0x7FFFFFFF) => (float64() * (max + 1)) | 0;
 
             // Returns an array with 'n' random values, each in the range [0 .. 99].
@@ -606,6 +612,7 @@ describe("Matrix", () => {
 
     describe("stress", () => {
         for (let i = 0; i < 10; i++) {
+            // eslint-disable-next-line no-bitwise
             stress(/* iterations: */ 100, /* seed: */ Math.random() * 0x100000000 | 0);
         }
     });
