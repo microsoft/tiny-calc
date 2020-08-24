@@ -3,38 +3,7 @@
  * Licensed under the MIT License.
  */
 
-export interface IConsumer<T> {
-    /**
-     * Invoked whenever the data this object is bound to is changed.
-     */
-    valueChanged<U extends T, K extends keyof U>(property: K, producer: IProducer<U>): void;
-}
-
-export interface IReader<T> {
-    /**
-     * Return the value associated with `property`.
-     * @param property - The property of the Producer to read.
-     */
-    get<K extends keyof T>(property: K): T[K];
-
-    /**
-     * A reference to the underlying producer that provides values for this reader.
-     */
-    readonly producer?: IProducer<T>;
-}
-
-export interface IWriter<T> {
-    set<K extends keyof T>(property: K, value: T[K]): void;
-    delete<K extends keyof T>(property: K): void;
-}
-
-/**
- * The interface for an object whose data can be bound to. We use this contract for
- * components that want to expose their data and its changes to other components.
- *
- * Any component that implements IProducer is expected to provide some registration
- * functionality and to notify consumers whenever the data they are bound to changes.
- */
+/** An observable key/value collection, such as a Record or Map. */
 export interface IProducer<T> {
     /**
      * Acquire a reader for this producer's values and implicitly subscribe the consumer
@@ -50,4 +19,30 @@ export interface IProducer<T> {
      * @param consumer - The consumer to unregister from the producer.
      */
     close(consumer: IConsumer<T>): void;
+}
+
+/** Capability to read values of a key/value collection. */
+export interface IReader<T> {
+    /** Return the value associated with `property`. */
+    get<K extends keyof T>(property: K): T[K];
+
+    /**
+     * A reference to the underlying producer that provides values for this reader,
+     * or undefined if the producer is immutable.
+     */
+    readonly producer?: IProducer<T>;
+}
+
+/** Capability to set values of a key/value collection. */
+export interface IWriter<T> {
+    set<K extends keyof T>(property: K, value: T[K]): void;
+    delete<K extends keyof T>(property: K): void;
+}
+
+/** A consumer of change notifications for a key/value collection, such as a Record or Map. */
+export interface IConsumer<T> {
+    /**
+     * Invoked whenever the data this object is bound to is changed.
+     */
+    valueChanged<U extends T, K extends keyof U>(property: K, producer: IProducer<U>): void;
 }
