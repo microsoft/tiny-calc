@@ -1,14 +1,19 @@
-import { strict as assert } from "assert";
-import { ITreeShapeReader, TreeNode } from "../src/types";
+/*!
+ * Copyright (c) Microsoft Corporation. All rights reserved.
+ * Licensed under the MIT License.
+ */
 
-export function forEachChild(tree: ITreeShapeReader, parent: TreeNode, callback: (child: TreeNode) => boolean) {
+import { strict as assert } from "assert";
+import { ITreeShapeReader, TreeNode } from "@tiny-calc/types";
+
+export function forEachChild(tree: ITreeShapeReader, parent: TreeNode, callback: (child: TreeNode) => boolean): void {
     let current = tree.getFirstChild(parent);
     while (current !== TreeNode.none && callback(current)) {
         current = tree.getNextSibling(current);
     }
 }
 
-export function checkPrevLink(tree: ITreeShapeReader, node: TreeNode) {
+export function checkPrevLink(tree: ITreeShapeReader, node: TreeNode): void {
     const prev = tree.getPrevSibling(node);
     if (prev !== TreeNode.none) {
         const actual = tree.getNextSibling(prev);
@@ -17,7 +22,7 @@ export function checkPrevLink(tree: ITreeShapeReader, node: TreeNode) {
     }
 }
 
-export function checkNextLink(tree: ITreeShapeReader, node: TreeNode) {
+export function checkNextLink(tree: ITreeShapeReader, node: TreeNode): void {
     const next = tree.getNextSibling(node);
     if (next !== TreeNode.none) {
         const actual = tree.getPrevSibling(next);
@@ -26,7 +31,7 @@ export function checkNextLink(tree: ITreeShapeReader, node: TreeNode) {
     }
 }
 
-export function checkChildren(tree: ITreeShapeReader, parent: TreeNode) {
+export function checkChildren(tree: ITreeShapeReader, parent: TreeNode): void {
     let lastChild = TreeNode.none;
 
     forEachChild(tree, parent, (child) => {
@@ -40,6 +45,18 @@ export function checkChildren(tree: ITreeShapeReader, parent: TreeNode) {
 
     const actual = tree.getLastChild(parent);
     assert.equal(actual, lastChild, `Parent '${parent}' must point to last child '${lastChild}', but got '${actual}'`)
+}
+
+function checkParent(tree: ITreeShapeReader, node: TreeNode): void {
+    const parent = tree.getParent(node);
+    if (parent !== TreeNode.none) {
+        let found = 0;
+        forEachChild(tree, parent, (child) => {
+            if (child === node) { found++; }
+            return true;
+        });
+        assert.equal(found, 1, `Parent '${parent}' must contain child '${node}' exactly once, but found '${found}'.`);
+    }
 }
 
 export function checkShape(tree: ITreeShapeReader, node = TreeNode.root): number {
@@ -59,16 +76,4 @@ export function checkShape(tree: ITreeShapeReader, node = TreeNode.root): number
     });
 
     return count;
-}
-
-function checkParent(tree: ITreeShapeReader, node: TreeNode) {
-    const parent = tree.getParent(node);
-    if (parent !== TreeNode.none) {
-        let found = 0;
-        forEachChild(tree, parent, (child) => {
-            if (child === node) { found++; }
-            return true;
-        });
-        assert.equal(found, 1, `Parent '${parent}' must contain child '${node}' exactly once, but found '${found}'.`);
-    }
 }

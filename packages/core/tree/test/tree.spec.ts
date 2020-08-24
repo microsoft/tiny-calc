@@ -6,7 +6,7 @@
 import "mocha";
 import { strict as assert } from "assert";
 import { TreeShape } from "../src/treeshape";
-import { TreeNode } from "../src/types";
+import { TreeNode } from "@tiny-calc/types";
 import { checkShape } from "./utils";
 
 describe("TreeShape", () => {

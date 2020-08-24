@@ -1,4 +1,17 @@
-import { TreeNode, TreeNodeLocation, ITreeProducer, ITreeConsumer, ITreeReader, ITreeShapeReader } from "./types";
+/*!
+ * Copyright (c) Microsoft Corporation. All rights reserved.
+ * Licensed under the MIT License.
+ */
+
+import {
+    TreeNode,
+    TreeNodeLocation,
+    ITreeProducer,
+    ITreeConsumer,
+    ITreeReader,
+    ITreeShapeReader
+} from "@tiny-calc/types";
+
 import { ConsumerSet, addConsumer, removeConsumer, forEachConsumer } from "./consumerset";
 
 export abstract class Tree<T> implements ITreeProducer<T>, ITreeReader<T>, ITreeConsumer {
@@ -8,18 +21,18 @@ export abstract class Tree<T> implements ITreeProducer<T>, ITreeReader<T>, ITree
 
     // #region ITreeReader<T>
 
-    beforeNode(node: TreeNode): TreeNodeLocation        { return this.shape.beforeNode(node); }
-    afterNode(node: TreeNode): TreeNodeLocation         { return this.shape.afterNode(node); }
-    firstChildOf(node: TreeNode): TreeNodeLocation      { return this.shape.firstChildOf(node); }
-    lastChildOf(node: TreeNode): TreeNodeLocation       { return this.shape.lastChildOf(node); }
+    public beforeNode(node: TreeNode): TreeNodeLocation        { return this.shape.beforeNode(node); }
+    public afterNode(node: TreeNode): TreeNodeLocation         { return this.shape.afterNode(node); }
+    public firstChildOf(node: TreeNode): TreeNodeLocation      { return this.shape.firstChildOf(node); }
+    public lastChildOf(node: TreeNode): TreeNodeLocation       { return this.shape.lastChildOf(node); }
     
-    parentOfLocation(node: TreeNodeLocation): TreeNode  { return this.shape.parentOfLocation(node); }
+    public parentOfLocation(node: TreeNodeLocation): TreeNode  { return this.shape.parentOfLocation(node); }
 
-    getParent(node: TreeNode): TreeNode                 { return this.shape.getParent(node); }
-    getFirstChild(parent: TreeNode): TreeNode           { return this.shape.getFirstChild(parent); }
-    getLastChild(parent: TreeNode): TreeNode            { return this.shape.getLastChild(parent); }
-    getNextSibling(node: TreeNode): TreeNode            { return this.shape.getNextSibling(node); }
-    getPrevSibling(node: TreeNode): TreeNode            { return this.shape.getPrevSibling(node); }
+    public getParent(node: TreeNode): TreeNode                 { return this.shape.getParent(node); }
+    public getFirstChild(parent: TreeNode): TreeNode           { return this.shape.getFirstChild(parent); }
+    public getLastChild(parent: TreeNode): TreeNode            { return this.shape.getLastChild(parent); }
+    public getNextSibling(node: TreeNode): TreeNode            { return this.shape.getNextSibling(node); }
+    public getPrevSibling(node: TreeNode): TreeNode            { return this.shape.getPrevSibling(node); }
 
     abstract getNode(node: TreeNode): T;
 
@@ -27,12 +40,12 @@ export abstract class Tree<T> implements ITreeProducer<T>, ITreeReader<T>, ITree
 
     // #region ITreeProducer<T>
 
-    openTree(consumer: ITreeConsumer): ITreeReader<T> {
+    public openTree(consumer: ITreeConsumer): ITreeReader<T> {
         this.consumers = addConsumer(this.consumers, consumer);
         return this;
     }
 
-    closeTree(consumer: ITreeConsumer): void {
+    public closeTree(consumer: ITreeConsumer): void {
         this.consumers = removeConsumer(this.consumers, consumer);
     }
 
@@ -40,7 +53,7 @@ export abstract class Tree<T> implements ITreeProducer<T>, ITreeReader<T>, ITree
 
     // #region ITreeConsumer
     
-    public nodeMoved(node: TreeNode, oldLocation: TreeNodeLocation) {
+    public nodeMoved(node: TreeNode, oldLocation: TreeNodeLocation): void {
         this.invalidateNodeLocation(node, oldLocation);
     }
 

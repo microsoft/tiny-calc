@@ -1,4 +1,17 @@
-import { ITreeShapeProducer, ITreeShapeConsumer, ITreeShapeReader, TreeNode, TreeNodeLocation, ITreeShapeWriter } from "./types";
+/*!
+ * Copyright (c) Microsoft Corporation. All rights reserved.
+ * Licensed under the MIT License.
+ */
+
+import {
+    ITreeShapeProducer,
+    ITreeShapeConsumer,
+    ITreeShapeReader,
+    TreeNode,
+    TreeNodeLocation,
+    ITreeShapeWriter
+} from "@tiny-calc/types";
+
 import { ConsumerSet, addConsumer, removeConsumer, forEachConsumer } from "./consumerset";
 import { HandleTable } from "./handletable";
 
@@ -28,16 +41,16 @@ export class TreeShape implements ITreeShapeProducer, ITreeShapeReader, ITreeSha
 
     // #region ITreeShapeProducer
 
-    openTree(consumer: ITreeShapeConsumer): ITreeShapeReader {
+    public openTree(consumer: ITreeShapeConsumer): ITreeShapeReader {
         this.consumers = addConsumer(this.consumers, consumer);
         return this;
     }
 
-    closeTree(consumer: ITreeShapeConsumer): void {
+    public closeTree(consumer: ITreeShapeConsumer): void {
         this.consumers = removeConsumer(this.consumers, consumer);
     }
 
-    createNode(): TreeNode {
+    public createNode(): TreeNode {
         const node = this.handles.allocate();
         const index = toIndex(+node);
 
@@ -49,7 +62,7 @@ export class TreeShape implements ITreeShapeProducer, ITreeShapeReader, ITreeSha
         return +node;
     }
 
-    deleteNode(node: TreeNode) {
+    public deleteNode(node: TreeNode): void {
         this.removeNode(node);
         this.handles.free(+node);
     }
@@ -58,13 +71,13 @@ export class TreeShape implements ITreeShapeProducer, ITreeShapeReader, ITreeSha
 
     // #region ITreeShapeReader
 
-    getParent(node: TreeNode): TreeNode      { return toNode(this.getParentIndex(toIndex(node))); }
-    getFirstChild(node: TreeNode): TreeNode  { return toNode(this.getFirstChildIndex(toIndex(node))); }
-    getLastChild(node: TreeNode): TreeNode   { return toNode(this.getLastChildIndex(toIndex(node))); }
-    getNextSibling(node: TreeNode): TreeNode { return toNode(this.getNextSiblingIndex(toIndex(node))); }
-    getPrevSibling(node: TreeNode): TreeNode { return toNode(this.getPrevSiblingIndex(toIndex(node))); }
+    public getParent(node: TreeNode): TreeNode      { return toNode(this.getParentIndex(toIndex(node))); }
+    public getFirstChild(node: TreeNode): TreeNode  { return toNode(this.getFirstChildIndex(toIndex(node))); }
+    public getLastChild(node: TreeNode): TreeNode   { return toNode(this.getLastChildIndex(toIndex(node))); }
+    public getNextSibling(node: TreeNode): TreeNode { return toNode(this.getNextSiblingIndex(toIndex(node))); }
+    public getPrevSibling(node: TreeNode): TreeNode { return toNode(this.getPrevSiblingIndex(toIndex(node))); }
 
-    beforeNode(node: TreeNode): TreeNodeLocation {
+    public beforeNode(node: TreeNode): TreeNodeLocation {
         const prev = this.getPrevSibling(node);
         
         return prev === TreeNode.none
@@ -72,22 +85,22 @@ export class TreeShape implements ITreeShapeProducer, ITreeShapeReader, ITreeSha
             : this.afterNode(prev);
     }
 
-    afterNode(node: TreeNode): TreeNodeLocation {
+    public afterNode(node: TreeNode): TreeNodeLocation {
         return node as unknown as TreeNodeLocation;
     }
 
-    firstChildOf(parent: TreeNode): TreeNodeLocation {
+    public firstChildOf(parent: TreeNode): TreeNodeLocation {
         return -parent;
     }
 
-    lastChildOf(parent: TreeNode): TreeNodeLocation {
+    public lastChildOf(parent: TreeNode): TreeNodeLocation {
         const oldLast = this.getLastChild(parent);
         return oldLast === TreeNode.none
             ? this.firstChildOf(parent)
             : +oldLast;
     }
 
-    parentOfLocation(location: TreeNodeLocation): TreeNode {
+    public parentOfLocation(location: TreeNodeLocation): TreeNode {
         return location > 0
             ? this.getParent(+location)
             : -location;
@@ -166,7 +179,7 @@ export class TreeShape implements ITreeShapeProducer, ITreeShapeReader, ITreeSha
 
     // #region ITreeShapeWriter
 
-    public moveNode(node: TreeNode, location: TreeNodeLocation) {
+    public moveNode(node: TreeNode, location: TreeNodeLocation): void {
         const index = toIndex(node);
         const oldLocation = this.unlink(index);
         
@@ -181,7 +194,7 @@ export class TreeShape implements ITreeShapeProducer, ITreeShapeReader, ITreeSha
         });
     }
 
-    public removeNode(node: TreeNode) {
+    public removeNode(node: TreeNode): void {
         const index = toIndex(node);
         const oldLocation = this.unlink(index);
 

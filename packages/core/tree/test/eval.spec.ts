@@ -6,7 +6,7 @@
 import "mocha";
 import { strict as assert } from "assert";
 import { TreeShape } from "../src/treeshape";
-import { TreeNode, ITreeWriter, ITreeReader } from "../src/types";
+import { TreeNode, ITreeWriter, ITreeReader } from "@tiny-calc/types";
 import { Expr, EvalTree, add } from "./evaltree";
 import { InputTree } from "./inputtree";
 

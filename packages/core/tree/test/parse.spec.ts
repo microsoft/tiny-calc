@@ -1,6 +1,13 @@
+/*!
+ * Copyright (c) Microsoft Corporation. All rights reserved.
+ * Licensed under the MIT License.
+ */
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 import { strict as assert } from "assert";
 import { ExpAlgebra } from "@tiny-calc/nano";
-import { TreeNode, ITreeWriter, ITreeConsumer, ITreeReader, ITreeProducer } from "../src/types";
+import { TreeNode, ITreeWriter, ITreeConsumer, ITreeReader, ITreeProducer } from "@tiny-calc/types";
 import { TreeShape } from "../src/treeshape";
 import {
     BinaryOperatorToken,
@@ -85,7 +92,7 @@ function createAlgebra(
     };
 }
 
-export const parse = (expr: string) => {
+export const parse = (expr: string): ITreeProducer<ExprData> => {
     const shape = new TreeShape();
     const tokenTree = new InputTree<ExprData>(shape);
     const [failed, root] = createParser(
@@ -101,10 +108,6 @@ export const parse = (expr: string) => {
 };
 
 export class EvalTree extends BottomUpTree<ExprData, ExprData> implements ITreeConsumer {
-    constructor (exprTree: ITreeProducer<ExprData>) {
-        super(exprTree);
-    }
-
     private static readonly unaryOpTable = {
         [SyntaxKind.PlusToken]: (child: any) => +child,
         [SyntaxKind.MinusToken]: (child: any) => -child,
@@ -123,6 +126,10 @@ export class EvalTree extends BottomUpTree<ExprData, ExprData> implements ITreeC
         [SyntaxKind.GreaterThanEqualsToken]: (left: any, right: any) => left >= right,
         [SyntaxKind.NotEqualsToken]: (left: any, right: any) => left !== right,    
     };
+
+    public constructor (exprTree: ITreeProducer<ExprData>) {
+        super(exprTree);
+    }
 
     protected evalNode(node: TreeNode, input: ITreeReader<ExprData>, descendants: ITreeReader<ExprData>): ExprData {
         const expr = input.getNode(node);
@@ -182,6 +189,7 @@ describe("Parse/EvalTree", () => {
         "1 >= 2",
         "(1 + 2) * 3",
     ]) {
+        // eslint-disable-next-line no-eval
         const expected = eval(expr);
         it(`${expr} -> ${expected}`, () => {
             const tokenTree = parse(expr);

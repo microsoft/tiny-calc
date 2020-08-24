@@ -1,13 +1,14 @@
+/*!
+ * Copyright (c) Microsoft Corporation. All rights reserved.
+ * Licensed under the MIT License.
+ */
+
 export const enum TreeNode {
-    none = -429496729,      // Largest negative Int32 that satisfies 'TreeNodeIndex.none / ShapeFieldOffset.fieldCount'.
     root = 0,
+    none = -429496729,      // Largest negative Int32 that satisfies 'TreeNodeIndex.none / ShapeFieldOffset.fieldCount'.
 }
 
-export const enum TreeNodeLocation {}
-
-export interface ITreeShapeConsumer {
-    nodeMoved(node: TreeNode, oldLocation: TreeNodeLocation, producer: ITreeShapeProducer): void;
-}
+export const enum TreeNodeLocation { }
 
 export interface ITreeShapeProducer {
     /**
@@ -24,6 +25,10 @@ export interface ITreeShapeProducer {
      * @param consumer - The consumer to unregister from the Tree shape.
      */
     closeTree(consumer: ITreeShapeConsumer): void;
+}
+
+export interface ITreeShapeConsumer {
+    nodeMoved(node: TreeNode, oldLocation: TreeNodeLocation, producer: ITreeShapeProducer): void;
 }
 
 export interface ITreeShapeReader {
@@ -53,18 +58,6 @@ export interface ITreeShapeWriter {
     moveNode(parent: TreeNode, newlocation: TreeNodeLocation): void;
 }
 
-export interface ITreeConsumer extends ITreeShapeConsumer {
-    nodeChanged(node: TreeNode, producer: ITreeProducer<unknown>): void;
-}
-
-export interface ITreeReader<T> extends ITreeShapeReader {
-    getNode(node: TreeNode): T;
-}
-
-export interface ITreeWriter<T> {
-    setNode(node: TreeNode, value: T): void;
-}
-
 export interface ITreeProducer<T = unknown> extends ITreeShapeProducer {
     /**
      * Acquire a reader for this tree's shape and implicitly subscribe the consumer
@@ -80,4 +73,16 @@ export interface ITreeProducer<T = unknown> extends ITreeShapeProducer {
      * @param consumer - The consumer to unregister from the Tree shape.
      */
     closeTree(consumer: ITreeConsumer): void;
+}
+
+export interface ITreeConsumer extends ITreeShapeConsumer {
+    nodeChanged(node: TreeNode, producer: ITreeProducer<unknown>): void;
+}
+
+export interface ITreeReader<T> extends ITreeShapeReader {
+    getNode(node: TreeNode): T;
+}
+
+export interface ITreeWriter<T> {
+    setNode(node: TreeNode, value: T): void;
 }

@@ -1,18 +1,23 @@
+/*!
+ * Copyright (c) Microsoft Corporation. All rights reserved.
+ * Licensed under the MIT License.
+ */
+
 import { Tree } from "../src/tree";
-import { TreeNode, TreeNodeLocation, ITreeReader, ITreeProducer } from "../src/types";
+import { TreeNode, TreeNodeLocation, ITreeReader, ITreeProducer, ITreeShapeReader } from "@tiny-calc/types";
 
 export abstract class BottomUpTree<TIn, TOut> extends Tree<TOut> {
     private readonly dirty: boolean[] = [true];
     private readonly input: ITreeReader<TIn>;
     private readonly results: TOut[] = [];
 
-    constructor (input: ITreeProducer<TIn>) {
+    public constructor (input: ITreeProducer<TIn>) {
         super();
 
         this.input = input.openTree(/* consumer: */ this);
     }
 
-    protected get shape() { return this.input; }
+    protected get shape(): ITreeShapeReader { return this.input; }
 
     protected abstract evalNode(node:TreeNode, input: ITreeReader<TIn>, descendants: ITreeReader<TOut>): TOut;
 
@@ -30,15 +35,15 @@ export abstract class BottomUpTree<TIn, TOut> extends Tree<TOut> {
 
     // #endregion ITreeWriter
 
-    protected isDirty(node: TreeNode) {
+    protected isDirty(node: TreeNode): boolean {
         return this.dirty[node] !== false;
     }
 
-    protected clearDirty(node: TreeNode) {
+    protected clearDirty(node: TreeNode): void {
         this.dirty[node] = false;
     }
 
-    protected invalidate(node: TreeNode) {
+    protected invalidate(node: TreeNode): void {
         while (!this.dirty[node]) {
             this.dirty[node] = true;
             node = this.getParent(node);
@@ -53,7 +58,7 @@ export abstract class BottomUpTree<TIn, TOut> extends Tree<TOut> {
         super.nodeChanged(node);
     }
 
-    public nodeMoved(node: TreeNode, oldLocation: TreeNodeLocation) {
+    public nodeMoved(node: TreeNode, oldLocation: TreeNodeLocation): void {
         this.invalidate(node);
         this.invalidate(this.parentOfLocation(oldLocation));
 

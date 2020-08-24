@@ -1,11 +1,16 @@
+/*!
+ * Copyright (c) Microsoft Corporation. All rights reserved.
+ * Licensed under the MIT License.
+ */
+
 import { Tree } from "../src/tree";
-import { TreeNode, ITreeWriter, ITreeShapeProducer, ITreeShapeReader } from "../src/types";
+import { TreeNode, ITreeWriter, ITreeShapeProducer, ITreeShapeReader } from "@tiny-calc/types";
 
 export class InputTree<T> extends Tree<T> implements ITreeWriter<T> {
     private readonly values: T[] = [];
     protected readonly shape: ITreeShapeReader;
 
-    constructor (shape: ITreeShapeProducer) {
+    public constructor (shape: ITreeShapeProducer) {
         super();
         
         this.shape = shape.openTree(/* consumer: */ this);
@@ -13,7 +18,7 @@ export class InputTree<T> extends Tree<T> implements ITreeWriter<T> {
     
     // #region ITreeReader
 
-    getNode(node: TreeNode): T {
+    public getNode(node: TreeNode): T {
         return this.values[node];
     }
 
