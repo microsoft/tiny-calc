@@ -1,8 +1,11 @@
 import {
-    parseExpression,
-    Pending,
     IConsumer,
     IProducer,
+} from "@tiny-calc/types";
+
+import {
+    parseExpression,
+    Pending,
     ExpressionNode,
     interpret,
     Primitive,

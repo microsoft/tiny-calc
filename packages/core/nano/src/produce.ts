@@ -3,7 +3,8 @@
  * Licensed under the MIT License.
  */
 
-import { IVectorProducer, IProducer } from "./types";
+import { IProducer } from "@tiny-calc/types";
+import { IVectorProducer } from "./types";
 
 const unitFn = () => {};
 

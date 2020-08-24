@@ -5,6 +5,7 @@ dependencies:
   '@rush-temp/nano': 'file:projects/nano.tgz'
   '@rush-temp/tree': 'file:projects/tree.tgz'
   '@rush-temp/ts-config': 'file:projects/ts-config.tgz'
+  '@rush-temp/types': 'file:projects/types.tgz'
   '@rushstack/eslint-config': 1.1.0_eslint@7.7.0+typescript@3.9.7
   '@types/benchmark': 1.0.33
   '@types/mocha': 5.2.7
@@ -1679,6 +1680,7 @@ packages:
   'file:projects/eslint-config.tgz_eslint@7.7.0+typescript@3.9.7':
     dependencies:
       '@rushstack/eslint-config': 1.1.0_eslint@7.7.0+typescript@3.9.7
+      eslint-plugin-header: 3.0.0_eslint@7.7.0
     dev: false
     id: 'file:projects/eslint-config.tgz'
     name: '@rush-temp/eslint-config'
@@ -1686,7 +1688,7 @@ packages:
       eslint: '*'
       typescript: '*'
     resolution:
-      integrity: sha512-1xf1zpboeXnCzU1aMI5asJCsIdFayXOz9Ju/hWGKAzA6MmpOqDEHmkJtdMKny/C6gjzaMWk5Uu2Dix5ldvlpPQ==
+      integrity: sha512-3aa+ikIwR4MQTrlQmmbpATnfo9twVj3VTfRJqBPs4rJR7bGUaHHjapMVbMW17tgGVW7NekDPtcHIuNFfz9pPhQ==
       tarball: 'file:projects/eslint-config.tgz'
     version: 0.0.0
   'file:projects/example.tgz':
@@ -1751,7 +1753,7 @@ packages:
     dev: false
     name: '@rush-temp/tree'
     resolution:
-      integrity: sha512-EJe23xEU+9oL3MBHWfaN6tdXOgR9iKadzVTl0AIywc9I0K3e9rmZRKpl23mMQX3i50Dn8Vc6YNmagBsZA3nLPw==
+      integrity: sha512-ozK0bVViKeQONEgPX+iF3f8Vy+7bR08PJc2nT51oFknzRhZ3GttpYRX4ha9AfMmV4U94WMlc5jMNmWVq7Ks8pw==
       tarball: 'file:projects/tree.tgz'
     version: 0.0.0
   'file:projects/ts-config.tgz':
@@ -1761,6 +1763,23 @@ packages:
       integrity: sha512-mAS96EGDP3Rgo9agW6IKqAZLF8fBls1+gtAR4oypl0781oASOJE27CTKmeT3hO0E1CS1OULYthBymeO0DHFlEw==
       tarball: 'file:projects/ts-config.tgz'
     version: 0.0.0
+  'file:projects/types.tgz':
+    dependencies:
+      '@types/mocha': 5.2.7
+      '@types/node': 12.12.54
+      best-random: 1.0.3
+      eslint: 7.7.0
+      hotloop: 1.1.0
+      mocha: 6.2.3
+      rimraf: 2.7.1
+      ts-node: 8.10.2_typescript@3.9.7
+      typescript: 3.9.7
+    dev: false
+    name: '@rush-temp/types'
+    resolution:
+      integrity: sha512-/RYUuPYhuMT4tp7kI7vWwbuGfP5Y3eBkv11rVglE30wT57GMpz+zZImZDL9QrduC5ijE37LJTTIQd81gp72Ybg==
+      tarball: 'file:projects/types.tgz'
+    version: 0.0.0
 registry: ''
 specifiers:
   '@rush-temp/eslint-config': 'file:./projects/eslint-config.tgz'
@@ -1769,6 +1788,7 @@ specifiers:
   '@rush-temp/nano': 'file:./projects/nano.tgz'
   '@rush-temp/tree': 'file:./projects/tree.tgz'
   '@rush-temp/ts-config': 'file:./projects/ts-config.tgz'
+  '@rush-temp/types': 'file:./projects/types.tgz'
   '@rushstack/eslint-config': ^1.0.2
   '@types/benchmark': ^1.0.31
   '@types/mocha': ^5.2.6

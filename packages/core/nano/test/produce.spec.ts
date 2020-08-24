@@ -3,7 +3,7 @@ import { strict as assert } from "assert";
 
 import { produce } from "../src/produce";
 import { nullConsumer } from "./util";
-import { IProducer } from "../src/types";
+import { IProducer } from "@tiny-calc/types";
 
 describe("produce()", () => {
     describe("object", () => {
@@ -14,7 +14,7 @@ describe("produce()", () => {
             const r = p.open(nullConsumer);
             assert.equal(r.get("a"), 1);
             assert.equal(r.get("b" as any), undefined);
-            r.producer.close(nullConsumer);
+            r.producer?.close(nullConsumer);
         });
 
         it("handles cycles", () => {
@@ -38,7 +38,7 @@ describe("produce()", () => {
             assert.equal(r.get("length"), 1);
             assert.equal(r.get("0" as any), 0);
             assert.equal(r.get("1" as any), undefined);
-            r.producer.close(nullConsumer);
+            r.producer?.close(nullConsumer);
 
             const v = p.openVector(nullConsumer);
             assert.equal(v.length, 1);

@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "@tiny-calc/nano": "0.0.0-alpha.5",
+    "@tiny-calc/types": "0.0.0-alpha.5",
     "node-fetch": "^2.6.0"
   },
   "devDependencies": {
