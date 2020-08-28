@@ -1,0 +1,10 @@
+{
+  "main": "index.js",
+  "scripts": {
+    "bench": "node bench/index.js",
+    "test": "node index.js"
+  },
+  "dependencies": {
+    "hotloop": "^1.1.0"
+  }
+}
