@@ -1,7 +1,9 @@
 dependencies:
   '@rush-temp/eslint-config': 'file:projects/eslint-config.tgz_eslint@7.7.0+typescript@3.9.7'
   '@rush-temp/example': 'file:projects/example.tgz'
+  '@rush-temp/handletable': 'file:projects/handletable.tgz'
   '@rush-temp/micro': 'file:projects/micro.tgz'
+  '@rush-temp/monkey': 'file:projects/monkey.tgz'
   '@rush-temp/nano': 'file:projects/nano.tgz'
   '@rush-temp/tree': 'file:projects/tree.tgz'
   '@rush-temp/ts-config': 'file:projects/ts-config.tgz'
@@ -1701,8 +1703,25 @@ packages:
     dev: false
     name: '@rush-temp/example'
     resolution:
-      integrity: sha512-Vv9J5p2cpjjYjw6EqEfvTkgFNYSkplR+48qQ+6rMLh6EfHlnt/nH7rL4rP0YF7FE35GUwkqOvR7v6F7YlcDc/Q==
+      integrity: sha512-ayO32Nza8E07XH8FHbTWssCYY9EnHB3a5cALp57MV2eykCUQfNv/DRjYPd6I6eXpwjfQJSeg5M+ylQvZ7z62jg==
       tarball: 'file:projects/example.tgz'
+    version: 0.0.0
+  'file:projects/handletable.tgz':
+    dependencies:
+      '@types/mocha': 5.2.7
+      '@types/node': 12.12.54
+      best-random: 1.0.3
+      eslint: 7.7.0
+      hotloop: 1.1.0
+      mocha: 6.2.3
+      rimraf: 2.7.1
+      ts-node: 8.10.2_typescript@3.9.7
+      typescript: 3.9.7
+    dev: false
+    name: '@rush-temp/handletable'
+    resolution:
+      integrity: sha512-oA5cjghOQK0qmGuUHLdS4u2uPYP4iX6UEaU7VOypsVZx1Pzj4Sg2T5JMxpMlrRO1kmbhfQqGKAZcSDD7fyx/wA==
+      tarball: 'file:projects/handletable.tgz'
     version: 0.0.0
   'file:projects/micro.tgz':
     dependencies:
@@ -1718,8 +1737,25 @@ packages:
     dev: false
     name: '@rush-temp/micro'
     resolution:
-      integrity: sha512-qzSNMvtOs3S4IicO2/7QDU8HHJum8PfDfsBfSAqGivLQca+V+POtVAQ/vwz9X6N3CZpIQdDXIlZnu5YykxyVUg==
+      integrity: sha512-Ctm+9512OQd6hhFUa5IuRIviubLzOjCqUVbDEL1VMu2EfUTvBVwMoNcC1fJxIUnUB0hUr+KTzxm2aCgCGg30+w==
       tarball: 'file:projects/micro.tgz'
+    version: 0.0.0
+  'file:projects/monkey.tgz':
+    dependencies:
+      '@types/mocha': 5.2.7
+      '@types/node': 12.12.54
+      best-random: 1.0.3
+      eslint: 7.7.0
+      hotloop: 1.1.0
+      mocha: 6.2.3
+      rimraf: 2.7.1
+      ts-node: 8.10.2_typescript@3.9.7
+      typescript: 3.9.7
+    dev: false
+    name: '@rush-temp/monkey'
+    resolution:
+      integrity: sha512-NMYmCFtuozjeq1ONL3LmfkiaGS1DR8P4M8B0h7As0kBGZaD5YRw+WHlYUvDWfJ5ytoh3OPRKkJWLxFkxXUulUA==
+      tarball: 'file:projects/monkey.tgz'
     version: 0.0.0
   'file:projects/nano.tgz':
     dependencies:
@@ -1735,7 +1771,7 @@ packages:
     dev: false
     name: '@rush-temp/nano'
     resolution:
-      integrity: sha512-QclDJUpY8eME6N2um7ZT9OQOm4kUo5dquv+HzuM4QRg5GVmZQgCBcWjnufKLTXH42xOQU12uHkc5r7TGiPJVwA==
+      integrity: sha512-OFAuXFMupmMVUIRpcV2xfFp6zaa0vdwMKPHxw0pAvtAvGQsrF9bFBGphg/1embWOaxyX1a8k4f3eqJLInGIlHw==
       tarball: 'file:projects/nano.tgz'
     version: 0.0.0
   'file:projects/tree.tgz':
@@ -1753,7 +1789,7 @@ packages:
     dev: false
     name: '@rush-temp/tree'
     resolution:
-      integrity: sha512-ozK0bVViKeQONEgPX+iF3f8Vy+7bR08PJc2nT51oFknzRhZ3GttpYRX4ha9AfMmV4U94WMlc5jMNmWVq7Ks8pw==
+      integrity: sha512-G0fMl896CiQNVgbBgM0HJymty6xf0y+SKtCSCurvPBN2vbekO2HZAa+K+PcXf01/qzi9cAfbAMrVhnkAlq+9HQ==
       tarball: 'file:projects/tree.tgz'
     version: 0.0.0
   'file:projects/ts-config.tgz':
@@ -1777,14 +1813,16 @@ packages:
     dev: false
     name: '@rush-temp/types'
     resolution:
-      integrity: sha512-/RYUuPYhuMT4tp7kI7vWwbuGfP5Y3eBkv11rVglE30wT57GMpz+zZImZDL9QrduC5ijE37LJTTIQd81gp72Ybg==
+      integrity: sha512-6+b40ohjBmzL5TaPxCVa+zOHviIE3D0Sn/SFFLwMtOsJTDl8CNrx0t60saw0taT0olqAn/TuELM5U/ioMP+r3Q==
       tarball: 'file:projects/types.tgz'
     version: 0.0.0
 registry: ''
 specifiers:
   '@rush-temp/eslint-config': 'file:./projects/eslint-config.tgz'
   '@rush-temp/example': 'file:./projects/example.tgz'
+  '@rush-temp/handletable': 'file:./projects/handletable.tgz'
   '@rush-temp/micro': 'file:./projects/micro.tgz'
+  '@rush-temp/monkey': 'file:./projects/monkey.tgz'
   '@rush-temp/nano': 'file:./projects/nano.tgz'
   '@rush-temp/tree': 'file:./projects/tree.tgz'
   '@rush-temp/ts-config': 'file:./projects/ts-config.tgz'

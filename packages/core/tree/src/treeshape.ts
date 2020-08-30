@@ -11,9 +11,8 @@ import {
     TreeNodeLocation,
     ITreeShapeWriter
 } from "@tiny-calc/types";
-
+import { HandleTable } from "@tiny-calc/handletable";
 import { ConsumerSet, addConsumer, removeConsumer, forEachConsumer } from "./consumerset";
-import { HandleTable } from "./handletable";
 
 const enum ShapeFieldOffset {
     parent = 0,
@@ -51,7 +50,7 @@ export class TreeShape implements ITreeShapeProducer, ITreeShapeReader, ITreeSha
     }
 
     public createNode(): TreeNode {
-        const node = this.handles.allocate();
+        const node = this.handles.add(undefined);
         const index = toIndex(+node);
 
         this.setParentIndex(index, TreeNodeIndex.none);
@@ -64,7 +63,7 @@ export class TreeShape implements ITreeShapeProducer, ITreeShapeReader, ITreeSha
 
     public deleteNode(node: TreeNode): void {
         this.removeNode(node);
-        this.handles.free(+node);
+        this.handles.delete(+node);
     }
 
     // #endregion ITreeShapeProducer

@@ -35,6 +35,18 @@
       "versionPolicyName": "public"
     },
     {
+      "packageName": "@tiny-calc/handletable",
+      "projectFolder": "packages/common/datastructures/handletable",
+      "reviewCategory": "production",
+      "versionPolicyName": "public"
+    },
+    {
+      "packageName": "@tiny-calc-test/monkey",
+      "projectFolder": "packages/common/test/monkey",
+      "reviewCategory": "production",
+      "versionPolicyName": "public"
+    },
+    {
       "packageName": "@tiny-calc/tree",
       "projectFolder": "packages/core/tree",
       "reviewCategory": "production",

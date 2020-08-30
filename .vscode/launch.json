@@ -7,6 +7,22 @@
         {
             "type": "node",
             "request": "launch",
+            "name": "Monkey Tests",
+            "cwd": "${workspaceFolder}/packages/common/test/monkey",
+            "program": "${workspaceFolder}/packages/common/test/monkey/node_modules/mocha/bin/_mocha",
+            "args": [
+                "-r",
+                "ts-node/register",
+                "--no-timeouts",
+                "test/**/*.spec.ts"
+            ],
+            "env": { "TS_NODE_PROJECT": "tsconfig.json" },
+            "console": "integratedTerminal",
+            "skipFiles": ["<node_internals>/**/*.js"]
+        },
+        {
+            "type": "node",
+            "request": "launch",
             "name": "Nano Bench",
             "cwd": "${workspaceFolder}/packages/core/nano",
             "program": "${workspaceFolder}/packages/core/nano/node_modules/ts-node/dist/bin.js",
