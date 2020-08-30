@@ -1,0 +1,32 @@
+{
+  "name": "@tiny-calc-test/monkey",
+  "version": "0.0.0-alpha.5",
+  "main": "dist/index.js",
+  "sideEffects": "false",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/microsoft/tiny-calc.git"
+  },
+  "author": "Microsoft",
+  "license": "MIT",
+  "scripts": {
+    "build": "tsc",
+    "clean": "rimraf ./dist *.build.log",
+    "dev": "npm run build -- --watch",
+    "lint": "eslint --ext=ts --format visualstudio src",
+    "test": "mocha -r ts-node/register test/**/*.spec.ts"
+  },
+  "devDependencies": {
+    "@tiny-calc/eslint-config": "0.0.0-alpha.5",
+    "@tiny-calc/ts-config": "0.0.0-alpha.5",
+    "@types/mocha": "^5.2.6",
+    "@types/node": "^12.12.54",
+    "best-random": "^1.0.3",
+    "eslint": "^7.7.0",
+    "hotloop": "^1.0.0",
+    "mocha": "^6.1.4",
+    "rimraf": "^2.6.3",
+    "ts-node": "^8.1.0",
+    "typescript": "^3.9.7"
+  }
+}
