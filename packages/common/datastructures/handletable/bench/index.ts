@@ -8,4 +8,5 @@ import { run } from "hotloop";
 run([
     { "path": "./handletable-get-x256.ts" },
     { "path": "./map-get-x256.ts" },
+    { "path": "./map-get-x256-uuid.ts" },
 ]).catch(console.error);

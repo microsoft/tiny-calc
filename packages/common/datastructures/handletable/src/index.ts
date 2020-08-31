@@ -10,11 +10,11 @@ export const enum Handle {
 /**
  * A handle table provides a fast mapping from an integer `handle` to a value `T`.
  */
-export class HandleTable<TValue, THandle extends Handle = Handle> {
+export class HandleTable<T, THandle extends Handle = Handle> {
     // Note: the first slot of the 'handles' array is reserved to store the pointer to the first
     //       free handle.  We initialize this slot with a pointer to slot '1', which will cause
     //       us to delay allocate the following slot in the array on the first allocation.
-    public constructor(private readonly handles: (TValue | number)[] = [1]) { }
+    public constructor(private readonly handles: (T | number)[] = [1]) { }
 
     public clear(): void {
         // Restore the HandleTable's initial state by deleting all items in the handles array
@@ -24,9 +24,12 @@ export class HandleTable<TValue, THandle extends Handle = Handle> {
     }
 
     /**
-     * Allocates and returns the next available handle.  Note that freed handles are recycled.
+     * Allocate a slot in the handle table, set the slot to the given 'value', and
+     * return the associated handle.
+     * 
+     * Call 'delete()' when you are finished with the slot to recycle the handle.
      */
-    public add(value: TValue): THandle {
+    public add(value: T): THandle {
         const free = this.next;
         this.next = (this.handles[free] as THandle) ?? (free + 1);
         this.handles[free] = value;
@@ -44,14 +47,14 @@ export class HandleTable<TValue, THandle extends Handle = Handle> {
     /**
      * Get the value `T` associated with the given handle, if any.
      */
-    public get(handle: THandle): TValue {
-        return this.handles[handle] as TValue;
+    public get(handle: THandle): T {
+        return this.handles[handle] as T;
     }
 
     /**
      * Set the value `T` associated with the given handle.
      */
-    public set(handle: THandle, value: TValue): void {
+    public set(handle: THandle, value: T): void {
         this.handles[handle] = value;
     }
 
@@ -60,5 +63,5 @@ export class HandleTable<TValue, THandle extends Handle = Handle> {
     private get next() { return this.handles[0] as THandle; }
     private set next(handle: THandle) { this.handles[0] = handle; }
 
-    public toJSON() { return this.handles; }
+    public toJSON(): (T | number)[] { return this.handles; }
 }
