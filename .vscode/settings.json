@@ -8,6 +8,16 @@
         "common/temp": true,
     },
 
+    // Allow comments in the following JSON files.  Unfortunately, this does not support
+    // relative paths or variable expansion (e.g., ${workspaceFolder}), so we can only key
+    // on the file names.
+    "files.associations": {
+        "rush.json": "jsonc",
+        "command-line.json": "jsonc",
+        "command-versions.json": "jsonc",
+        "version-policies.json": "jsonc"
+    },
+
     // ESLint: Mono repo support
     "eslint.nodePath": "packages/common/config/eslint-config/node_modules/",    // Work around https://github.com/microsoft/vscode-eslint/issues/1012
     "eslint.workingDirectories": [{ "mode": "auto" }],                          // Find '.eslintrc.js' in local package folder.
