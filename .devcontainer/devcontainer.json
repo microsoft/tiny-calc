@@ -1,8 +1,18 @@
-// For format details, see https://aka.ms/vscode-remote/devcontainer.json or this file's README at:
-// https://github.com/microsoft/vscode-dev-containers/tree/v0.134.0/containers/docker-from-docker
+/*!
+ * Copyright (c) Microsoft Corporation. All rights reserved.
+ * Licensed under the MIT License.
+ */
+
+// For format details, see https://aka.ms/vscode-remote/devcontainer.json
 {
 	"name": "Tiny-Calc",
-	"dockerFile": "Dockerfile",
+	"build": {
+		"dockerfile": "Dockerfile",
+
+		// Update 'NODE_VERSION' to pick a Node version: 10, 12, 14
+		"args": { "NODE_VERSION": "12" }
+	},
+
 	"mounts": [ "source=/var/run/docker.sock,target=/var/run/docker-host.sock,type=bind" ],
 
 	// Set *default* container specific settings.json values on container create.
@@ -13,6 +23,7 @@
 		"dbaeumer.vscode-eslint",
 		"drewbourne.vscode-remark-lint",
 		"eamodio.gitlens",
+		"editorconfig.editorconfig",
 		"esbenp.prettier-vscode",
 		"ms-azuretools.vscode-docker",
 		"ms-vsliveshare.vsliveshare",
