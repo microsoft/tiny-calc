@@ -17,5 +17,5 @@ block_comment_end = */
 [*.{js,jsx,ts,tsx}]
 indent_size = 4
 
-[{*.yml,package.json}]
+[{*.yml,package.json,rush.json}]
 indent_size = 2
