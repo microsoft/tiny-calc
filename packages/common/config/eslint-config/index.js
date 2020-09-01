@@ -1,11 +1,21 @@
+/*!
+ * Copyright (c) Microsoft Corporation. All rights reserved.
+ * Licensed under the MIT License.
+ */
+
 // This is a workaround for https://github.com/eslint/eslint/issues/3458
 require('@rushstack/eslint-config/patch/modern-module-resolution');
 
 module.exports = {
-    extends: ["@rushstack/eslint-config"],
-    "plugins": ["header"],
-    "rules": {
-        "header/header": [2, "block", "!\n * Copyright (c) Microsoft Corporation. All rights reserved.\n * Licensed under the MIT License.\n "]
+    extends: ['@rushstack/eslint-config'],
+    plugins: ['header'],
+    rules: {
+        'header/header': [
+            'error',
+            'block',
+            '!\n * Copyright (c) Microsoft Corporation. All rights reserved.\n * Licensed under the MIT License.\n ',
+            /* newLines: */ 2       // '\n\n' = 1 blank line after block comment
+        ]
     },
     overrides: [{
         // Declare an override that applies to TypeScript files only
@@ -19,7 +29,7 @@ module.exports = {
             // Docs: https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/naming-convention.md
             '@typescript-eslint/naming-convention': [
                 'error',
-                { selector: 'accessor', modifiers: ['private'], format: ['camelCase'], "leadingUnderscore": "allow" },
+                { selector: 'accessor', modifiers: ['private'], format: ['camelCase'], 'leadingUnderscore': 'allow' },
             ],
 
             // RATIONALE: Allow the convenience of type inference for internal declarations, but require explicit

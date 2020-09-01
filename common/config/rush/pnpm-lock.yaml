@@ -15,7 +15,7 @@ dependencies:
   benchmark: 2.1.4
   best-random: 1.0.3
   eslint: 7.7.0
-  eslint-plugin-header: 3.0.0_eslint@7.7.0
+  eslint-plugin-header: 3.1.0_eslint@7.7.0
   hotloop: 1.1.0
   mocha: 6.2.3
   node-fetch: 2.6.0
@@ -517,6 +517,14 @@ packages:
       eslint: '>=0.18.0'
     resolution:
       integrity: sha512-OIu2ciVW8jK4Ove4JHm1I7X0C98PZuLCyCsoUhAm2HpyGS+zr34qLM6iV06unnDvssvvEh5BkOfaLRF+N7cGoQ==
+  /eslint-plugin-header/3.1.0_eslint@7.7.0:
+    dependencies:
+      eslint: 7.7.0
+    dev: false
+    peerDependencies:
+      eslint: '>=7.7.0'
+    resolution:
+      integrity: sha512-jKKcwMsB0/ftBv3UVmuQir1f8AmXzTS9rdzPkileW8/Nz9ivdea8vOU1ZrMbX+WH6CpwnHEo3403baSHk40Mag==
   /eslint-plugin-promise/4.2.1:
     dev: false
     engines:
@@ -1682,7 +1690,7 @@ packages:
   'file:projects/eslint-config.tgz_eslint@7.7.0+typescript@3.9.7':
     dependencies:
       '@rushstack/eslint-config': 1.1.0_eslint@7.7.0+typescript@3.9.7
-      eslint-plugin-header: 3.0.0_eslint@7.7.0
+      eslint-plugin-header: 3.1.0_eslint@7.7.0
     dev: false
     id: 'file:projects/eslint-config.tgz'
     name: '@rush-temp/eslint-config'
@@ -1690,7 +1698,7 @@ packages:
       eslint: '*'
       typescript: '*'
     resolution:
-      integrity: sha512-3aa+ikIwR4MQTrlQmmbpATnfo9twVj3VTfRJqBPs4rJR7bGUaHHjapMVbMW17tgGVW7NekDPtcHIuNFfz9pPhQ==
+      integrity: sha512-i/5ZatN3YeHV9+0BV9xpz5ld1qlOloHeISGsdmCepDm6tOKmwN3DRWD4P4Iybyr2kgo361qcgl6w8iuCTun5GA==
       tarball: 'file:projects/eslint-config.tgz'
     version: 0.0.0
   'file:projects/example.tgz':
@@ -1834,7 +1842,7 @@ specifiers:
   benchmark: ^2.1.4
   best-random: ^1.0.3
   eslint: ^7.7.0
-  eslint-plugin-header: ^3.0.0
+  eslint-plugin-header: ^3.1.0
   hotloop: ^1.0.0
   mocha: ^6.1.4
   node-fetch: ^2.6.0
