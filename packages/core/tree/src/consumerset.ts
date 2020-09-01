@@ -1,4 +1,9 @@
-export type ConsumerSet<T> = undefined | T | Array<{ value: T, count: number }>
+/*!
+ * Copyright (c) Microsoft Corporation. All rights reserved.
+ * Licensed under the MIT License.
+ */
+
+export type ConsumerSet<T> = undefined | T | { value: T, count: number }[]
 
 export function addConsumer<T>(self: ConsumerSet<T>, value: T): ConsumerSet<T> {
     if (self === undefined) {
@@ -50,7 +55,7 @@ export function removeConsumer<T>(self: ConsumerSet<T>, value: T): ConsumerSet<T
     return self;
 }
 
-export function forEachConsumer<T>(self: ConsumerSet<T>, callback: (consumer: T, count: number) => void) {
+export function forEachConsumer<T>(self: ConsumerSet<T>, callback: (consumer: T, count: number) => void): void {
     if (self === undefined) {
         return;
     }
