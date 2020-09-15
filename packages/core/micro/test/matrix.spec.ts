@@ -6,7 +6,14 @@
 import "mocha";
 import { strict as assert } from "assert";
 import { Random } from "best-random";
-import { IMatrixConsumer, IMatrixReader, IMatrixProducer, IVectorWriter, IMatrixWriter } from "@tiny-calc/types";
+import {
+    IMatrixConsumer,
+    IMatrixReader,
+    IMatrixProducer,
+    IMatrixWriter,
+    IVectorShapeWriter,
+    IVectorWriter,
+} from "@tiny-calc/types";
 import { DenseVector, RowMajorMatrix } from "../src";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -95,8 +102,8 @@ export class TestMatrix<T = any, TRow = never, TCol = never> implements IMatrixC
 
     public constructor (
         producer: IMatrixProducer<T>,
-        private readonly rowWriter: IVectorWriter<TRow>,
-        private readonly colWriter: IVectorWriter<TCol>,
+        private readonly rowWriter: IVectorWriter<TRow> & IVectorShapeWriter,
+        private readonly colWriter: IVectorWriter<TCol> & IVectorShapeWriter,
         private readonly cellWriter: IMatrixWriter<T>
     ) {
         this.reader = producer.openMatrix(this);
@@ -109,7 +116,7 @@ export class TestMatrix<T = any, TRow = never, TCol = never> implements IMatrixC
 
     public rowsChanged(rowStart: number, removedCount: number, insertedCount: number): void {
         const rowEnd = rowStart + removedCount;
-        
+
         assert(0 <= rowStart && rowStart <= rowEnd && rowEnd <= this.consumed.rowCount);
 
         if (removedCount > 0) { this.consumed.removeRows(rowStart, removedCount); }
@@ -154,7 +161,7 @@ export class TestMatrix<T = any, TRow = never, TCol = never> implements IMatrixC
 
         const actual = this.reader.getCell(row, col);
         const expected = this.expected.getCell(row, col);
-        
+
         assert.equal(actual, expected);
         assert.equal(this.consumed.getCell(row, col), expected);
 
@@ -173,7 +180,7 @@ export class TestMatrix<T = any, TRow = never, TCol = never> implements IMatrixC
 
         this.expected.setCell(row, col, value);
         this.cellWriter.setCell(row, col, value);
-        
+
         assert.equal(this.getCell(row, col), value,
             `Writer.setCell(${row},${col}) must update matrix value.`);
     }
@@ -239,7 +246,7 @@ export class TestMatrix<T = any, TRow = never, TCol = never> implements IMatrixC
     }
 
     public extract(): ReadonlyArray<ReadonlyArray<T>> {
-        const m: T[][] = [];      
+        const m: T[][] = [];
         for (let r = 0; r < this.rowCount; r++) {
             const row: T[] = [];
             m.push(row);
@@ -265,7 +272,7 @@ export class TestMatrix<T = any, TRow = never, TCol = never> implements IMatrixC
 
     public expectSize(rowCount: number, colCount: number): void {
         this.check();
-        
+
         assert.equal(this.rowCount, rowCount);
         assert.equal(this.colCount, colCount);
     }

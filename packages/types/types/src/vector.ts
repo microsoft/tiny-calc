@@ -4,26 +4,64 @@
  */
 
 /** An observable 1D numerically indexed collection, such as an Array. */
-export interface IVectorProducer<T> {
+export interface IVectorShapeProducer {
     /**
      * Acquire a reader for this vector's values and implicitly subscribe the consumer
      * to value change notifications.
-     * 
+     *
+     * @param consumer - The consumer to be notified of vector changes.
+     */
+    openVector(consumer: IVectorShapeConsumer): IVectorShapeReader;
+
+    /**
+     * Unsubscribe the given 'consumer' from this vector's change notifications.
+     *
+     * @param consumer - The consumer to unregister from the vector.
+     */
+    closeVector(consumer: IVectorShapeConsumer): void;
+}
+
+/** Capability to read items in a vector. */
+export interface IVectorShapeReader {
+    readonly length: number;
+
+    /**
+     * A reference to the underlying producer that provides values for this reader,
+     * or undefined if the producer is immutable.
+     */
+    readonly vectorProducer?: IVectorShapeProducer;
+}
+
+/** Capability to insert, replace, and remove items in a vector. */
+export interface IVectorShapeWriter {
+    splice(start: number, deleteCount: number, insertCount: number): void;
+}
+
+export interface IVectorShapeConsumer {
+    /** Notification that a range of items have been inserted, removed, and/or replaced in the given vector. */
+    itemsChanged(start: number, removedCount: number, insertedCount: number, producer: IVectorShapeProducer): void;
+}
+
+/** An observable 1D numerically indexed collection, such as an Array. */
+export interface IVectorProducer<T> extends IVectorShapeProducer {
+    /**
+     * Acquire a reader for this vector's values and implicitly subscribe the consumer
+     * to value change notifications.
+     *
      * @param consumer - The consumer to be notified of vector changes.
      */
     openVector(consumer: IVectorConsumer<T>): IVectorReader<T>;
 
     /**
      * Unsubscribe the given 'consumer' from this vector's change notifications.
-     * 
+     *
      * @param consumer - The consumer to unregister from the vector.
      */
     closeVector(consumer: IVectorConsumer<T>): void;
 }
 
 /** Capability to read items in a vector. */
-export interface IVectorReader<T> {
-    readonly length: number;
+export interface IVectorReader<T> extends IVectorShapeReader {
     getItem(index: number): T;
 
     /**
@@ -35,12 +73,11 @@ export interface IVectorReader<T> {
 
 /** Capability to insert, replace, and remove items in a vector. */
 export interface IVectorWriter<T> {
-    splice(start: number, deleteCount: number, insertCount: number): void;
     setItem(index: number, item: T): void;
 }
 
 /** A consumer of change notifications for a vector. */
-export interface IVectorConsumer<T> {
+export interface IVectorConsumer<T> extends IVectorShapeConsumer {
     /** Notification that a range of items have been inserted, removed, and/or replaced in the given vector. */
     itemsChanged(start: number, removedCount: number, insertedCount: number, producer: IVectorProducer<T>): void;
 }

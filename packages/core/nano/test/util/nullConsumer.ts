@@ -9,7 +9,7 @@ class NullConsumer<T> implements IConsumer<T>, IVectorConsumer<T>, IMatrixConsum
     public rowsChanged(): void { }
     public colsChanged(): void { }
     public cellsChanged(): void { }
-    public valueChanged(): void { }
+    public keyChanged(): void { }
     public itemsChanged(): void { }
 }
 

@@ -30,7 +30,7 @@ export class Context implements Producer {
 
     open() {
         const producer: Producer = this;
-        return { 
+        return {
             get: (key: string) => this.fields[key],
             producer
         };
@@ -47,7 +47,7 @@ export class TimeProducer implements Producer {
     open() {
         const time = Date.now();
         const producer: Producer = this;
-        return { 
+        return {
             get: () => time,
             producer
         };
@@ -114,7 +114,7 @@ export class ListFormula implements FormulaHost {
         }
     }
 
-    valueChanged() {
+    keyChanged() {
         console.time("recalc");
         const scope = createCalcValue(this.scope);
         const values = [];
