@@ -1,0 +1,9 @@
+{
+    "extends": "@tiny-calc/tool-config/tsconfig.json",
+    "compilerOptions": {
+        "declarationDir": "./temp",
+        "rootDir": ".",
+        "outDir": "./temp"
+    },
+    "include": ["bench/profile.ts"]
+}

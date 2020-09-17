@@ -54,7 +54,7 @@ export interface IProducer<T> {
      *
      * @param consumer - The consumer to be notified of value changes.
      */
-    open(consumer: IConsumer<T>): IReader<T> | (IReader<T> & IShapeReader<T>);
+    open(consumer: IConsumer<T>): IReader<T>;
 
     /**
      * Unsubscribe the given 'consumer' from this producer's change notifications.
@@ -84,4 +84,21 @@ export interface IReader<T> {
 /** Capability to set values of a key/value collection. */
 export interface IWriter<T> {
     set<K extends keyof T>(key: K, value: T[K]): void;
+}
+
+export interface IMapProducer<T> extends IProducer<T>, IShapeProducer<keyof T> {
+    /**
+     * Acquire a reader for this producer's values and implicitly subscribe the consumer
+     * to value change notifications.
+     *
+     * @param consumer - The consumer to be notified of value changes.
+     */
+    open(consumer: IConsumer<T> & IShapeConsumer<keyof T>): IReader<T> & IShapeReader<keyof T>;
+
+    /**
+     * Unsubscribe the given 'consumer' from this producer's change notifications.
+     *
+     * @param consumer - The consumer to unregister from the producer.
+     */
+    close(consumer: IConsumer<T> & IShapeConsumer<keyof T>): void;
 }

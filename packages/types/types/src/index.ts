@@ -5,6 +5,7 @@
 
 export {
     IConsumer,
+    IMapProducer,
     IProducer,
     IReader,
     IShapeConsumer,

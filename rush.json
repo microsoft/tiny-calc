@@ -29,6 +29,12 @@
       "versionPolicyName": "public"
     },
     {
+      "packageName": "@tiny-calc/es",
+      "projectFolder": "packages/types/es",
+      "reviewCategory": "production",
+      "versionPolicyName": "public"
+    },
+    {
       "packageName": "@tiny-calc/micro",
       "projectFolder": "packages/core/micro",
       "reviewCategory": "production",
@@ -65,10 +71,16 @@
       "versionPolicyName": "public"
     },
     {
+      "packageName": "@tiny-calc-test/type-utils",
+      "projectFolder": "packages/types/type-utils",
+      "reviewCategory": "test",
+      "versionPolicyName": "public"
+    },
+    {
       "packageName": "@tiny-calc-test/example",
       "projectFolder": "packages/test/example",
-      "shouldPublish": false,
-      "reviewCategory": "test"
+      "reviewCategory": "test",
+      "shouldPublish": false
     }
   ]
 }

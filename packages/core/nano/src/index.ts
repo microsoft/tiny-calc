@@ -59,7 +59,3 @@ export {
     ParserErrorHandler,
     Parser,
 } from "./parser";
-
-export {
-    produce
-} from "./produce";
