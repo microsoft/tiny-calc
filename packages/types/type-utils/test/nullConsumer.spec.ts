@@ -3,9 +3,8 @@
  * Licensed under the MIT License.
  */
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-
 import "mocha";
 
 describe("NullConsumer", () => {
+    // TODO: Currently a placeholder to allow "npm test" to succeed.
 });
