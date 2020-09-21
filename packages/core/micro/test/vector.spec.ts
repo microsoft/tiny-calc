@@ -6,7 +6,7 @@
  import "mocha";
 import { strict as assert } from "assert";
 import { Random } from "best-random";
-import { IVectorConsumer, IVectorReader, IVectorProducer, IVectorWriter } from "@tiny-calc/types";
+import { IVectorConsumer, IVectorReader, IVectorProducer, IVectorWriter, IVectorShapeWriter } from "@tiny-calc/types";
 import { DenseVector } from "../src";
 
 export class TestVector<T> implements IVectorConsumer<T> {
@@ -14,7 +14,7 @@ export class TestVector<T> implements IVectorConsumer<T> {
     private readonly consumed: T[] = [];
     private readonly expected: T[] = [];
 
-    public constructor(producer: IVectorProducer<T>, private readonly writer: IVectorWriter<T>) {
+    public constructor(producer: IVectorProducer<T>, private readonly writer: IVectorWriter<T> & IVectorShapeWriter) {
         this.actual = producer.openVector(this);
 
         for (let i = 0; i < this.actual.length; i++) {
@@ -41,11 +41,11 @@ export class TestVector<T> implements IVectorConsumer<T> {
 
     public itemsChanged(start: number, removedCount: number, insertedCount: number, producer: IVectorProducer<T>): void {
         const inserted = [];
-        
+
         for (let i = start; insertedCount > 0; i++, insertedCount--) {
             inserted.push(this.actual.getItem(i));
         }
-        
+
         this.consumed.splice(start, removedCount, ...inserted);
     }
 

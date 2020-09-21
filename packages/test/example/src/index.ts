@@ -9,5 +9,5 @@ const listFormula = new ListFormula(context, "IF(Time.Now = Time.Now, Math.Max(T
 });
 
 for (let i = 0; i < 10; i++) {
-    listFormula.valueChanged();
+    listFormula.keyChanged();
 }

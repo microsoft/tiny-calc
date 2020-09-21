@@ -1,3 +1,8 @@
+/*!
+ * Copyright (c) Microsoft Corporation. All rights reserved.
+ * Licensed under the MIT License.
+ */
+
 import { IProducer, IReader, IConsumer } from "@tiny-calc/types";
 import { ConsumerSet, addConsumer, removeConsumer, forEachConsumer } from "../consumerset";
 
@@ -6,12 +11,12 @@ export abstract class Producer<TMap> implements IProducer<TMap>, IReader<TMap> {
 
     //#region IProducer
 
-    open(consumer: IConsumer<TMap>): IReader<TMap> {
+    public open(consumer: IConsumer<TMap>): IReader<TMap> {
         this.consumers = addConsumer(this.consumers, consumer);
         return this;
     }
 
-    close(consumer: IConsumer<TMap>): void {
+    public close(consumer: IConsumer<TMap>): void {
         this.consumers = removeConsumer(this.consumers, consumer);
     }
 
@@ -19,15 +24,15 @@ export abstract class Producer<TMap> implements IProducer<TMap>, IReader<TMap> {
 
     //#region IReader
 
-    public abstract get<K extends keyof TMap>(property: K): TMap[K];
+    public abstract get<K extends keyof TMap>(key: K): TMap[K];
 
-    public get producer() { return this; }
+    public get producer():IProducer<TMap> { return this; }
 
     //#endregion IReader
 
-    protected invalidateValue<K extends keyof TMap>(property: K): void {
+    protected invalidateValue<K extends keyof TMap>(key: K): void {
         forEachConsumer(this.consumers, (consumer) => {
-            consumer.valueChanged(property, this);
+            consumer.keyChanged(key, this);
         });
     }
 }

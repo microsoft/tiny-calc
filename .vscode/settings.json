@@ -4,7 +4,7 @@
         "**/.DS_Store": true,   // Ignore macOS desktop services store
 
         // Rush caches a large number of files in '/common/temp'.  Exclude these from the
-        // workspace to reduce load on the file system watcher.  
+        // workspace to reduce load on the file system watcher.
         "common/temp": true,
     },
 
@@ -28,6 +28,7 @@
         "endregion",
         "interoperate",
         "interoperation",
+        "signedness",
         "unopinionated"
     ],
 }
