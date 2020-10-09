@@ -3,6 +3,7 @@ dependencies:
   '@rush-temp/eslint-config': 'file:projects/eslint-config.tgz_eslint@7.7.0+typescript@3.9.7'
   '@rush-temp/example': 'file:projects/example.tgz'
   '@rush-temp/handletable': 'file:projects/handletable.tgz'
+  '@rush-temp/heap': 'file:projects/heap.tgz'
   '@rush-temp/micro': 'file:projects/micro.tgz'
   '@rush-temp/monkey': 'file:projects/monkey.tgz'
   '@rush-temp/nano': 'file:projects/nano.tgz'
@@ -1750,6 +1751,23 @@ packages:
       integrity: sha512-oA5cjghOQK0qmGuUHLdS4u2uPYP4iX6UEaU7VOypsVZx1Pzj4Sg2T5JMxpMlrRO1kmbhfQqGKAZcSDD7fyx/wA==
       tarball: 'file:projects/handletable.tgz'
     version: 0.0.0
+  'file:projects/heap.tgz':
+    dependencies:
+      '@types/mocha': 5.2.7
+      '@types/node': 12.12.54
+      best-random: 1.0.3
+      eslint: 7.7.0
+      hotloop: 1.1.0
+      mocha: 6.2.3
+      rimraf: 2.7.1
+      ts-node: 8.10.2_typescript@3.9.7
+      typescript: 3.9.7
+    dev: false
+    name: '@rush-temp/heap'
+    resolution:
+      integrity: sha512-ZD69gyk4LTFlhmCZ0pcB3mFY+3C/hMbMWJzx1GWdPM8U8KMKubgm9BxZ6O+GmdTXcfVHiaKSxnMJ0btGGzu5wQ==
+      tarball: 'file:projects/heap.tgz'
+    version: 0.0.0
   'file:projects/micro.tgz':
     dependencies:
       '@types/mocha': 5.2.7
@@ -1866,6 +1884,7 @@ specifiers:
   '@rush-temp/eslint-config': 'file:./projects/eslint-config.tgz'
   '@rush-temp/example': 'file:./projects/example.tgz'
   '@rush-temp/handletable': 'file:./projects/handletable.tgz'
+  '@rush-temp/heap': 'file:./projects/heap.tgz'
   '@rush-temp/micro': 'file:./projects/micro.tgz'
   '@rush-temp/monkey': 'file:./projects/monkey.tgz'
   '@rush-temp/nano': 'file:./projects/nano.tgz'

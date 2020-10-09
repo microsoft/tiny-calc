@@ -7,6 +7,22 @@
         {
             "type": "node",
             "request": "launch",
+            "name": "Heap Tests",
+            "cwd": "${workspaceFolder}/packages/common/datastructures/heap",
+            "program": "${workspaceFolder}/packages/common/datastructures/heap/node_modules/mocha/bin/_mocha",
+            "args": [
+                "-r",
+                "ts-node/register",
+                "--no-timeouts",
+                "test/**/*.spec.ts"
+            ],
+            "env": { "TS_NODE_PROJECT": "tsconfig.json" },
+            "console": "integratedTerminal",
+            "skipFiles": ["<node_internals>/**/*.js"]
+        },
+        {
+            "type": "node",
+            "request": "launch",
             "name": "Monkey Tests",
             "cwd": "${workspaceFolder}/packages/common/test/monkey",
             "program": "${workspaceFolder}/packages/common/test/monkey/node_modules/mocha/bin/_mocha",
