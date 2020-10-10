@@ -3,6 +3,7 @@
  * Licensed under the MIT License.
  */
 
+export { CompareFunction } from './compareFunction';
 export {
     IConsumer,
     IMapProducer,
