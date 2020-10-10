@@ -6,62 +6,99 @@
 import { CompareFunction } from "@tiny-calc/types";
 
 export class Heap<T> {
-    private readonly items: T[];
-    private readonly compareFn: CompareFunction<T>;
-
     public constructor(
-        comp: CompareFunction<T>,
-        items: T[] = []
+        private readonly compareFn: CompareFunction<T>,
+        private readonly items: T[] = []
     ) {
-        this.compareFn = comp;
-        this.items = new Array(1);
-
-        for (let i = 0, len = items.length; i < len; i++) {
-            this.push(items[i]);
+        // Convert the given array in-place into a binary heap by sifting each
+        // layer in bottom-up order such that the parent is <= it's children.
+        for (let i = (this.length >>> 1) - 1; i >= 0; i--) {
+            this.down(/* parent: */ i);
         }
     }
 
-    public get length(): number { return this.items.length - 1; }
+    /** Returns the number of items in the heap. */
+    public get length(): number { return this.items.length; }
 
-    public peek(): T | undefined { return this.items[1]; }
+    /** Returns the item currently at the top of the heap  */
+    public peek(): T | undefined { return this.items[0]; }
 
+    /** Removes the item current at the top of the heap and returns it. */
     public pop(): T | undefined {
-        const x = this.items[1];
-        this.items[1] = this.items[this.length];
-        this.items.pop();
-        this.down(1);
-        return x;
-    }
+        const top = this.peek();            // Item to be returned
+        const bottom = this.items.pop();    // Item to re-insert
 
-    public push(item: T): void {
-        this.items.push(item);
-        this.up(this.length);
-    }
-
-    public clear(): void { this.items.length = 1; }
-
-    private up(k: number) {
-        while (k > 1 && (this.compareFn(this.items[k >> 1], this.items[k]) > 0)) {
-            const tmp = this.items[k >> 1];
-            this.items[k >> 1] = this.items[k];
-            this.items[k] = tmp;
-            k = k >> 1;
+        // If the heap was non-empty, replace the top item with the bottom item
+        // and sift the former bottom item downwards until it is >= its parent.
+        if (this.length > 0) {
+            this.items[0] = bottom!;
+            this.down(/* parent: */ 0);
         }
+
+        return top;
     }
 
-    private down(k: number) {
-        while ((k << 1) <= (this.length)) {
-            let j = k << 1;
-            if ((j < this.length) && (this.compareFn(this.items[j], this.items[j + 1]) > 0)) {
-                j++;
-            }
-            if (this.compareFn(this.items[k], this.items[j]) <= 0) {
+    /** Inserts the item in to the heap. */
+    public push(item: T): void {
+        // Insert the new item at the bottom of the heap and sift it upwards
+        // until we find a parent that is <= the new item.
+        this.items.push(item);
+        this.up(/* child: */ this.items.length - 1);
+    }
+
+    /** Removes all items from the heap in O(1) time. */
+    public clear(): void { this.items.length = 0; }
+
+    /**
+     * Sift the child upwards by swapping with its current parent until the parent is
+     * <= the child.
+     */
+    private up(child: number) {
+        while (child > 0) {
+            const parent = (child - 1) >>> 1;   // Calculate parent index
+
+            if (this.compareFn(this.items[child], this.items[parent]) >= 0) {
                 break;
             }
-            const tmp = this.items[k];
-            this.items[k] = this.items[j];
-            this.items[j] = tmp;
-            k = j;
+
+            // Perf: Traditional swap idiom ~5x faster than destructuring assignment (Node v12 x64).
+            const tmp = this.items[parent];
+            this.items[parent] = this.items[child];
+            this.items[child] = tmp;
+
+            child = parent;
+        }
+    }
+
+    /**
+     * Sift the parent downwards by swapping with its minimum child until the parent
+     * is <= its children.
+     */
+    private down(parent: number) {
+        while (parent < (this.length >>> 1)) {
+            let child = (parent << 1) + 1;      // Calculate left child index
+
+            if (
+                ((child + 1) < this.length)     // If right child exists..
+                && (this.compareFn(             // ..and right child < left child
+                    this.items[child],
+                    this.items[child + 1]
+                ) > 0)
+            ) {
+                child++;                        // choose right child
+            }
+
+            // Stop when children are >= parent
+            if (this.compareFn(this.items[parent], this.items[child]) <= 0) {
+                break;
+            }
+
+            // Perf: Traditional swap idiom ~5x faster than destructuring assignment (Node v12 x64).
+            const tmp = this.items[parent];
+            this.items[parent] = this.items[child];
+            this.items[child] = tmp;
+
+            parent = child;
         }
     }
 }
