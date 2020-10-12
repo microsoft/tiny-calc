@@ -4,6 +4,8 @@
  */
 
 export { CompareFunction } from './compareFunction';
+export { Tuple } from "./tuple";
+
 export {
     IConsumer,
     IMapProducer,
@@ -15,6 +17,7 @@ export {
     IShapeWriter,
     IWriter
 } from './record';
+
 export {
     IVectorConsumer,
     IVectorProducer,
@@ -25,6 +28,7 @@ export {
     IVectorShapeWriter,
     IVectorWriter
 } from './vector';
+
 export {
     IMatrixConsumer,
     IMatrixProducer,
@@ -35,6 +39,7 @@ export {
     IMatrixShapeWriter,
     IMatrixWriter
 } from './matrix';
+
 export {
     ITreeShapeConsumer,
     ITreeShapeProducer,
