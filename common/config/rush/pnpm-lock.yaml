@@ -7,6 +7,7 @@ dependencies:
   '@rush-temp/micro': 'file:projects/micro.tgz'
   '@rush-temp/monkey': 'file:projects/monkey.tgz'
   '@rush-temp/nano': 'file:projects/nano.tgz'
+  '@rush-temp/scheduler': 'file:projects/scheduler.tgz'
   '@rush-temp/tree': 'file:projects/tree.tgz'
   '@rush-temp/ts-config': 'file:projects/ts-config.tgz'
   '@rush-temp/type-utils': 'file:projects/type-utils.tgz'
@@ -19,7 +20,7 @@ dependencies:
   best-random: 1.0.3
   eslint: 7.7.0
   eslint-plugin-header: 3.1.0_eslint@7.7.0
-  hotloop: 1.1.0
+  hotloop: 1.2.0
   mocha: 6.2.3
   node-fetch: 2.6.0
   rimraf: 2.7.1
@@ -106,10 +107,6 @@ packages:
     dev: false
     resolution:
       integrity: sha512-7+2BITlgjgDhH0vvwZU/HZJVyk+2XUlvxXe8dFMedNX/aMkaOq++rMAFXc0tM7ij15QaWlbdQASBR9dihi+bDQ==
-  /@types/minimist/1.2.0:
-    dev: false
-    resolution:
-      integrity: sha1-aaI6OtKcrwCX8G7aWbNh7i8GOfY=
   /@types/mocha/5.2.7:
     dev: false
     resolution:
@@ -829,15 +826,13 @@ packages:
     hasBin: true
     resolution:
       integrity: sha512-F/1DnUGPopORZi0ni+CvrCgHQ5FyEAHRLSApuYWMmrbSwoN2Mn/7k+Gl38gJnR7yyDZk6WLXwiGod1JOWNDKGw==
-  /hotloop/1.1.0:
+  /hotloop/1.2.0:
     dependencies:
-      '@types/benchmark': 1.0.33
-      '@types/minimist': 1.2.0
       benchmark: 2.1.4
       minimist: 1.2.5
     dev: false
     resolution:
-      integrity: sha512-vJ8qU6KJyE6hDCodoQerFIMfSDYGDbVw2NN82gf6cGvr53SN6kAsdYSFZm4q/5wd0lRy9pBN24Cbep00AY5v0A==
+      integrity: sha512-8lH8RzRJA+hkF6/wBR6pqMbUCN/xxnrYvOlPl1fIzgbwm6z+/m1iFmHeOjHUY8vB9DMj2iXitC6YXH1+c3XlJA==
   /ignore/4.0.6:
     dev: false
     engines:
@@ -1696,7 +1691,7 @@ packages:
       '@types/node': 12.12.54
       best-random: 1.0.3
       eslint: 7.7.0
-      hotloop: 1.1.0
+      hotloop: 1.2.0
       mocha: 6.2.3
       rimraf: 2.7.1
       ts-node: 8.10.2_typescript@3.9.7
@@ -1704,7 +1699,7 @@ packages:
     dev: false
     name: '@rush-temp/es'
     resolution:
-      integrity: sha512-+vg2gVU0qfxsF6+9Z/orIWba4sNI0C453NaJYjk5eeng4vb8EHTUwfCz3KaVNYXOs1L6s9E5p5PFpEeGcNEtlw==
+      integrity: sha512-gppCZtbRIKZxNgSrJ2d5pNafbDmerr0yYo3QO35k2l1uhgZJzAbJqZw7VBr52jmQB1xr1IORPIWch8lfen0DJQ==
       tarball: 'file:projects/es.tgz'
     version: 0.0.0
   'file:projects/eslint-config.tgz_eslint@7.7.0+typescript@3.9.7':
@@ -1740,7 +1735,7 @@ packages:
       '@types/node': 12.12.54
       best-random: 1.0.3
       eslint: 7.7.0
-      hotloop: 1.1.0
+      hotloop: 1.2.0
       mocha: 6.2.3
       rimraf: 2.7.1
       ts-node: 8.10.2_typescript@3.9.7
@@ -1748,7 +1743,7 @@ packages:
     dev: false
     name: '@rush-temp/handletable'
     resolution:
-      integrity: sha512-oA5cjghOQK0qmGuUHLdS4u2uPYP4iX6UEaU7VOypsVZx1Pzj4Sg2T5JMxpMlrRO1kmbhfQqGKAZcSDD7fyx/wA==
+      integrity: sha512-AuDh+6RzNqHG6V9Yw7rohdg1+B3ri9H2djUGq48nliTZDzJGth9gNGIeL9/sdFFnOWK7TAxAfjYuP95BL8ESdw==
       tarball: 'file:projects/handletable.tgz'
     version: 0.0.0
   'file:projects/heap.tgz':
@@ -1757,7 +1752,7 @@ packages:
       '@types/node': 12.12.54
       best-random: 1.0.3
       eslint: 7.7.0
-      hotloop: 1.1.0
+      hotloop: 1.2.0
       mocha: 6.2.3
       rimraf: 2.7.1
       ts-node: 8.10.2_typescript@3.9.7
@@ -1765,7 +1760,7 @@ packages:
     dev: false
     name: '@rush-temp/heap'
     resolution:
-      integrity: sha512-ZD69gyk4LTFlhmCZ0pcB3mFY+3C/hMbMWJzx1GWdPM8U8KMKubgm9BxZ6O+GmdTXcfVHiaKSxnMJ0btGGzu5wQ==
+      integrity: sha512-VQv05a9snH3lp1wqweW1Q+vA96Z16d0I8qVSxF+nCxXvmR/AdVxlFmb+rtuQpLTowx1N46NHOy6q67gmuTp8pg==
       tarball: 'file:projects/heap.tgz'
     version: 0.0.0
   'file:projects/micro.tgz':
@@ -1774,7 +1769,7 @@ packages:
       '@types/node': 12.12.54
       best-random: 1.0.3
       eslint: 7.7.0
-      hotloop: 1.1.0
+      hotloop: 1.2.0
       mocha: 6.2.3
       rimraf: 2.7.1
       ts-node: 8.10.2_typescript@3.9.7
@@ -1782,7 +1777,7 @@ packages:
     dev: false
     name: '@rush-temp/micro'
     resolution:
-      integrity: sha512-Ctm+9512OQd6hhFUa5IuRIviubLzOjCqUVbDEL1VMu2EfUTvBVwMoNcC1fJxIUnUB0hUr+KTzxm2aCgCGg30+w==
+      integrity: sha512-0L71BFsO7M6FCileB83xDuhB/8mR2W3wvlOT9DRJs99vmVsufysQiJy20vdxom7Xy6YucclmcDr0Wy0j1YHm8w==
       tarball: 'file:projects/micro.tgz'
     version: 0.0.0
   'file:projects/monkey.tgz':
@@ -1791,7 +1786,7 @@ packages:
       '@types/node': 12.12.54
       best-random: 1.0.3
       eslint: 7.7.0
-      hotloop: 1.1.0
+      hotloop: 1.2.0
       mocha: 6.2.3
       rimraf: 2.7.1
       ts-node: 8.10.2_typescript@3.9.7
@@ -1799,7 +1794,7 @@ packages:
     dev: false
     name: '@rush-temp/monkey'
     resolution:
-      integrity: sha512-NMYmCFtuozjeq1ONL3LmfkiaGS1DR8P4M8B0h7As0kBGZaD5YRw+WHlYUvDWfJ5ytoh3OPRKkJWLxFkxXUulUA==
+      integrity: sha512-pzSTHuEq+AB9uo91a8XtK47EBhV0kS/Fn28PDlgvFAZUkY0Y65BnxQGIkk8ZqOUBWTN6pVxJ9zOxiZ31dK477A==
       tarball: 'file:projects/monkey.tgz'
     version: 0.0.0
   'file:projects/nano.tgz':
@@ -1819,6 +1814,23 @@ packages:
       integrity: sha512-OFAuXFMupmMVUIRpcV2xfFp6zaa0vdwMKPHxw0pAvtAvGQsrF9bFBGphg/1embWOaxyX1a8k4f3eqJLInGIlHw==
       tarball: 'file:projects/nano.tgz'
     version: 0.0.0
+  'file:projects/scheduler.tgz':
+    dependencies:
+      '@types/mocha': 5.2.7
+      '@types/node': 12.12.54
+      best-random: 1.0.3
+      eslint: 7.7.0
+      hotloop: 1.2.0
+      mocha: 6.2.3
+      rimraf: 2.7.1
+      ts-node: 8.10.2_typescript@3.9.7
+      typescript: 3.9.7
+    dev: false
+    name: '@rush-temp/scheduler'
+    resolution:
+      integrity: sha512-9fzllm1hyLV1b4tn5orVq1GF03N3qRKBNUo/3gHSHWcIqb8sGapW2+5mHtN/nnGZj5cC6rWIbnvFwDY1N1DQrg==
+      tarball: 'file:projects/scheduler.tgz'
+    version: 0.0.0
   'file:projects/tree.tgz':
     dependencies:
       '@types/mocha': 5.2.7
@@ -1826,7 +1838,7 @@ packages:
       best-random: 1.0.3
       eslint: 7.7.0
       eslint-plugin-header: 3.0.0_eslint@7.7.0
-      hotloop: 1.1.0
+      hotloop: 1.2.0
       mocha: 6.2.3
       rimraf: 2.7.1
       ts-node: 8.10.2_typescript@3.9.7
@@ -1834,7 +1846,7 @@ packages:
     dev: false
     name: '@rush-temp/tree'
     resolution:
-      integrity: sha512-G0fMl896CiQNVgbBgM0HJymty6xf0y+SKtCSCurvPBN2vbekO2HZAa+K+PcXf01/qzi9cAfbAMrVhnkAlq+9HQ==
+      integrity: sha512-D91Wq7hU1eA4WTFuWpunLjG99WjWIYZFvIrVxyN3hFp/cjZay0BL1AbD5/kTB5BWAByoLZ6F+8MXBVqgPln0NQ==
       tarball: 'file:projects/tree.tgz'
     version: 0.0.0
   'file:projects/ts-config.tgz':
@@ -1850,7 +1862,7 @@ packages:
       '@types/node': 12.12.54
       best-random: 1.0.3
       eslint: 7.7.0
-      hotloop: 1.1.0
+      hotloop: 1.2.0
       mocha: 6.2.3
       rimraf: 2.7.1
       ts-node: 8.10.2_typescript@3.9.7
@@ -1858,7 +1870,7 @@ packages:
     dev: false
     name: '@rush-temp/type-utils'
     resolution:
-      integrity: sha512-ERL78t3T/u2aNa4Z2/d6/E0VMw/so+DZrIrgHqAqGTV98w0CZyCNrg/Irg8Irocf3kyE0aHMz9TKWyIyqDe3Sw==
+      integrity: sha512-DVtETL5WIGs14HPYYrO/EoArp5V7CC3Uvyp1quxOI06XJ7xfkxlXyHRsXyYfY9ozcTABRgiyxtu7VKdBVshjOA==
       tarball: 'file:projects/type-utils.tgz'
     version: 0.0.0
   'file:projects/types.tgz':
@@ -1867,7 +1879,7 @@ packages:
       '@types/node': 12.12.54
       best-random: 1.0.3
       eslint: 7.7.0
-      hotloop: 1.1.0
+      hotloop: 1.2.0
       mocha: 6.2.3
       rimraf: 2.7.1
       ts-node: 8.10.2_typescript@3.9.7
@@ -1875,7 +1887,7 @@ packages:
     dev: false
     name: '@rush-temp/types'
     resolution:
-      integrity: sha512-6+b40ohjBmzL5TaPxCVa+zOHviIE3D0Sn/SFFLwMtOsJTDl8CNrx0t60saw0taT0olqAn/TuELM5U/ioMP+r3Q==
+      integrity: sha512-f0O9gN9VQKlfSgLMkYyMC2fwpbbEotFs5s6HelpuOeWo11zTs5IwzsyY4vZE+ssTvWqP7mnb59tG51YdpgVpeg==
       tarball: 'file:projects/types.tgz'
     version: 0.0.0
 registry: ''
@@ -1888,6 +1900,7 @@ specifiers:
   '@rush-temp/micro': 'file:./projects/micro.tgz'
   '@rush-temp/monkey': 'file:./projects/monkey.tgz'
   '@rush-temp/nano': 'file:./projects/nano.tgz'
+  '@rush-temp/scheduler': 'file:./projects/scheduler.tgz'
   '@rush-temp/tree': 'file:./projects/tree.tgz'
   '@rush-temp/ts-config': 'file:./projects/ts-config.tgz'
   '@rush-temp/type-utils': 'file:./projects/type-utils.tgz'
@@ -1900,7 +1913,7 @@ specifiers:
   best-random: ^1.0.3
   eslint: ^7.7.0
   eslint-plugin-header: ^3.1.0
-  hotloop: ^1.0.0
+  hotloop: ^1.2.0
   mocha: ^6.1.4
   node-fetch: ^2.6.0
   rimraf: ^2.6.3

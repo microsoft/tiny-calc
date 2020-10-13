@@ -53,6 +53,12 @@
       "versionPolicyName": "public"
     },
     {
+      "packageName": "@tiny-calc/scheduler",
+      "projectFolder": "packages/common/scheduler",
+      "reviewCategory": "production",
+      "versionPolicyName": "public"
+    },
+    {
       "packageName": "@tiny-calc-test/monkey",
       "projectFolder": "packages/common/test/monkey",
       "reviewCategory": "production",
