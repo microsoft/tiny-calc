@@ -101,6 +101,15 @@
         {
             "type": "node",
             "request": "launch",
+            "name": "Scheduler Bench",
+            "cwd": "${workspaceFolder}/packages/common/scheduler/bench",
+            "program": "${workspaceFolder}/packages/common/scheduler/node_modules/ts-node/dist/bin.js",
+            "args": [ "index.ts", "--runInBand" ],
+            "console": "integratedTerminal"
+        },
+        {
+            "type": "node",
+            "request": "launch",
             "name": "Tree Tests",
             "cwd": "${workspaceFolder}/packages/core/tree",
             "program": "${workspaceFolder}/packages/core/tree/node_modules/mocha/bin/_mocha",
