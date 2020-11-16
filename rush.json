@@ -66,7 +66,7 @@
     },
     {
       "packageName": "@tiny-calc/tree",
-      "projectFolder": "packages/core/tree",
+      "projectFolder": "experiments/tree",
       "reviewCategory": "production",
       "versionPolicyName": "public"
     },
