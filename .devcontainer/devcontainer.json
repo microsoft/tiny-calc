@@ -5,29 +5,27 @@
 
 // For format details, see https://aka.ms/vscode-remote/devcontainer.json
 {
-	"name": "Tiny-Calc",
-	"build": {
-		"dockerfile": "Dockerfile",
+    "name": "Tiny-Calc",
+    "build": { "dockerfile": "Dockerfile" },
 
-		// Update 'NODE_VERSION' to pick a Node version: 10, 12, 14
-		"args": { "NODE_VERSION": "12" }
-	},
+    // Expose 'docker.sock' to the dev container and proxy access for the 'node' user.
+    "mounts": [ "source=/var/run/docker.sock,target=/var/run/docker-host.sock,type=bind" ],
+    "postStartCommand": "/usr/local/share/docker-init.sh",
 
-	"mounts": [ "source=/var/run/docker.sock,target=/var/run/docker-host.sock,type=bind" ],
+    // Set *default* container specific settings.json values on container create.
+    "settings": { "terminal.integrated.shell.linux": "/bin/bash" },
 
-	// Set *default* container specific settings.json values on container create.
-	"settings": { "terminal.integrated.shell.linux": "/bin/bash" },
-
-	// Add the IDs of extensions you want installed when the container is created.
-	"extensions": [
-		"dbaeumer.vscode-eslint",
-		"drewbourne.vscode-remark-lint",
-		"eamodio.gitlens",
-		"editorconfig.editorconfig",
-		"esbenp.prettier-vscode",
-		"ms-azuretools.vscode-docker",
-		"ms-vsliveshare.vsliveshare",
-		// "ms-vscode-remote.remote-containers",	// Runs locally only, disabled in dev container
-		"streetsidesoftware.code-spell-checker",
-	]
+    // Add the IDs of extensions you want installed when the container is created.
+    //
+    // Note: 'ms-vscode-remote.remote-containers' is install locally, not inside the
+    //        dev container, and therefore is excluded from this list.
+    "extensions": [
+        "dbaeumer.vscode-eslint",
+        "drewbourne.vscode-remark-lint",
+        "eamodio.gitlens",
+        "editorconfig.editorconfig",
+        "esbenp.prettier-vscode",
+        "ms-azuretools.vscode-docker",
+        "streetsidesoftware.code-spell-checker"
+    ]
 }
