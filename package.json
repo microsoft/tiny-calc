@@ -1,4 +1,5 @@
 {
+  "name": "npm_ci_requires_name_field",
   "repository": {
     "type": "git",
     "url": "https://github.com/microsoft/tiny-calc.git"
