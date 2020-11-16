@@ -10,7 +10,7 @@ import {
     TreeNode,
     TreeNodeLocation,
     ITreeShapeWriter
-} from "@tiny-calc/types";
+} from "./types";
 import { HandleTable } from "@tiny-calc/handletable";
 import { ConsumerSet, addConsumer, removeConsumer, forEachConsumer } from "./consumerset";
 
@@ -78,7 +78,7 @@ export class TreeShape implements ITreeShapeProducer, ITreeShapeReader, ITreeSha
 
     public beforeNode(node: TreeNode): TreeNodeLocation {
         const prev = this.getPrevSibling(node);
-        
+
         return prev === TreeNode.none
             ? this.firstChildOf(this.getParent(node))
             : this.afterNode(prev);
@@ -181,7 +181,7 @@ export class TreeShape implements ITreeShapeProducer, ITreeShapeReader, ITreeSha
     public moveNode(node: TreeNode, location: TreeNodeLocation): void {
         const index = toIndex(node);
         const oldLocation = this.unlink(index);
-        
+
         if (location > 0) {
             this.linkAfter(index, toIndex(+location));
         } else {
@@ -205,6 +205,6 @@ export class TreeShape implements ITreeShapeProducer, ITreeShapeReader, ITreeSha
             consumer.nodeMoved(node, oldLocation, /* producer: */ this);
         });
     }
-    
+
     // #endregion
 }

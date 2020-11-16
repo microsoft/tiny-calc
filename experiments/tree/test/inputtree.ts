@@ -3,8 +3,7 @@
  * Licensed under the MIT License.
  */
 
-import { Tree } from "../src/tree";
-import { TreeNode, ITreeWriter, ITreeShapeProducer, ITreeShapeReader } from "@tiny-calc/types";
+import { Tree, TreeNode, ITreeWriter, ITreeShapeProducer, ITreeShapeReader } from "../src";
 
 export class InputTree<T> extends Tree<T> implements ITreeWriter<T> {
     private readonly values: T[] = [];
@@ -12,10 +11,10 @@ export class InputTree<T> extends Tree<T> implements ITreeWriter<T> {
 
     public constructor (shape: ITreeShapeProducer) {
         super();
-        
+
         this.shape = shape.openTree(/* consumer: */ this);
     }
-    
+
     // #region ITreeReader
 
     public getNode(node: TreeNode): T {

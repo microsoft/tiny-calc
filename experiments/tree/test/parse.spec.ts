@@ -7,8 +7,7 @@
 
 import { strict as assert } from "assert";
 import { ExpAlgebra } from "@tiny-calc/nano";
-import { TreeNode, ITreeWriter, ITreeConsumer, ITreeReader, ITreeProducer } from "@tiny-calc/types";
-import { TreeShape } from "../src/treeshape";
+import { TreeNode, ITreeWriter, ITreeConsumer, ITreeReader, ITreeProducer, TreeShape } from "../src";
 import {
     BinaryOperatorToken,
     UnaryOperatorToken,
@@ -124,7 +123,7 @@ export class EvalTree extends BottomUpTree<ExprData, ExprData> implements ITreeC
         [SyntaxKind.GreaterThanToken]: (left: any, right: any) => left > right,
         [SyntaxKind.LessThanEqualsToken]: (left: any, right: any) => left <= right,
         [SyntaxKind.GreaterThanEqualsToken]: (left: any, right: any) => left >= right,
-        [SyntaxKind.NotEqualsToken]: (left: any, right: any) => left !== right,    
+        [SyntaxKind.NotEqualsToken]: (left: any, right: any) => left !== right,
     };
 
     public constructor (exprTree: ITreeProducer<ExprData>) {
@@ -195,12 +194,12 @@ describe("Parse/EvalTree", () => {
             const tokenTree = parse(expr);
             const evalTree = new EvalTree(tokenTree);
             const result = evalTree.getNode(evalTree.getFirstChild(TreeNode.root));
-            
+
             if (result.kind !== "lit") {
                 assert.fail(`Expected literal expression, but got '${result}'`);
             } else {
                 assert.equal(result.value, expected);
             }
         });
-    }    
+    }
 });

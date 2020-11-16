@@ -39,16 +39,3 @@ export {
     IMatrixShapeWriter,
     IMatrixWriter
 } from './matrix';
-
-export {
-    ITreeShapeConsumer,
-    ITreeShapeProducer,
-    ITreeShapeReader,
-    ITreeShapeWriter,
-    ITreeConsumer,
-    ITreeProducer,
-    ITreeReader,
-    ITreeWriter,
-    TreeNode,
-    TreeNodeLocation,
-} from './tree';

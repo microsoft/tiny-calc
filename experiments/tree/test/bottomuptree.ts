@@ -3,8 +3,14 @@
  * Licensed under the MIT License.
  */
 
-import { Tree } from "../src/tree";
-import { TreeNode, TreeNodeLocation, ITreeReader, ITreeProducer, ITreeShapeReader } from "@tiny-calc/types";
+import {
+    Tree,
+    TreeNode,
+    TreeNodeLocation,
+    ITreeReader,
+    ITreeProducer,
+    ITreeShapeReader
+} from "../src";
 
 export abstract class BottomUpTree<TIn, TOut> extends Tree<TOut> {
     private readonly dirty: boolean[] = [true];

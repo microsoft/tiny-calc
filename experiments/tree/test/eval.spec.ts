@@ -5,8 +5,7 @@
 
 import "mocha";
 import { strict as assert } from "assert";
-import { TreeShape } from "../src/treeshape";
-import { TreeNode, ITreeWriter, ITreeReader } from "@tiny-calc/types";
+import { TreeShape, TreeNode, ITreeWriter, ITreeReader } from "../src";
 import { Expr, EvalTree, add } from "./evaltree";
 import { InputTree } from "./inputtree";
 
@@ -31,7 +30,7 @@ describe("EvalTree", () => {
         const actualResult = output.getNode(node);
         assert.equal(actualResult, expected,
             `Expect subtree evaluation to produce '${expected}', but got '${actualResult}'.`);
-        
+
         const actualCount = evalTree.evalCount;
         assert.equal(actualCount, evalCount,
             `Expect subtree evaluation to calculate '${evalCount}' nodes, but calculated '${actualCount}'.`);
@@ -42,14 +41,14 @@ describe("EvalTree", () => {
 
         const delta = evalTree.evalCount - actualCount;
         assert.equal(delta, 0,
-            `Expect cached result to calculate 0 nodes, but calculated '${delta}' nodes.`);   
+            `Expect cached result to calculate 0 nodes, but calculated '${delta}' nodes.`);
     }
 
     beforeEach(() => {
         shape = new TreeShape();
         const inputTree = new InputTree<Expr>(shape);
         evalTree = new EvalTree(inputTree);
-        
+
         input = inputTree;
         output = evalTree;
     });

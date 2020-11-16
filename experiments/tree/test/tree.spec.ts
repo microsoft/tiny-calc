@@ -5,13 +5,12 @@
 
 import "mocha";
 import { strict as assert } from "assert";
-import { TreeShape } from "../src/treeshape";
-import { TreeNode } from "@tiny-calc/types";
+import { TreeShape, TreeNode } from "../src";
 import { checkShape } from "./utils";
 
 describe("TreeShape", () => {
     let tree: TreeShape;
-    
+
     beforeEach(() => { tree = new TreeShape(); });
 
     describe("empty", () => {
@@ -31,7 +30,7 @@ describe("TreeShape", () => {
         it("insert first child", () => {
             const node = tree.createNode();
             tree.moveNode(node, tree.firstChildOf(TreeNode.root));
-            assert.equal(checkShape(tree, TreeNode.root), 2);    
+            assert.equal(checkShape(tree, TreeNode.root), 2);
         });
 
         it("insert last child", () => {
@@ -43,7 +42,7 @@ describe("TreeShape", () => {
         it("insert before first child", () => {
             const right = tree.createNode();
             tree.moveNode(right, tree.firstChildOf(TreeNode.root));
-            
+
             const left = tree.createNode();
             tree.moveNode(left, tree.beforeNode(right));
 
@@ -54,7 +53,7 @@ describe("TreeShape", () => {
         it("insert after first child", () => {
             const left = tree.createNode();
             tree.moveNode(left, tree.firstChildOf(TreeNode.root));
-            
+
             const right = tree.createNode();
             tree.moveNode(right, tree.afterNode(left));
 
@@ -65,7 +64,7 @@ describe("TreeShape", () => {
         it("insert middle child after left", () => {
             const left = tree.createNode();
             tree.moveNode(left, tree.firstChildOf(TreeNode.root));
-            
+
             const right = tree.createNode();
             tree.moveNode(right, tree.afterNode(left));
 
@@ -80,7 +79,7 @@ describe("TreeShape", () => {
         it("insert middle child before right", () => {
             const left = tree.createNode();
             tree.moveNode(left, tree.firstChildOf(TreeNode.root));
-            
+
             const right = tree.createNode();
             tree.moveNode(right, tree.afterNode(left));
 
@@ -102,7 +101,7 @@ describe("TreeShape", () => {
         it("remove first child", () => {
             const node = tree.createNode();
             tree.moveNode(node, tree.firstChildOf(TreeNode.root));
-            
+
             tree.removeNode(node);
             assert.equal(checkShape(tree, TreeNode.root), 1);
             assert.equal(checkShape(tree, node), 1);
@@ -111,7 +110,7 @@ describe("TreeShape", () => {
         it("remove left child", () => {
             const right = tree.createNode();
             tree.moveNode(right, tree.firstChildOf(TreeNode.root));
-            
+
             const left = tree.createNode();
             tree.moveNode(left, tree.beforeNode(right));
 
@@ -123,7 +122,7 @@ describe("TreeShape", () => {
         it("remove right child", () => {
             const left = tree.createNode();
             tree.moveNode(left, tree.firstChildOf(TreeNode.root));
-            
+
             const right = tree.createNode();
             tree.moveNode(right, tree.afterNode(left));
 
@@ -135,7 +134,7 @@ describe("TreeShape", () => {
         it("remove middle child", () => {
             const left = tree.createNode();
             tree.moveNode(left, tree.firstChildOf(TreeNode.root));
-            
+
             const right = tree.createNode();
             tree.moveNode(right, tree.afterNode(left));
 

@@ -10,7 +10,7 @@ import {
     ITreeConsumer,
     ITreeReader,
     ITreeShapeReader
-} from "@tiny-calc/types";
+} from "./types";
 
 import { ConsumerSet, addConsumer, removeConsumer, forEachConsumer } from "./consumerset";
 
@@ -25,7 +25,7 @@ export abstract class Tree<T> implements ITreeProducer<T>, ITreeReader<T>, ITree
     public afterNode(node: TreeNode): TreeNodeLocation         { return this.shape.afterNode(node); }
     public firstChildOf(node: TreeNode): TreeNodeLocation      { return this.shape.firstChildOf(node); }
     public lastChildOf(node: TreeNode): TreeNodeLocation       { return this.shape.lastChildOf(node); }
-    
+
     public parentOfLocation(node: TreeNodeLocation): TreeNode  { return this.shape.parentOfLocation(node); }
 
     public getParent(node: TreeNode): TreeNode                 { return this.shape.getParent(node); }
@@ -52,7 +52,7 @@ export abstract class Tree<T> implements ITreeProducer<T>, ITreeReader<T>, ITree
     // #endregion ITreeProducer
 
     // #region ITreeConsumer
-    
+
     public nodeMoved(node: TreeNode, oldLocation: TreeNodeLocation): void {
         this.invalidateNodeLocation(node, oldLocation);
     }

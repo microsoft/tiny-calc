@@ -4,7 +4,7 @@
  */
 
 import { strict as assert } from "assert";
-import { ITreeShapeReader, TreeNode } from "@tiny-calc/types";
+import { ITreeShapeReader, TreeNode } from "../src";
 
 export function forEachChild(tree: ITreeShapeReader, parent: TreeNode, callback: (child: TreeNode) => boolean): void {
     let current = tree.getFirstChild(parent);
