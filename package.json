@@ -1,8 +1,7 @@
 {
-  "name": "@tiny-calc/root",
   "repository": {
-    "type" : "git",
-    "url" : "https://github.com/microsoft/tiny-calc.git"
+    "type": "git",
+    "url": "https://github.com/microsoft/tiny-calc.git"
   },
   "author": "Microsoft",
   "license": "MIT",
@@ -12,7 +11,7 @@
     "postinstall": "npm run rush -- install",
     "build": "npm run rush -- build",
     "test": "npm run rush -- test",
-    "prepublish": "npm run build && npm run test",
+    "prepublishOnly": "npm run build && npm run test",
     "setversion": "npm run rush -- version --ensure-version-policy --version-policy public --override-version"
   }
 }
