@@ -4,6 +4,7 @@
  */
 
 export { CompareFunction } from './compareFunction';
+export { Immutable } from "./immutable";
 export { Tuple } from "./tuple";
 
 export {
