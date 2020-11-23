@@ -1,12 +1,10 @@
 {
 	"recommendations": [
-		"ms-vscode-remote.remote-containers",
 		"eamodio.gitlens",
 		"editorconfig.editorconfig",
 		"dbaeumer.vscode-eslint",
 		"esbenp.prettier-vscode",
 		"streetsidesoftware.code-spell-checker",
-		"drewbourne.vscode-remark-lint",
-		"ms-vsliveshare.vsliveshare"
+		"drewbourne.vscode-remark-lint"
 	]
 }
