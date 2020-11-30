@@ -5,9 +5,9 @@
 
 import { Random } from "best-random";
 
-export interface IMonkeyOption {
+export interface IMonkeyOption<T = void> {
     scale: number,
-    action: () => void,
+    action: () => T,
 }
 
 export class Monkey {
@@ -17,7 +17,7 @@ export class Monkey {
         this.rng = new Random(seed);
     }
 
-    public choose(options: IMonkeyOption[]): void {
+    public choose<T = void>(options: IMonkeyOption<T>[]): T {
         let choice = this.chooseInt(
             /* start: */ 0,
             /* end: */ options.reduce((accumulator, option) => accumulator + option.scale, 0));
@@ -26,10 +26,13 @@ export class Monkey {
             choice -= option.scale;
 
             if (choice < 0) {
-                option.action();
-                return;
+                return option.action();
             }
         }
+
+        throw new Error(`'scale' of all options must sum to exactly 1.0, but got '${
+            options.reduce((accum, current) => accum + current.scale, 0)
+        }'`);
     }
 
     public chooseInt(start: number, end: number): number {
@@ -41,11 +44,11 @@ export class Monkey {
         return items[this.chooseInt(/* start: */ 0, /* end: */ items.length)];
     }
 
-    public chooseString(length: number): string {
+    public chooseString(length: number, alphabet = " !\"$%&'()*+,/0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[|]^_`abcdefghijklmnopqrstuvwxyz{}~"): string {
         let s = "";
-        
+
         do {
-            s += Math.random().toString(36).slice(2);
+            s += alphabet[this.chooseInt(0, alphabet.length)];
         } while (s.length < length);
 
         return s.slice(0, length);

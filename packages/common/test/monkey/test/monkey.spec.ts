@@ -14,7 +14,7 @@ describe("Monkey", () => {
         monkey = new Monkey();
     });
 
-    
+
     for (const { start, end } of [
         { start:  0, end: 1 },
         { start: -1, end: 1 },
@@ -44,7 +44,7 @@ describe("Monkey", () => {
         });
     });
 
-    for (const length of [1, 2]) {
+    for (const length of [1, 2, 10]) {
         describe(`chooseString(length=${length})`, () => {
             it(`must return expected length=${length}`, () => {
                 assert.equal(monkey.chooseString(length).length, length);
@@ -52,6 +52,9 @@ describe("Monkey", () => {
             it(`must randomly choose characters`, () => {
                 const init = monkey.chooseString(length);
                 while (monkey.chooseString(length) === init);
+            });
+            it(`must choose characters from alphabet="0"`, () => {
+                assert.equal(monkey.chooseString(length, "0"), "0".repeat(length));
             });
         });
     }
