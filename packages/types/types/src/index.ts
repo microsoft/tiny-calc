@@ -6,6 +6,12 @@
 export { CompareFunction } from './compareFunction';
 export { Immutable } from "./immutable";
 export { Tuple } from "./tuple";
+export {
+    Jsonable,
+    JsonableObject,
+    JsonableArray,
+    JsonablePrimitive
+} from "./jsonable";
 
 export {
     IConsumer,
