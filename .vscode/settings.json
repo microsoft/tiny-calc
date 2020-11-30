@@ -24,10 +24,13 @@
 
     // Spell check dictionary
     "cSpell.words": [
+        "Jsonable",
         "affordances",
         "endregion",
         "interoperate",
         "interoperation",
+        "multibyte",
+        "serializable",
         "signedness",
         "unopinionated"
     ],
