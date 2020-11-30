@@ -11,7 +11,7 @@ import {
     TreeNodeLocation,
     ITreeShapeWriter
 } from "./types";
-import { HandleTable } from "@tiny-calc/handletable";
+import { Handle, HandleTable } from "@tiny-calc/handletable";
 import { ConsumerSet, addConsumer, removeConsumer, forEachConsumer } from "./consumerset";
 
 const enum ShapeFieldOffset {
@@ -63,7 +63,7 @@ export class TreeShape implements ITreeShapeProducer, ITreeShapeReader, ITreeSha
 
     public deleteNode(node: TreeNode): void {
         this.removeNode(node);
-        this.handles.delete(+node);
+        this.handles.delete(node as unknown as Handle);
     }
 
     // #endregion ITreeShapeProducer

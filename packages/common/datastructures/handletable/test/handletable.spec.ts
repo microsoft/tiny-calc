@@ -6,6 +6,7 @@
 import "mocha";
 import { strict as assert } from "assert";
 import { TestFixture } from "./testfixture";
+import { Handle } from "../src";
 
 describe("HandleTable", () => {
     const testValues = ["1", "2", "3"];
@@ -37,23 +38,23 @@ describe("HandleTable", () => {
         const values = testValues.slice(count);
 
         it(`add x ${count} / get x ${count} / delete x ${count}`, () => {
-            let handles = [];
+            const handles: Handle[] = [];
 
             for (const value of values) {
                 const handle = table.add(value);
                 handles.push(handle);
                 assert.equal(table.get(handle), value);
             }
-            
+
             for (let i = 0; i < handles.length; i++) {
                 assert.equal(table.get(handles[i]), values[i]);
             }
-    
+
             for (let i = handles.length - 1; i >= 0; i--) {
                 const handle = handles[i];
                 assert.equal(table.get(handle), values[i]);
                 table.delete(handle);
             }
-        });    
+        });
     }
 });

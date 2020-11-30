@@ -168,7 +168,7 @@ export class EvalTree extends BottomUpTree<ExprData, ExprData> implements ITreeC
             }
 
             default:
-                assert.fail(`Unrecognized kind: ${JSON.stringify(expr)}`);
+                throw new Error(`Unrecognized kind: ${JSON.stringify(expr)}`);
         }
     }
 }
