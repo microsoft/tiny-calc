@@ -29,6 +29,12 @@
       "versionPolicyName": "public"
     },
     {
+      "packageName": "@tiny-calc/binary",
+      "projectFolder": "packages/common/binary",
+      "reviewCategory": "production",
+      "versionPolicyName": "public"
+    },
+    {
       "packageName": "@tiny-calc/es",
       "projectFolder": "packages/types/es",
       "reviewCategory": "production",
