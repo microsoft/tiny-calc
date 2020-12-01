@@ -1,3 +1,8 @@
+/*!
+ * Copyright (c) Microsoft Corporation. All rights reserved.
+ * Licensed under the MIT License.
+ */
+
 import { INumericType } from "./types";
 
 const special = [undefined, null, true, false, NaN, -Infinity, -0, +0, 0.5, "1", +Infinity];
