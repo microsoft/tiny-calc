@@ -32,9 +32,13 @@ export interface IVectorShapeReader {
     readonly vectorProducer?: IVectorShapeProducer;
 }
 
-/** Capability to insert, replace, and remove items in a vector. */
+/**
+ * Capability to adjust the vector's length by inserting and/or removing items.  Use
+ * 'IVectorWriter' to assign values to the inserted items.  (The initial value of newly
+ * inserted items is implementation specific.)
+ */
 export interface IVectorShapeWriter {
-    splice(start: number, deleteCount: number, insertCount: number): void;
+    resize(start: number, deleteCount: number, insertCount: number): void;
 }
 
 export interface IVectorShapeConsumer {

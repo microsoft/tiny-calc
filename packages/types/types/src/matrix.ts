@@ -42,10 +42,14 @@ export interface IMatrixShapeReader {
     readonly matrixProducer?: IMatrixShapeProducer;
 }
 
-/** Capability to write cells in a matrix. */
+/**
+ * Capability to adjust the matrix's dimensions by inserting and/or removing rows &
+ * columns.  Use 'IMatrixWriter' to assign values to the inserted cells.  (The initial
+ * value of newly inserted cells is implementation specific.)
+ */
 export interface IMatrixShapeWriter {
-    spliceRows(rowStart: number, deleteCount: number, insertCount: number): void;
-    spliceCols(colStart: number, deleteCount: number, insertCount: number): void;
+    resizeRows(rowStart: number, deleteCount: number, insertCount: number): void;
+    resizeCols(colStart: number, deleteCount: number, insertCount: number): void;
 }
 
 /** An observable 2D numerically indexed collection. */

@@ -26,7 +26,7 @@ export class TestVector<T> implements IVectorConsumer<T> {
 
     public splice(start: number, deletedCount: number, ...items: T[]): void {
         this.expected.splice(start, deletedCount, ...items);
-        this.writer.splice(start, deletedCount, items.length);
+        this.writer.resize(start, deletedCount, items.length);
         for (const value of items) {
             this.writer.setItem(start++, value);
         }

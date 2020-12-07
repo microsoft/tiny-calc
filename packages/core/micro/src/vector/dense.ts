@@ -30,7 +30,7 @@ export class DenseVector<T> extends VectorProducer<T> implements IVectorWriter<T
         this.invalidateItems(index, /* removedCount: */ 1, /* insertedCount: */ 1);
     }
 
-    public splice(start: number, deleteCount: number, insertCount: number, values?: Iterable<T>): void {
+    public resize(start: number, deleteCount: number, insertCount: number, values?: Iterable<T>): void {
         const inserted = toArray(values);
         inserted.length = insertCount;
 
