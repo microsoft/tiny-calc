@@ -213,7 +213,7 @@ export class TestMatrix<T = any, TRow = never, TCol = never> implements IMatrixC
         this.log.push(`matrix.insertRows(${rowStart},${rowCount});    // rowCount: ${this.rowCount} -> ${this.rowCount + rowCount}, colCount: ${this.colCount}`);
 
         this.expected.insertRows(rowStart, rowCount);
-        this.rowWriter.splice(rowStart, /* deleteCount: */ 0, /* insertCount: */ rowCount);
+        this.rowWriter.resize(rowStart, /* deleteCount: */ 0, /* insertCount: */ rowCount);
 
         this.check();
     }
@@ -222,7 +222,7 @@ export class TestMatrix<T = any, TRow = never, TCol = never> implements IMatrixC
         this.log.push(`matrix.removeRows(${rowStart},${rowCount});    // rowCount: ${this.rowCount} -> ${this.rowCount - rowCount}, colCount: ${this.colCount}`);
 
         this.expected.removeRows(rowStart, rowCount);
-        this.rowWriter.splice(rowStart, /* deleteCount: */ rowCount, /* insertCount: */ 0);
+        this.rowWriter.resize(rowStart, /* deleteCount: */ rowCount, /* insertCount: */ 0);
 
         this.check();
     }
@@ -231,7 +231,7 @@ export class TestMatrix<T = any, TRow = never, TCol = never> implements IMatrixC
         this.log.push(`matrix.insertCols(${colStart},${colCount});    // colCount: ${this.colCount} -> ${this.colCount + colCount}, colCount: ${this.colCount}`);
 
         this.expected.insertCols(colStart, colCount);
-        this.colWriter.splice(colStart, /* deleteCount: */ 0, /* insertCount: */ colCount);
+        this.colWriter.resize(colStart, /* deleteCount: */ 0, /* insertCount: */ colCount);
 
         this.check();
     }
@@ -240,7 +240,7 @@ export class TestMatrix<T = any, TRow = never, TCol = never> implements IMatrixC
         this.log.push(`matrix.removeCols(${colStart},${colCount});    // colCount: ${this.colCount} -> ${this.colCount - colCount}, colCount: ${this.colCount}`);
 
         this.expected.removeCols(colStart, colCount);
-        this.colWriter.splice(colStart, /* deleteCount: */ colCount, /* insertCount: */ 0);
+        this.colWriter.resize(colStart, /* deleteCount: */ colCount, /* insertCount: */ 0);
 
         this.check();
     }
