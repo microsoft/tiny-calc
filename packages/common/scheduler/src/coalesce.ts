@@ -3,10 +3,10 @@
  * Licensed under the MIT License.
  */
 
-export const done = Promise.resolve();
+export const done: Promise<void> = Promise.resolve();
 
 export function coalesce<T, U>(
-    queue: (callback: () => U) => T extends null ? never : T,
+    queue: (callback: () => U) => Exclude<T, null>,     // eslint-disable-line @rushstack/no-new-null
     callback: () => U
 ): () => T {
     /* eslint-disable @rushstack/no-null */
