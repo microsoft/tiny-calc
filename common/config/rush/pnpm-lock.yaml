@@ -3,6 +3,7 @@ dependencies:
   '@rush-temp/es': 'file:projects/es.tgz'
   '@rush-temp/eslint-config': 'file:projects/eslint-config.tgz_eslint@7.14.0+typescript@4.1.2'
   '@rush-temp/example': 'file:projects/example.tgz'
+  '@rush-temp/graph': 'file:projects/graph.tgz'
   '@rush-temp/handletable': 'file:projects/handletable.tgz'
   '@rush-temp/heap': 'file:projects/heap.tgz'
   '@rush-temp/micro': 'file:projects/micro.tgz'
@@ -2874,6 +2875,23 @@ packages:
       integrity: sha512-hKDbQi6qxpzLLPswZI9hv3c6UaImw/3ypjPw8TxBdBgch4t8DrpjtFjKZOr5B7mgPdAk7ZA67NF2vY5xTM+a6g==
       tarball: 'file:projects/example.tgz'
     version: 0.0.0
+  'file:projects/graph.tgz':
+    dependencies:
+      '@types/mocha': 8.0.4
+      '@types/node': 14.14.10
+      best-random: 1.0.3
+      eslint: 7.14.0
+      hotloop: 1.2.0
+      mocha: 8.2.1
+      rimraf: 3.0.2
+      ts-node: 9.0.0_typescript@4.1.2
+      typescript: 4.1.2
+    dev: false
+    name: '@rush-temp/graph'
+    resolution:
+      integrity: sha512-x6/nNU5WJIfUJw9WxIgInXL9KtgG0mu7pJChuTvvjS6LDfok9ize0Qkq98cKEqWssnRSKyg7P5hSaQoIIo989A==
+      tarball: 'file:projects/graph.tgz'
+    version: 0.0.0
   'file:projects/handletable.tgz':
     dependencies:
       '@types/mocha': 8.0.4
@@ -2990,7 +3008,7 @@ packages:
     dev: false
     name: '@rush-temp/tree'
     resolution:
-      integrity: sha512-p5aPKDdIx05mU/a8ZLX7CBTWKBPkHw0D0TyvzzPSSjIjsa4gTI3EkkK0gKfqvuVGTtjLiHxq0aSS/MBbr4QexQ==
+      integrity: sha512-6eiNE5zK2y83C8zbnVDpODuamQByFaqG54pTmS1+x4kgRjOMt/O2MHk1GQxVubuBPFE3lewfd/uGy/w7+AXdbw==
       tarball: 'file:projects/tree.tgz'
     version: 0.0.0
   'file:projects/ts-config.tgz':
@@ -3041,6 +3059,7 @@ specifiers:
   '@rush-temp/es': 'file:./projects/es.tgz'
   '@rush-temp/eslint-config': 'file:./projects/eslint-config.tgz'
   '@rush-temp/example': 'file:./projects/example.tgz'
+  '@rush-temp/graph': 'file:./projects/graph.tgz'
   '@rush-temp/handletable': 'file:./projects/handletable.tgz'
   '@rush-temp/heap': 'file:./projects/heap.tgz'
   '@rush-temp/micro': 'file:./projects/micro.tgz'

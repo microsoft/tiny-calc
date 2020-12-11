@@ -71,6 +71,12 @@
       "versionPolicyName": "public"
     },
     {
+      "packageName": "@tiny-calc/graph",
+      "projectFolder": "experiments/graph",
+      "reviewCategory": "production",
+      "versionPolicyName": "private"
+    },
+    {
       "packageName": "@tiny-calc/tree",
       "projectFolder": "experiments/tree",
       "reviewCategory": "production",

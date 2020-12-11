@@ -110,9 +110,9 @@
         {
             "type": "node",
             "request": "launch",
-            "name": "Tree Tests",
-            "cwd": "${workspaceFolder}/packages/core/tree",
-            "program": "${workspaceFolder}/packages/core/tree/node_modules/mocha/bin/_mocha",
+            "name": "Graph Tests",
+            "cwd": "${workspaceFolder}/experiments/graph",
+            "program": "${workspaceFolder}/experiments/graph/node_modules/mocha/bin/_mocha",
             "args": [
                 "-r",
                 "ts-node/register",
@@ -122,6 +122,6 @@
             "env": { "TS_NODE_PROJECT": "tsconfig.json" },
             "console": "integratedTerminal",
             "skipFiles": ["<node_internals>/**/*.js"]
-        },
+        }
     ]
 }
