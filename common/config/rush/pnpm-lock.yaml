@@ -3,6 +3,7 @@ dependencies:
   '@rush-temp/es': 'file:projects/es.tgz'
   '@rush-temp/eslint-config': 'file:projects/eslint-config.tgz_eslint@7.14.0+typescript@4.1.2'
   '@rush-temp/example': 'file:projects/example.tgz'
+  '@rush-temp/frugallist': 'file:projects/frugallist.tgz'
   '@rush-temp/graph': 'file:projects/graph.tgz'
   '@rush-temp/handletable': 'file:projects/handletable.tgz'
   '@rush-temp/heap': 'file:projects/heap.tgz'
@@ -2875,6 +2876,23 @@ packages:
       integrity: sha512-hKDbQi6qxpzLLPswZI9hv3c6UaImw/3ypjPw8TxBdBgch4t8DrpjtFjKZOr5B7mgPdAk7ZA67NF2vY5xTM+a6g==
       tarball: 'file:projects/example.tgz'
     version: 0.0.0
+  'file:projects/frugallist.tgz':
+    dependencies:
+      '@types/mocha': 8.0.4
+      '@types/node': 14.14.10
+      best-random: 1.0.3
+      eslint: 7.14.0
+      hotloop: 1.2.0
+      mocha: 8.2.1
+      rimraf: 3.0.2
+      ts-node: 9.0.0_typescript@4.1.2
+      typescript: 4.1.2
+    dev: false
+    name: '@rush-temp/frugallist'
+    resolution:
+      integrity: sha512-VbPT6NIgsrDGg3UU/3y5ORe4J+Mqy24aXfgzvM48RtdM2CSMxnM2lVWZliJstSlz8q+0BGi2+fyPc5+bqXCpDA==
+      tarball: 'file:projects/frugallist.tgz'
+    version: 0.0.0
   'file:projects/graph.tgz':
     dependencies:
       '@types/mocha': 8.0.4
@@ -3059,6 +3077,7 @@ specifiers:
   '@rush-temp/es': 'file:./projects/es.tgz'
   '@rush-temp/eslint-config': 'file:./projects/eslint-config.tgz'
   '@rush-temp/example': 'file:./projects/example.tgz'
+  '@rush-temp/frugallist': 'file:./projects/frugallist.tgz'
   '@rush-temp/graph': 'file:./projects/graph.tgz'
   '@rush-temp/handletable': 'file:./projects/handletable.tgz'
   '@rush-temp/heap': 'file:./projects/heap.tgz'

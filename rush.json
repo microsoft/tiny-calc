@@ -47,6 +47,12 @@
       "versionPolicyName": "public"
     },
     {
+      "packageName": "@tiny-calc/frugallist",
+      "projectFolder": "packages/common/datastructures/frugallist",
+      "reviewCategory": "production",
+      "versionPolicyName": "public"
+    },
+    {
       "packageName": "@tiny-calc/handletable",
       "projectFolder": "packages/common/datastructures/handletable",
       "reviewCategory": "production",

@@ -1,0 +1,8 @@
+# NPM dependencies
+/node_modules
+
+# Build artifacts
+/dist
+
+# Typescript incremental build cache
+/*.tsbuildinfo
