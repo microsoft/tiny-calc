@@ -16,9 +16,11 @@ TODO
     * Lifetime: currently 'deleteNode()' leaves dangling references in the graph to delete nodes.
         * ACR: Auto-delete nodes when they no longer referenced.
         * Bidirectional graph: track parents and remove references on delete.
+    * Efficient diff
 * Perf
     * Intern / reuse type info.
     * Improve children representation:
         * Store as (GraphNode | GraphNode[]) to avoid array alloc for 0/1 children.
+    * Binary
 * Bugs
     * Graph can not store 'undefined' scalar (array encoding should use a sentinel to avoid conflict)
