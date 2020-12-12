@@ -5,17 +5,21 @@
 
 import { strict as assert } from "assert";
 import { ITreeShapeReader, TreeNode } from "../src";
+import { TreeNodeHandle } from "../src/types";
+
+export const root = TreeNodeHandle.root as const as TreeNode;
+export const none = TreeNodeHandle.none as const as TreeNode;
 
 export function forEachChild(tree: ITreeShapeReader, parent: TreeNode, callback: (child: TreeNode) => boolean): void {
     let current = tree.getFirstChild(parent);
-    while (current !== TreeNode.none && callback(current)) {
+    while (current !== none && callback(current)) {
         current = tree.getNextSibling(current);
     }
 }
 
 export function checkPrevLink(tree: ITreeShapeReader, node: TreeNode): void {
     const prev = tree.getPrevSibling(node);
-    if (prev !== TreeNode.none) {
+    if (prev !== none) {
         const actual = tree.getNextSibling(prev);
         assert.equal(actual, node,
             `Prev node '${prev}' must point to next node '${node}', but got '${actual}'`);
@@ -24,7 +28,7 @@ export function checkPrevLink(tree: ITreeShapeReader, node: TreeNode): void {
 
 export function checkNextLink(tree: ITreeShapeReader, node: TreeNode): void {
     const next = tree.getNextSibling(node);
-    if (next !== TreeNode.none) {
+    if (next !== none) {
         const actual = tree.getPrevSibling(next);
         assert.equal(actual, node,
             `Next node '${next}' must point back to prev node '${node}', but got '${actual}'`);
@@ -32,7 +36,7 @@ export function checkNextLink(tree: ITreeShapeReader, node: TreeNode): void {
 }
 
 export function checkChildren(tree: ITreeShapeReader, parent: TreeNode): void {
-    let lastChild = TreeNode.none;
+    let lastChild = none;
 
     forEachChild(tree, parent, (child) => {
         const actual = tree.getParent(child);
@@ -49,7 +53,7 @@ export function checkChildren(tree: ITreeShapeReader, parent: TreeNode): void {
 
 function checkParent(tree: ITreeShapeReader, node: TreeNode): void {
     const parent = tree.getParent(node);
-    if (parent !== TreeNode.none) {
+    if (parent !== none) {
         let found = 0;
         forEachChild(tree, parent, (child) => {
             if (child === node) { found++; }
@@ -59,8 +63,8 @@ function checkParent(tree: ITreeShapeReader, node: TreeNode): void {
     }
 }
 
-export function checkShape(tree: ITreeShapeReader, node = TreeNode.root): number {
-    if (node === TreeNode.none) {
+export function checkShape(tree: ITreeShapeReader, node = root): number {
+    if (node === none) {
         return 0;
     }
 

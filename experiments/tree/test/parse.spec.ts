@@ -17,6 +17,7 @@ import {
 } from "@tiny-calc/nano/dist/parser";
 import { InputTree } from "./inputtree";
 import { BottomUpTree } from "./bottomuptree";
+import { root } from "./utils";
 
 type ExprData =
     | { kind: "lit"; value: boolean | number | string }
@@ -94,13 +95,13 @@ function createAlgebra(
 export const parse = (expr: string): ITreeProducer<ExprData> => {
     const shape = new TreeShape();
     const tokenTree = new InputTree<ExprData>(shape);
-    const [failed, root] = createParser(
+    const [failed, result] = createParser(
         createAlgebra(tokenTree, shape),
         createBooleanErrorHandler()
     )(expr);
 
     if (!failed) {
-        shape.moveNode(root, shape.firstChildOf(TreeNode.root));
+        shape.moveNode(result, shape.firstChildOf(root));
     }
 
     return tokenTree;
@@ -193,7 +194,7 @@ describe("Parse/EvalTree", () => {
         it(`${expr} -> ${expected}`, () => {
             const tokenTree = parse(expr);
             const evalTree = new EvalTree(tokenTree);
-            const result = evalTree.getNode(evalTree.getFirstChild(TreeNode.root));
+            const result = evalTree.getNode(evalTree.getFirstChild(root));
 
             if (result.kind !== "lit") {
                 assert.fail(`Expected literal expression, but got '${result}'`);

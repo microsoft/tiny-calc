@@ -5,6 +5,7 @@
 
 import { TreeNode, ITreeConsumer, ITreeReader, ITreeProducer } from "../src";
 import { BottomUpTree } from "./bottomuptree";
+import { none } from "./utils";
 
 export type BinOp = (left: number, right: number) => number;
 export type Expr = BinOp | number;
@@ -39,7 +40,7 @@ export class EvalTree extends BottomUpTree<Expr, number> implements ITreeConsume
         // eslint-disable-next-line no-constant-condition
         while (true) {
             node = descendants.getNextSibling(node);
-            if (node === TreeNode.none) {
+            if (node === none) {
                 break;
             }
 

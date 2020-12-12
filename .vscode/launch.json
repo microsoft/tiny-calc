@@ -110,8 +110,8 @@
         {
             "type": "node",
             "request": "launch",
-            "name": "Graph Tests",
-            "cwd": "${workspaceFolder}/experiments/graph",
+            "name": "Tree Tests",
+            "cwd": "${workspaceFolder}/experiments/tree",
             "program": "${workspaceFolder}/experiments/graph/node_modules/mocha/bin/_mocha",
             "args": [
                 "-r",

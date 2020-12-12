@@ -3,25 +3,26 @@
  * Licensed under the MIT License.
  */
 
-export const enum TreeNode {
+export const enum TreeNodeHandle {
     root = 0,
     none = -429496729,      // Largest negative Int32 that satisfies 'TreeNodeIndex.none / ShapeFieldOffset.fieldCount'.
 }
 
-export const enum TreeNodeLocation { }
+export type TreeNode = number & { readonly TreeNode: unique symbol };
+export type TreeNodeLocation = number & { readonly TreeNodeLocation: unique symbol }
 
 export interface ITreeShapeProducer {
     /**
      * Acquire a reader for this tree's shape and implicitly subscribe the consumer
      * to shape change notifications.
-     * 
+     *
      * @param consumer - The consumer to be notified of Tree changes.
      */
     openTree(consumer: ITreeShapeConsumer): ITreeShapeReader;
 
     /**
      * Unsubscribe the consumer from this tree's shape notifications.
-     * 
+     *
      * @param consumer - The consumer to unregister from the Tree shape.
      */
     closeTree(consumer: ITreeShapeConsumer): void;
@@ -62,14 +63,14 @@ export interface ITreeProducer<T = unknown> extends ITreeShapeProducer {
     /**
      * Acquire a reader for this tree's shape and implicitly subscribe the consumer
      * to shape change notifications.
-     * 
+     *
      * @param consumer - The consumer to be notified of Tree changes.
      */
     openTree(consumer: ITreeConsumer): ITreeReader<T>;
 
     /**
      * Unsubscribe the consumer from this tree's shape notifications.
-     * 
+     *
      * @param consumer - The consumer to unregister from the Tree shape.
      */
     closeTree(consumer: ITreeConsumer): void;

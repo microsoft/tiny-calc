@@ -8,10 +8,11 @@ import {
     ITreeShapeConsumer,
     ITreeShapeReader,
     TreeNode,
+    TreeNodeHandle,
     TreeNodeLocation,
-    ITreeShapeWriter
+    ITreeShapeWriter,
 } from "./types";
-import { Handle, HandleTable } from "@tiny-calc/handletable";
+import { HandleTable } from "@tiny-calc/handletable";
 import { ConsumerSet, addConsumer, removeConsumer, forEachConsumer } from "./consumerset";
 
 const enum ShapeFieldOffset {
@@ -24,18 +25,18 @@ const enum ShapeFieldOffset {
 }
 
 const enum TreeNodeIndex {
-    none = TreeNode.none * ShapeFieldOffset.fieldCount,
+    none = TreeNodeHandle.none * ShapeFieldOffset.fieldCount,
 }
 
 function toIndex(node: TreeNode): TreeNodeIndex { return node * ShapeFieldOffset.fieldCount; }
-function toNode(index: TreeNodeIndex): TreeNode { return index / ShapeFieldOffset.fieldCount; }
+function toNode(index: TreeNodeIndex): TreeNode { return index / ShapeFieldOffset.fieldCount as TreeNode; }
 
 export class TreeShape implements ITreeShapeProducer, ITreeShapeReader, ITreeShapeWriter {
     private readonly shape: TreeNodeIndex[] = [
         /* root: */ TreeNodeIndex.none, TreeNodeIndex.none, TreeNodeIndex.none, TreeNodeIndex.none, TreeNodeIndex.none,
     ];
 
-    private readonly handles = new HandleTable();
+    private readonly handles = new HandleTable<void, TreeNode>();
     private consumers?: ConsumerSet<ITreeShapeConsumer>;
 
     // #region ITreeShapeProducer
@@ -51,19 +52,19 @@ export class TreeShape implements ITreeShapeProducer, ITreeShapeReader, ITreeSha
 
     public createNode(): TreeNode {
         const node = this.handles.add(undefined);
-        const index = toIndex(+node);
+        const index = toIndex(node);
 
         this.setParentIndex(index, TreeNodeIndex.none);
         this.setFirstChildIndex(index, TreeNodeIndex.none);
         this.setNextSiblingIndex(index, TreeNodeIndex.none);
         this.setLastChildIndex(index, TreeNodeIndex.none);
         this.setPrevSiblingIndex(index, TreeNodeIndex.none);
-        return +node;
+        return node;
     }
 
     public deleteNode(node: TreeNode): void {
         this.removeNode(node);
-        this.handles.delete(node as unknown as Handle);
+        this.handles.delete(node);
     }
 
     // #endregion ITreeShapeProducer
@@ -79,7 +80,7 @@ export class TreeShape implements ITreeShapeProducer, ITreeShapeReader, ITreeSha
     public beforeNode(node: TreeNode): TreeNodeLocation {
         const prev = this.getPrevSibling(node);
 
-        return prev === TreeNode.none
+        return prev === TreeNodeHandle.none
             ? this.firstChildOf(this.getParent(node))
             : this.afterNode(prev);
     }
@@ -89,20 +90,21 @@ export class TreeShape implements ITreeShapeProducer, ITreeShapeReader, ITreeSha
     }
 
     public firstChildOf(parent: TreeNode): TreeNodeLocation {
-        return -parent;
+        return -parent as TreeNodeLocation;
     }
 
     public lastChildOf(parent: TreeNode): TreeNodeLocation {
         const oldLast = this.getLastChild(parent);
-        return oldLast === TreeNode.none
+        return oldLast === TreeNodeHandle.none
             ? this.firstChildOf(parent)
-            : +oldLast;
+            : oldLast as unknown as TreeNodeLocation;
     }
 
     public parentOfLocation(location: TreeNodeLocation): TreeNode {
+        // If 'location' refers to the position before a node that is the first child
         return location > 0
-            ? this.getParent(+location)
-            : -location;
+            ? this.getParent(location as unknown as TreeNode)
+            : -location as TreeNode;
     }
 
     // #endregion ITreeShapeReader
@@ -140,7 +142,7 @@ export class TreeShape implements ITreeShapeProducer, ITreeShapeReader, ITreeSha
             return this.firstChildOf(toNode(oldParent));
         } else {
             this.setNextSiblingIndex(oldPrev, oldNext);
-            return +toNode(oldPrev);
+            return toNode(oldPrev) as unknown as TreeNodeLocation;
         }
     }
 
@@ -183,9 +185,9 @@ export class TreeShape implements ITreeShapeProducer, ITreeShapeReader, ITreeSha
         const oldLocation = this.unlink(index);
 
         if (location > 0) {
-            this.linkAfter(index, toIndex(+location));
+            this.linkAfter(index, toIndex(location as unknown as TreeNode));
         } else {
-            this.linkFirstChild(index, toIndex(-location));
+            this.linkFirstChild(index, toIndex(-location as TreeNode));
         }
 
         forEachConsumer(this.consumers, (consumer) => {
