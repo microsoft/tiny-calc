@@ -11,11 +11,15 @@ import {
     ITreeReader,
     ITreeShapeReader
 } from "./types";
-
-import { ConsumerSet, addConsumer, removeConsumer, forEachConsumer } from "./consumerset";
+import {
+    FrugalList,
+    FrugalList_push,
+    FrugalList_removeFirst,
+    FrugalList_forEach
+} from "@tiny-calc/frugallist";
 
 export abstract class Tree<T> implements ITreeProducer<T>, ITreeReader<T>, ITreeConsumer {
-    private consumers?: ConsumerSet<ITreeConsumer>;
+    private consumers: FrugalList<ITreeConsumer>;
 
     protected abstract get shape(): ITreeShapeReader;
 
@@ -41,12 +45,12 @@ export abstract class Tree<T> implements ITreeProducer<T>, ITreeReader<T>, ITree
     // #region ITreeProducer<T>
 
     public openTree(consumer: ITreeConsumer): ITreeReader<T> {
-        this.consumers = addConsumer(this.consumers, consumer);
+        this.consumers = FrugalList_push(this.consumers, consumer);
         return this;
     }
 
     public closeTree(consumer: ITreeConsumer): void {
-        this.consumers = removeConsumer(this.consumers, consumer);
+        this.consumers = FrugalList_removeFirst(this.consumers, consumer);
     }
 
     // #endregion ITreeProducer
@@ -64,13 +68,13 @@ export abstract class Tree<T> implements ITreeProducer<T>, ITreeReader<T>, ITree
     // #endregion ITreeConsumer
 
     protected invalidateNode(node: TreeNode): void {
-        forEachConsumer(this.consumers, (consumer) => {
+        FrugalList_forEach(this.consumers, (consumer) => {
             consumer.nodeChanged(node, /* producer: */ this);
         });
     }
 
     protected invalidateNodeLocation(node: TreeNode, oldLocation: TreeNodeLocation): void {
-        forEachConsumer(this.consumers, (consumer) => {
+        FrugalList_forEach(this.consumers, (consumer) => {
             consumer.nodeMoved(node, oldLocation, /* producer: */ this);
         });
     }

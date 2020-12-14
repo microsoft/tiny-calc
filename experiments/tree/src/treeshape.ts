@@ -12,8 +12,13 @@ import {
     TreeNodeLocation,
     ITreeShapeWriter,
 } from "./types";
+import {
+    FrugalList,
+    FrugalList_push,
+    FrugalList_removeFirst,
+    FrugalList_forEach
+} from "@tiny-calc/frugallist";
 import { HandleTable } from "@tiny-calc/handletable";
-import { ConsumerSet, addConsumer, removeConsumer, forEachConsumer } from "./consumerset";
 
 const enum ShapeFieldOffset {
     parent = 0,
@@ -36,18 +41,18 @@ export class TreeShape implements ITreeShapeProducer, ITreeShapeReader, ITreeSha
         /* root: */ TreeNodeIndex.none, TreeNodeIndex.none, TreeNodeIndex.none, TreeNodeIndex.none, TreeNodeIndex.none,
     ];
 
+    private consumers: FrugalList<ITreeShapeConsumer>;
     private readonly handles = new HandleTable<void, TreeNode>();
-    private consumers?: ConsumerSet<ITreeShapeConsumer>;
 
     // #region ITreeShapeProducer
 
     public openTree(consumer: ITreeShapeConsumer): ITreeShapeReader {
-        this.consumers = addConsumer(this.consumers, consumer);
+        this.consumers = FrugalList_push(this.consumers, consumer);
         return this;
     }
 
     public closeTree(consumer: ITreeShapeConsumer): void {
-        this.consumers = removeConsumer(this.consumers, consumer);
+        this.consumers = FrugalList_removeFirst(this.consumers, consumer);
     }
 
     public createNode(): TreeNode {
@@ -190,7 +195,7 @@ export class TreeShape implements ITreeShapeProducer, ITreeShapeReader, ITreeSha
             this.linkFirstChild(index, toIndex(-location as TreeNode));
         }
 
-        forEachConsumer(this.consumers, (consumer) => {
+        FrugalList_forEach(this.consumers, (consumer) => {
             consumer.nodeMoved(node, oldLocation, /* producer: */ this);
         });
     }
@@ -203,7 +208,7 @@ export class TreeShape implements ITreeShapeProducer, ITreeShapeReader, ITreeSha
         this.setNextSiblingIndex(index, TreeNodeIndex.none);
         this.setPrevSiblingIndex(index, TreeNodeIndex.none);
 
-        forEachConsumer(this.consumers, (consumer) => {
+        FrugalList_forEach(this.consumers, (consumer) => {
             consumer.nodeMoved(node, oldLocation, /* producer: */ this);
         });
     }
