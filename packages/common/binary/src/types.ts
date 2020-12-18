@@ -44,7 +44,7 @@ export const enum MinValue {
 
 /**
  * Smallest finite number that can be represented by the given floating-point type.
- * (i.e., a large negative number.  See also MinPositive.)
+ * (i.e., a very large negative number.  See also MinPositive.)
  */
 export const enum MinFinite {
     float32     = -3.4028234663852886e+38,  // = -MaxFinite.float32
