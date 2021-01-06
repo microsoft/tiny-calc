@@ -7,3 +7,4 @@ export * from "./to";
 export * from "./is";
 export * from "./types";
 export * from "./reinterpret";
+export * from "./endianness";

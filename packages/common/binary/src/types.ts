@@ -3,11 +3,22 @@
  * Licensed under the MIT License.
  */
 
-export const enum Endianness {
-    little      = -1,
-    machine     =  0,
-    big         =  1,
-}
+/**
+ * Stores least significant byte at lowest memory address (e.g., 1a2b3c4d -> 4d 3c 2b 1a).
+ *
+ * Assigned the constant value 'true' for compatibility with the DataView APIs that take an
+ * optional 'littleEndian' argument.
+ */
+export const littleEndian = true as const;
+
+/**
+ * Also knows as network-order, stores most significant byte at lowest memory address.
+ * (e.g., 1a2b3c4d -> 4a 3b 2c 1d).
+ *
+ * Assigned the constant value 'false' for compatibility with the DataView APIs that take an
+ * optional 'littleEndian' argument.
+ */
+export const bigEndian = false as const;
 
 /** Specifies if a numerical type is signed, unsigned, or sign agnostic. */
 export const enum Signedness {
