@@ -7,9 +7,9 @@
         {
             "type": "node",
             "request": "launch",
-            "name": "Heap Tests",
-            "cwd": "${workspaceFolder}/packages/common/datastructures/heap",
-            "program": "${workspaceFolder}/packages/common/datastructures/heap/node_modules/mocha/bin/_mocha",
+            "name": "Binary Tests",
+            "cwd": "${workspaceFolder}/packages/common/binary",
+            "program": "node_modules/mocha/bin/_mocha",
             "args": [
                 "-r",
                 "ts-node/register",
@@ -19,29 +19,13 @@
             "env": { "TS_NODE_PROJECT": "tsconfig.json" },
             "console": "integratedTerminal",
             "skipFiles": ["<node_internals>/**/*.js"]
-        },
-        {
-            "type": "node",
-            "request": "launch",
-            "name": "Monkey Tests",
-            "cwd": "${workspaceFolder}/packages/common/test/monkey",
-            "program": "${workspaceFolder}/packages/common/test/monkey/node_modules/mocha/bin/_mocha",
-            "args": [
-                "-r",
-                "ts-node/register",
-                "--no-timeouts",
-                "test/**/*.spec.ts"
-            ],
-            "env": { "TS_NODE_PROJECT": "tsconfig.json" },
-            "console": "integratedTerminal",
-            "skipFiles": ["<node_internals>/**/*.js"]
-        },
+        }
         {
             "type": "node",
             "request": "launch",
             "name": "Nano Bench",
             "cwd": "${workspaceFolder}/packages/core/nano",
-            "program": "${workspaceFolder}/packages/core/nano/node_modules/ts-node/dist/bin.js",
+            "program": "node_modules/ts-node/dist/bin.js",
             "args": [ "bench/index.ts" ],
             "env": { "TS_NODE_PROJECT": "tsconfig.json" },
             "console": "integratedTerminal"
@@ -51,7 +35,7 @@
             "request": "launch",
             "name": "Nano Tests",
             "cwd": "${workspaceFolder}/packages/core/nano",
-            "program": "${workspaceFolder}/packages/core/nano/node_modules/mocha/bin/_mocha",
+            "program": "node_modules/mocha/bin/_mocha",
             "args": [
                 "-r",
                 "ts-node/register",
@@ -67,7 +51,7 @@
             "request": "launch",
             "name": "Micro Bench",
             "cwd": "${workspaceFolder}/packages/core/micro",
-            "program": "${workspaceFolder}/packages/core/micro/node_modules/ts-node/dist/bin.js",
+            "program": "node_modules/ts-node/dist/bin.js",
             "args": [ "bench/index.ts" ],
             "env": { "TS_NODE_PROJECT": "tsconfig.json" },
             "console": "integratedTerminal"
@@ -77,7 +61,7 @@
             "request": "launch",
             "name": "Micro Tests",
             "cwd": "${workspaceFolder}/packages/core/micro",
-            "program": "${workspaceFolder}/packages/core/micro/node_modules/mocha/bin/_mocha",
+            "program": "node_modules/mocha/bin/_mocha",
             "args": [
                 "-r",
                 "ts-node/register",
@@ -93,7 +77,7 @@
             "request": "launch",
             "name": "Example",
             "cwd": "${workspaceFolder}/packages/test/example",
-            "program": "${workspaceFolder}/packages/test/example/node_modules/ts-node/dist/bin.js",
+            "program": "example/node_modules/ts-node/dist/bin.js",
             "args": [ "src/index.ts" ],
             "env": { "TS_NODE_PROJECT": "tsconfig.json" },
             "console": "integratedTerminal"
@@ -101,18 +85,9 @@
         {
             "type": "node",
             "request": "launch",
-            "name": "Scheduler Bench",
-            "cwd": "${workspaceFolder}/packages/common/scheduler/bench",
-            "program": "${workspaceFolder}/packages/common/scheduler/node_modules/ts-node/dist/bin.js",
-            "args": [ "index.ts", "--runInBand" ],
-            "console": "integratedTerminal"
-        },
-        {
-            "type": "node",
-            "request": "launch",
             "name": "Tree Tests",
             "cwd": "${workspaceFolder}/experiments/tree",
-            "program": "${workspaceFolder}/experiments/graph/node_modules/mocha/bin/_mocha",
+            "program": "node_modules/mocha/bin/_mocha",
             "args": [
                 "-r",
                 "ts-node/register",
