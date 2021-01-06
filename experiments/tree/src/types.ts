@@ -9,7 +9,17 @@ export const enum TreeNodeHandle {
 }
 
 export type TreeNode = number & { readonly TreeNode: unique symbol };
+
+export const TreeNode: { readonly root: TreeNode, readonly none: TreeNode } = {
+    get root(): TreeNode { return TreeNodeHandle.root as TreeNode },
+    get none(): TreeNode { return TreeNodeHandle.none as TreeNode }
+}
+
 export type TreeNodeLocation = number & { readonly TreeNodeLocation: unique symbol }
+
+export const TreeNodeLocation: { readonly none: TreeNodeLocation } = {
+    get none(): TreeNodeLocation { return -(TreeNodeHandle.none) as TreeNodeLocation }
+}
 
 export interface ITreeShapeProducer {
     /**
