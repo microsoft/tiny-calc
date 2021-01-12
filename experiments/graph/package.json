@@ -20,6 +20,7 @@
     "adjust-random": "ts-node test/random-adjust-tree.ts"
   },
   "dependencies": {
+    "@tiny-calc/frugallist": "0.0.0-alpha.5",
     "@tiny-calc/handletable": "0.0.0-alpha.5",
     "@tiny-calc/types": "0.0.0-alpha.5"
   },

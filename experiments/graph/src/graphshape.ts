@@ -3,14 +3,25 @@
  * Licensed under the MIT License.
  */
 
-import { Handle, HandleTable } from "@tiny-calc/handletable";
-import { GraphNode, IGraphShapeConsumer, IGraphShapeProducer, IGraphShapeReader, IGraphShapeWriter } from "./types";
 import { strict as assert } from "assert";
-import { addConsumer, ConsumerSet, forEachConsumer, removeConsumer } from "./consumerset";
+import {
+    FrugalList,
+    FrugalList_push,
+    FrugalList_removeFirst,
+    FrugalList_forEach
+} from "@tiny-calc/frugallist";
+import { Handle, HandleTable } from "@tiny-calc/handletable";
+import {
+    GraphNode,
+    IGraphShapeConsumer,
+    IGraphShapeProducer,
+    IGraphShapeReader,
+    IGraphShapeWriter
+} from "./types";
 
 export class GraphShape implements IGraphShapeProducer, IGraphShapeReader, IGraphShapeWriter {
     private readonly nodeToChildren = new HandleTable<GraphNode[]>();
-    private consumers?: ConsumerSet<IGraphShapeConsumer>;
+    private consumers: FrugalList<IGraphShapeConsumer>;
 
     public constructor() {
         const root = this.createNode();
@@ -21,12 +32,12 @@ export class GraphShape implements IGraphShapeProducer, IGraphShapeReader, IGrap
     // #region IGraphShapeProducer
 
     public openGraph(consumer: IGraphShapeConsumer): IGraphShapeReader {
-        this.consumers = addConsumer(this.consumers, consumer);
+        this.consumers = FrugalList_push(this.consumers, consumer);
         return this;
     }
 
     public closeGraph(consumer: IGraphShapeConsumer): void {
-        this.consumers = removeConsumer(this.consumers, consumer);
+        this.consumers = FrugalList_removeFirst(this.consumers, consumer);
     }
 
     // #endregion IGraphShapeProducer
@@ -63,7 +74,7 @@ export class GraphShape implements IGraphShapeProducer, IGraphShapeReader, IGrap
     // #endregion IGraphShapeWriter
 
     protected forEachConsumer(callback: (consumer: IGraphShapeConsumer) => void): void {
-        forEachConsumer(this.consumers, callback);
+        FrugalList_forEach(this.consumers, callback);
     }
 
     private invalidateShape(parent: GraphNode, start: number, removedCount: number, insertCount: number): void {
