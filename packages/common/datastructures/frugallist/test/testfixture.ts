@@ -10,7 +10,9 @@ import {
     FrugalList_push,
     FrugalListItem,
     FrugalList_removeFirst,
-    FrugalList_forEach
+    FrugalList_forEach,
+    FrugalList_length,
+    FrugalList_get
 } from "../src";
 
 export class TestFixture<T> {
@@ -35,11 +37,22 @@ export class TestFixture<T> {
     }
 
     private vet() {
+        const actualLen = FrugalList_length(this.actual);
+        assert.equal(actualLen, this.expected.length,
+            "FrugalList_length() must return number of contained items.");
+
+        for (let i = 0; i < actualLen; i++) {
+            assert.deepEqual(FrugalList_get(this.actual, i), this.expected[i],
+                "FrugalList_get() must return item at specified 'index'.");
+        }
+
         const actual: FrugalListItem<T>[] = [];
+
         FrugalList_forEach(this.actual, (item) => {
             actual.push(item);
-        })
+        });
 
-        assert.deepEqual(actual, this.expected);
+        assert.deepEqual(actual, this.expected,
+            "FrugalList_forEach() must enumerate contained items in order.");
     }
 }
