@@ -10,7 +10,7 @@ import {
     FrugalList_removeFirst,
     FrugalList_forEach
 } from "@tiny-calc/frugallist";
-import { Handle, HandleTable } from "@tiny-calc/handletable";
+import { HandleTable } from "@tiny-calc/handletable";
 import {
     GraphNode,
     IGraphShapeConsumer,
@@ -20,7 +20,7 @@ import {
 } from "./types";
 
 export class GraphShape implements IGraphShapeProducer, IGraphShapeReader, IGraphShapeWriter {
-    private readonly nodeToChildren = new HandleTable<GraphNode[]>();
+    private readonly nodeToChildren = new HandleTable<GraphNode[], GraphNode>();
     private consumers: FrugalList<IGraphShapeConsumer>;
 
     public constructor() {
@@ -45,11 +45,11 @@ export class GraphShape implements IGraphShapeProducer, IGraphShapeReader, IGrap
     // #region IGraphShapeReader
 
     public getChildCount(parent: GraphNode): number {
-        return this.getChildren(parent).length;
+        return this.nodeToChildren.get(parent).length;
     }
 
     public getChild(parent: GraphNode, index: number): GraphNode {
-        return this.getChildren(parent)[index];
+        return this.nodeToChildren.get(parent)[index];
     }
 
     // #endregion IGraphShapeReader
@@ -57,17 +57,17 @@ export class GraphShape implements IGraphShapeProducer, IGraphShapeReader, IGrap
     // #region IGraphShapeWriter
 
     public createNode(): GraphNode {
-        return this.nodeToChildren.add([]) as unknown as GraphNode;
+        return this.nodeToChildren.add([]);
     }
 
     public deleteNode(node: GraphNode): void {
         // TODO: 'deleteNode()' leaves dangling references inside the graph's children collections.
         //       (In general, lifetime needs design work.)
-        this.nodeToChildren.delete(node as unknown as Handle);
+        this.nodeToChildren.delete(node);
     }
 
     public spliceChildren(parent: GraphNode, start: number, removeCount: number, ...toInsert: GraphNode[]): void {
-        this.getChildren(parent).splice(start, removeCount, ...toInsert);
+        this.nodeToChildren.get(parent).splice(start, removeCount, ...toInsert);
         this.invalidateShape(parent, start, removeCount, toInsert.length);
     }
 
@@ -81,9 +81,5 @@ export class GraphShape implements IGraphShapeProducer, IGraphShapeReader, IGrap
         this.forEachConsumer((consumer) => {
             consumer.childrenChanged(parent, start, removedCount, insertCount, this);
         });
-    }
-
-    private getChildren(parent: GraphNode) {
-        return this.nodeToChildren.get(parent as unknown as Handle);
     }
 }

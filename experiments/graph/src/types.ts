@@ -3,9 +3,18 @@
  * Licensed under the MIT License.
  */
 
-export const enum GraphNode {
+import { Handle } from "@tiny-calc/handletable";
+
+export const enum GraphNodeHandle {
     none = 0,
     root = 1,
+}
+
+export type GraphNode = Handle & { readonly GraphNode: unique symbol };
+
+export const GraphNode: { readonly root: GraphNode, readonly none: GraphNode } = {
+    get root(): GraphNode { return GraphNodeHandle.root as unknown as GraphNode },
+    get none(): GraphNode { return GraphNodeHandle.none as unknown as GraphNode }
 }
 
 export interface IGraphShapeProducer {
