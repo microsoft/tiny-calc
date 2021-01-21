@@ -33,6 +33,9 @@ map.set("answer", 42);      // prints "New answer: 42"
 
 In addition to the basic producer contract, there are specialized versions for vectors, matrices, and trees that provide more efficient/fine-grained change notifications for these types (e.g., notifications when rows have been inserted into a matrix.)
 
+#### Performance
+
+
 ### Transform Pattern
 A transform is an object that is both a consumer and a producer.  A typical example is a filter transform which consumes values from upstream producers, calculates which items to include, and notifies downstream consumers of any changes.
 

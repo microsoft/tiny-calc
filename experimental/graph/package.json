@@ -1,5 +1,5 @@
 {
-  "name": "@tiny-calc/graph",
+  "name": "@tiny-calc-experimental/graph",
   "version": "0.0.0-alpha.5",
   "main": "dist/index.js",
   "sideEffects": "false",

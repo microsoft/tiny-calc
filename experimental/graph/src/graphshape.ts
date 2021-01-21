@@ -21,6 +21,7 @@ import {
 
 export class GraphShape implements IGraphShapeProducer, IGraphShapeReader, IGraphShapeWriter {
     private readonly nodeToChildren = new HandleTable<GraphNode[], GraphNode>();
+    private readonly nodeToParents: FrugalList<GraphNode>[] = [];
     private consumers: FrugalList<IGraphShapeConsumer>;
 
     public constructor() {
@@ -61,13 +62,28 @@ export class GraphShape implements IGraphShapeProducer, IGraphShapeReader, IGrap
     }
 
     public deleteNode(node: GraphNode): void {
-        // TODO: 'deleteNode()' leaves dangling references inside the graph's children collections.
-        //       (In general, lifetime needs design work.)
+        FrugalList_forEach(this.nodeToParents[node], parent => {
+            const parentChildren = this.nodeToChildren.get(parent);
+            const parentIndex = parentChildren.lastIndexOf(node);
+            parentChildren.splice(parentIndex, /* deleteCount: */ 1);
+        });
+
+        this.nodeToParents[node] = undefined;
         this.nodeToChildren.delete(node);
     }
 
     public spliceChildren(parent: GraphNode, start: number, removeCount: number, ...toInsert: GraphNode[]): void {
-        this.nodeToChildren.get(parent).splice(start, removeCount, ...toInsert);
+        const children = this.nodeToChildren.get(parent);
+
+        for (let i = start; i < start + removeCount; i++) {
+            this.removeParent(children[i], parent);
+        }
+
+        for (const child of toInsert) {
+            this.addParent(child, parent);
+        }
+
+        children.splice(start, removeCount, ...toInsert);
         this.invalidateShape(parent, start, removeCount, toInsert.length);
     }
 
@@ -81,5 +97,13 @@ export class GraphShape implements IGraphShapeProducer, IGraphShapeReader, IGrap
         this.forEachConsumer((consumer) => {
             consumer.childrenChanged(parent, start, removedCount, insertCount, this);
         });
+    }
+
+    private addParent(child: GraphNode, parent: GraphNode) {
+        this.nodeToParents[child] = FrugalList_push(this.nodeToParents[child], parent);
+    }
+
+    private removeParent(child: GraphNode, parent: GraphNode) {
+        this.nodeToParents[child] = FrugalList_removeFirst(this.nodeToParents[child], parent);
     }
 }
