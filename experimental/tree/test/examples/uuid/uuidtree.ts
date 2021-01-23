@@ -79,6 +79,10 @@ export class UuidTree extends Tree<string> {
 
         // Perf: Last time I optimized UUID generation, it was faster to use a lookup table.
         //       Another idea to explore is to use 'toString(16)' on larger byte groups.
+        //
+        //     const hex: string[] = new Array(256)
+        //                .fill("")
+        //                .map((_, i) => i.toString(16).padStart(2, "0"));
 
         const hex = (byte: number) => {
             return byte.toString(16).padStart(2, "0");
